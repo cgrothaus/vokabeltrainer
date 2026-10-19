@@ -2,7 +2,7 @@
 
 ## Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.3 – Eindeutige Anforderungs-IDs, Weiterarbeiten nach App-Updates  
+**Version:** 2.4 – Meilenstein M0 (Walking Skeleton)  
 **Stand:** 19. Oktober 2026  
 **Status:** Entwurf für die nächste Entwicklungsiteration  
 **Ausgangspunkt:** Bestehender HTML-Prototyp „Vokabeltrainer Englisch“  
@@ -186,16 +186,19 @@ Die Liste fasst den Umfang zusammen; verbindlich sind die jeweils referenzierten
 
 ### 5.3 Meilensteine innerhalb der Version
 
-Die Anforderungen werden in folgender Reihenfolge umgesetzt. Jeder Meilenstein ergibt eine nutzbare App; der Schutz der Daten kommt bewusst früh.
+Die Anforderungen werden in folgender Reihenfolge umgesetzt. Zuerst entsteht ein **Walking Skeleton** (M0): ein dünner, aber vollständig lauffähiger Durchstich durch alle technisch riskanten Teile – von Build und Deployment über Offline-Betrieb und Speicherung bis zu Backup und Wiederherstellung auf einem echten iPhone. Erst danach werden die Funktionen in die Breite ausgebaut. Ab M1 ergibt jeder Meilenstein eine nutzbare App; der Schutz der Daten kommt bewusst früh.
+
+Diese Tabelle legt nur Inhalt und Reihenfolge fest. Arbeitspakete und Umsetzungsstand werden ausschließlich im Umsetzungsplan des TDD geführt.
 
 | Meilenstein | Inhalt | Wesentliche Anforderungen |
 |---|---|---|
-| **M1 – Lernen mit eigenen Sets** | Datenhaltung, Bibliothek, Import neuer Sets (Datei und Text), Löschen von Sets, Empty State mit Prompt-Vorlage und Beispielset, Lernsitzungen mit dauerhaftem Antwortprotokoll, Präferenzen, Hosting und Offline-Betrieb | FR-01, FR-02 (ohne „Leeres Set anlegen“), FR-03 (Anzeigen und Auswählen), FR-05–13, FR-16, FR-20–28, FR-30, FR-32 |
+| **M0 – Walking Skeleton** | Build- und Testumgebung mit CI, provisorisches HTTPS-Deployment, Installation und Offline-Start, Datenhaltung mit dauerhaftem Speicher und Rahmen für Datenmigrationen, minimaler Import (Text und Datei), Karteikarten mit Antwortprotokoll, Backup-Export und Wiederherstellung (auch über das Teilen-Menü auf iOS), ein automatischer End-to-End-Test, manuelle Prüfung auf einem echten iPhone. Jeweils in einfachster Form, ohne Vorschau, Bibliothek oder Gestaltung. | Durchstich zu FR-11, FR-13, FR-19, FR-22, FR-31, FR-33, NFR-01–05; vorrangig zur Klärung von R-01, R-05 und R-11 |
+| **M1 – Lernen mit eigenen Sets** | Datenhaltung, Bibliothek, Import neuer Sets (Datei und Text), Löschen von Sets, Empty State mit Prompt-Vorlage und Beispielset, Lernsitzungen mit dauerhaftem Antwortprotokoll, Präferenzen; Ausbau des in M0 angelegten Grundgerüsts | FR-01, FR-02 (ohne „Leeres Set anlegen“), FR-03 (Anzeigen und Auswählen), FR-05–13, FR-16, FR-20–28, FR-30, FR-32 |
 | **M2 – Daten sichern** | Vollständiges Backup und Wiederherstellung, Speicherschutz und Backup-Erinnerung | FR-19, FR-31, FR-33 |
 | **M3 – Inhalte pflegen und teilen** | Vokabeleditor, leeres Set anlegen, Sektionen anlegen, umbenennen, umsortieren und löschen, Export von Sets und Sektionen | FR-02 (Leeres Set anlegen), FR-03 (Bearbeiten), FR-04, FR-18 |
 | **M4 – Korrigieren und aktualisieren** | Erkennen bekannter Sets, Aktualisieren und Ersetzen (auch einzelner Sektionen), Warnung bei lokalen Änderungen seit dem Export | FR-14, FR-15, FR-17, FR-29 |
 
-FR-06 (Schutz vor Datenverlust) und FR-16 (Vorschau und Validierung) gelten in jedem Meilenstein für die dort hinzukommenden Aktionen. FR-33 gilt ab der ersten Auslieferung an Nutzende: Ab dann muss jede weitere Version den vorhandenen Bestand übernehmen.
+FR-06 (Schutz vor Datenverlust) und FR-16 (Vorschau und Validierung) gelten in jedem Meilenstein für die dort hinzukommenden Aktionen. FR-33 gilt ab der ersten Auslieferung an Nutzende: Ab dann muss jede weitere Version den vorhandenen Bestand übernehmen. Das provisorische Deployment aus M0 dient nur Tests; die endgültige Adresse (eigene Domain) wird vor der ersten Auslieferung an Nutzende festgelegt, weil lokal gespeicherte Daten an die Adresse der App gebunden sind.
 
 ---
 
@@ -521,3 +524,4 @@ Das TDD muss insbesondere sicherstellen, dass die zentrale Produktanforderung er
 | 2.1 | 18. Oktober 2026 | UX-Prinzipien, kontextbezogene Hilfe und Onboarding ergänzt | KI-gestützter Entwurf mit ChatGPT (OpenAI), Modell GPT-6, in iterativer Zusammenarbeit mit dem Nutzer; Grundlage: Nutzeranforderungen, Anforderungsdialog und HTML-Prototyp. Reasoning-Stufe und Modell-Snapshot-ID nicht als überprüfbare Metadaten verfügbar; Knowledge Cutoff Dezember 2025. |
 | 2.2 | 19. Oktober 2026 | Review eingearbeitet: Speicherschutz und Backup-Erinnerung (FR-31), statisches Hosting als installierbare Offline-Web-App statt `file://`, Import per eingefügtem Text und Prompt-Vorlage, Protokoll jeder Antwort (FR-11), Warnung bei lokalen Änderungen seit dem Export (FR-29), Duplikaterkennung (FR-30), Meilensteine (5.3), Hierarchie mit Sprache/Lernstufe als Set-Eigenschaften, Unterscheidung von Varianten und Bedeutungen, Regeln für Multiple-Choice-Antworten und Bedienwege (FR-09), Löschen und Leeranlage von Sets, rechtlich unbedenkliches Beispielset ohne unveränderte Prototyp-Vokabeln (FR-32), Zielalter, Wiederherstellung ersetzt immer, freie Eingabe als LATER, Akzeptanzkriterien 17–23, Risiken 8–11 | Review und Überarbeitung mit Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.3 | 19. Oktober 2026 | Eindeutige IDs für Ziele (Z), Datenformat (DF), nicht-funktionale Anforderungen (NFR), Akzeptanzkriterien (AK), Produktindikatoren (PI) und Risiken (R); Akzeptanzkriterien verweisen auf die geprüften Anforderungen; Scope-Überblick verweist auf FR/NFR. Neu: FR-33 (Weiterarbeiten nach App-Updates), DF-11 (Abwärtskompatibilität), NFR-19 verschärft, AK-24 (App-Update), AK-25 (Sets und Sektionen verwalten), AK-26 (Speicherfehler); R-05 konkretisiert | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.4 | 19. Oktober 2026 | Meilenstein M0 (Walking Skeleton) vor M1 ergänzt; Hinweis, dass Umsetzungsstand nur im Umsetzungsplan des TDD geführt wird; provisorisches Deployment vs. endgültige Adresse | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
