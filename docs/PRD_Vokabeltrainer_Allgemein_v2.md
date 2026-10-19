@@ -2,7 +2,7 @@
 
 ## Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.2 – Review eingearbeitet (Speicherschutz, statisches Hosting, Import per Text, Antwortprotokoll, Meilensteine)  
+**Version:** 2.3 – Eindeutige Anforderungs-IDs, Weiterarbeiten nach App-Updates  
 **Stand:** 19. Oktober 2026  
 **Status:** Entwurf für die nächste Entwicklungsiteration  
 **Ausgangspunkt:** Bestehender HTML-Prototyp „Vokabeltrainer Englisch“  
@@ -24,16 +24,16 @@ Vokabellisten liegen in unterschiedlichen Lehrwerken, Lernkästen, Arbeitsblätt
 
 ### 1.2 Ziele
 
-1. Vokabeln mehrerer Sprachen, Lernstufen und Lehrwerke in einer App verwalten.
-2. Auf Smartphones und Tablets besonders einfach und angenehm lernen; Desktop-Nutzung bleibt möglich.
-3. Vokabelsets und Lernfortschritt lokal und dauerhaft speichern.
-4. Neue Vokabelsets möglichst einfach importieren und vorhandene Inhalte sicher aktualisieren.
-5. Vokabeln direkt in der App korrigieren und strukturieren können.
-6. Vokabelsets und ausgewählte Sektionen für Weitergabe und externe Qualitätssicherung exportieren.
-7. Den vollständigen lokalen Bestand einschließlich Lernfortschritt und Einstellungen sichern und auf einem anderen Gerät wiederherstellen können.
-8. Eine dokumentierte, stabile und LLM-freundliche Dateiformatspezifikation bereitstellen.
-9. Die Lernfunktionen schrittweise didaktisch verbessern, ohne die grundlegende Architektur später neu aufbauen zu müssen.
-10. Die App so intuitiv gestalten, dass neue Nutzende ohne Anleitung beginnen können; kontextbezogene Hilfen unterstützen nur dort, wo die Bedienung allein nicht ausreichend verständlich ist.
+- **Z-01:** Vokabeln mehrerer Sprachen, Lernstufen und Lehrwerke in einer App verwalten.
+- **Z-02:** Auf Smartphones und Tablets besonders einfach und angenehm lernen; Desktop-Nutzung bleibt möglich.
+- **Z-03:** Vokabelsets und Lernfortschritt lokal und dauerhaft speichern.
+- **Z-04:** Neue Vokabelsets möglichst einfach importieren und vorhandene Inhalte sicher aktualisieren.
+- **Z-05:** Vokabeln direkt in der App korrigieren und strukturieren können.
+- **Z-06:** Vokabelsets und ausgewählte Sektionen für Weitergabe und externe Qualitätssicherung exportieren.
+- **Z-07:** Den vollständigen lokalen Bestand einschließlich Lernfortschritt und Einstellungen sichern und auf einem anderen Gerät wiederherstellen können.
+- **Z-08:** Eine dokumentierte, stabile und LLM-freundliche Dateiformatspezifikation bereitstellen.
+- **Z-09:** Die Lernfunktionen schrittweise didaktisch verbessern, ohne die grundlegende Architektur später neu aufbauen zu müssen.
+- **Z-10:** Die App so intuitiv gestalten, dass neue Nutzende ohne Anleitung beginnen können; kontextbezogene Hilfen unterstützen nur dort, wo die Bedienung allein nicht ausreichend verständlich ist.
 
 ### 1.3 Nicht-Ziele
 
@@ -153,23 +153,26 @@ Einträge und Sektionen benötigen stabile Identitäten, wenn der Inhalt exporti
 
 Die folgende Version verallgemeinert den bestehenden Prototyp und ergänzt die fehlende lokale Datenverwaltung. Sie ist kein vollständiger Neustart der Anwendung; vorhandene Lernfunktionen werden weiterverwendet, soweit sie zur Produktvision passen.
 
-### 5.1 In Scope – verbindliche Anforderungen
+### 5.1 In Scope – Überblick
 
-- Verwaltung mehrerer Sprachen, Lernstufen, Vokabelsets und Sektionen.
-- Import neuer Sets aus einem dokumentierten JSON-Format, auch wenn die Datei keine internen IDs enthält – per Dateiauswahl oder per eingefügtem Text.
-- Wiedererkennen vorhandener Sets anhand erhaltener IDs und Aktualisierung über denselben Import-Einstieg.
-- Einfache Importvorschau und verständliche Validierungsfehler.
-- Bearbeiten, Ergänzen, Löschen und Umsortieren von Vokabeln und Sektionen.
-- Export eines vollständigen Vokabelsets sowie ausgewählter Sektionen.
-- Sicheres Aktualisieren beziehungsweise Ersetzen des importierten Inhaltsbereichs, ohne nicht betroffene Sektionen zu verändern.
-- Vollständiger Backup-Export aller lokal gespeicherten Sets, Lernstände, Lernhistorien und Einstellungen sowie Wiederherstellung auf einem anderen Gerät.
-- Lokale, dauerhafte Speicherung ohne Backend; IndexedDB ist als primärer Speicher vorgesehen.
-- Aktiver Schutz vor Datenverlust durch den Browser: Anfrage nach dauerhaftem Speicher, Empfehlung zur Installation auf dem Home-Bildschirm, Backup-Erinnerung.
-- Persistente Präferenzen und Lernfortschritte über das Schließen und erneute Öffnen der App hinweg; jede Antwort wird protokolliert.
-- Weiterführung der vorhandenen Übungsformen und Sitzungsfunktionen, angepasst an die neue Set-Struktur.
-- Dokumentation des Importformats mit Schema, Beispielen, Regeln, einer kopierbaren Prompt-Vorlage und Hinweisen für LLM-gestützte Erstellung und Korrektur.
+Die Liste fasst den Umfang zusammen; verbindlich sind die jeweils referenzierten Anforderungen.
+
+- Verwaltung mehrerer Sprachen, Lernstufen, Vokabelsets und Sektionen (FR-01–03).
+- Import neuer Sets aus einem dokumentierten JSON-Format, auch wenn die Datei keine internen IDs enthält – per Dateiauswahl oder per eingefügtem Text (FR-13, FR-30).
+- Wiedererkennen vorhandener Sets anhand erhaltener IDs und Aktualisierung über denselben Import-Einstieg (FR-14).
+- Einfache Importvorschau und verständliche Validierungsfehler (FR-16).
+- Bearbeiten, Ergänzen, Löschen und Umsortieren von Vokabeln und Sektionen (FR-03, FR-04).
+- Export eines vollständigen Vokabelsets sowie ausgewählter Sektionen (FR-18).
+- Sicheres Aktualisieren beziehungsweise Ersetzen des importierten Inhaltsbereichs, ohne nicht betroffene Sektionen zu verändern (FR-15, FR-17, FR-29).
+- Vollständiger Backup-Export aller lokal gespeicherten Sets, Lernstände, Lernhistorien und Einstellungen sowie Wiederherstellung auf einem anderen Gerät (FR-19).
+- Lokale, dauerhafte Speicherung ohne Backend; IndexedDB ist als primärer Speicher vorgesehen (FR-22, FR-23).
+- Aktiver Schutz vor Datenverlust durch den Browser: Anfrage nach dauerhaftem Speicher, Empfehlung zur Installation auf dem Home-Bildschirm, Backup-Erinnerung (FR-31).
+- Persistente Präferenzen und Lernfortschritte über das Schließen und erneute Öffnen der App hinweg; jede Antwort wird protokolliert (FR-11, FR-21).
+- Weiterführung der vorhandenen Übungsformen und Sitzungsfunktionen, angepasst an die neue Set-Struktur (FR-07–10, FR-12).
+- Dokumentation des Importformats mit Schema, Beispielen, Regeln, einer kopierbaren Prompt-Vorlage und Hinweisen für LLM-gestützte Erstellung und Korrektur (FR-20).
 - Ein rechtlich unbedenkliches Beispielset (Englisch–Deutsch, Niveau etwa 6. Klasse), das zugleich als Testdatensatz dient (FR-32). Die Vokabeln des Prototyps werden nicht unverändert übernommen.
-- Bereitstellung über statisches Hosting als installierbare, offline nutzbare Web-App.
+- Bereitstellung über statisches Hosting als installierbare, offline nutzbare Web-App (NFR-01–05).
+- Weiterarbeiten mit dem vorhandenen lokalen Bestand nach jedem App-Update (FR-33, DF-11).
 
 ### 5.2 Bewusst nicht Teil dieser Version
 
@@ -188,11 +191,11 @@ Die Anforderungen werden in folgender Reihenfolge umgesetzt. Jeder Meilenstein e
 | Meilenstein | Inhalt | Wesentliche Anforderungen |
 |---|---|---|
 | **M1 – Lernen mit eigenen Sets** | Datenhaltung, Bibliothek, Import neuer Sets (Datei und Text), Löschen von Sets, Empty State mit Prompt-Vorlage und Beispielset, Lernsitzungen mit dauerhaftem Antwortprotokoll, Präferenzen, Hosting und Offline-Betrieb | FR-01, FR-02 (ohne „Leeres Set anlegen“), FR-03 (Anzeigen und Auswählen), FR-05–13, FR-16, FR-20–28, FR-30, FR-32 |
-| **M2 – Daten sichern** | Vollständiges Backup und Wiederherstellung, Speicherschutz und Backup-Erinnerung | FR-19, FR-31 |
+| **M2 – Daten sichern** | Vollständiges Backup und Wiederherstellung, Speicherschutz und Backup-Erinnerung | FR-19, FR-31, FR-33 |
 | **M3 – Inhalte pflegen und teilen** | Vokabeleditor, leeres Set anlegen, Sektionen anlegen, umbenennen, umsortieren und löschen, Export von Sets und Sektionen | FR-02 (Leeres Set anlegen), FR-03 (Bearbeiten), FR-04, FR-18 |
 | **M4 – Korrigieren und aktualisieren** | Erkennen bekannter Sets, Aktualisieren und Ersetzen (auch einzelner Sektionen), Warnung bei lokalen Änderungen seit dem Export | FR-14, FR-15, FR-17, FR-29 |
 
-FR-06 (Schutz vor Datenverlust) und FR-16 (Vorschau und Validierung) gelten in jedem Meilenstein für die dort hinzukommenden Aktionen.
+FR-06 (Schutz vor Datenverlust) und FR-16 (Vorschau und Validierung) gelten in jedem Meilenstein für die dort hinzukommenden Aktionen. FR-33 gilt ab der ersten Auslieferung an Nutzende: Ab dann muss jede weitere Version den vorhandenen Bestand übernehmen.
 
 ---
 
@@ -201,6 +204,8 @@ FR-06 (Schutz vor Datenverlust) und FR-16 (Vorschau und Validierung) gelten in j
 Prioritäten: **MUST** = erforderlich für die nächste ausgebaute Version; **SHOULD** = sinnvoll, sofern ohne Gefährdung der Kernanforderungen umsetzbar; **LATER** = spätere Iteration. Die Reihenfolge der Umsetzung ergibt sich aus den Meilensteinen in Abschnitt 5.3.
 
 Neu hinzugekommene Anforderungen erhalten fortlaufende Nummern ab FR-29 und stehen in ihrem thematischen Abschnitt, damit bestehende Verweise (z. B. im TDD) gültig bleiben.
+
+Alle Anforderungen und Prüfpunkte tragen eine eindeutige ID: **Z** Ziele (1.2), **FR** funktionale Anforderungen (Kap. 6), **DF** Datenformat (Kap. 7), **NFR** nicht-funktionale Anforderungen (Kap. 8), **AK** Akzeptanzkriterien und **PI** Produktindikatoren (Kap. 9), **R** Risiken (Kap. 10). IDs werden nie neu vergeben; entfallene Anforderungen bleiben mit dem Vermerk „entfallen“ stehen.
 
 ### 6.1 Bibliothek und Navigation
 
@@ -318,6 +323,13 @@ Wenn der Browser Daten nicht speichern kann oder eine Wiederherstellung scheiter
 **FR-31 – Speicherschutz und Backup-Erinnerung (MUST)**  
 Gewährt der Browser keinen dauerhaften Speicher, erklärt die App kurz und verständlich, dass Daten bei längerer Nichtnutzung verloren gehen können, und empfiehlt den passenden Schutz – auf iOS/iPadOS insbesondere das Hinzufügen zum Home-Bildschirm, mit einer kurzen Anleitung für diesen Schritt. Liegt der letzte Backup-Export länger als 14 Tage zurück oder wurde noch nie ein Backup erstellt, obwohl Sets oder Lernstand vorhanden sind, erinnert die App unaufdringlich daran und bietet den Backup-Export direkt an. Die Erinnerung lässt sich für eine Weile zurückstellen, blockiert aber nie das Lernen.
 
+**FR-33 – Weiterarbeiten nach App-Updates (MUST)**  
+Eine neue App-Version übernimmt den vorhandenen lokalen Bestand automatisch und vollständig – Sets, Sektionen, IDs, Antwortprotokoll, Lernstand und Einstellungen –, ohne dass Nutzende etwas tun müssen. Ist dafür eine Umwandlung der gespeicherten Daten nötig, gilt:
+
+- Schlägt die Umwandlung fehl, bleibt der bisherige Bestand unverändert erhalten. Die App zeigt eine verständliche Meldung und bietet den Backup-Export des bisherigen Bestands an.
+- Backups und Set-Exporte älterer App-Versionen lassen sich in neueren Versionen wiederherstellen beziehungsweise importieren (siehe DF-11).
+- Eine ältere App-Version, die etwa noch in einem anderen Tab oder aus dem Offline-Zwischenspeicher läuft, darf einen bereits umgewandelten Bestand weder beschädigen noch teilweise überschreiben. Sie weist stattdessen darauf hin, dass die App neu geladen werden muss.
+
 ### 6.6 Oberfläche und Datenschutz
 
 **FR-24 – Mobilfreundliche Oberfläche (MUST)**  
@@ -341,16 +353,17 @@ Wenn eine Aktion nicht ausreichend selbsterklärend ist oder eine folgenreiche E
 
 Diese Anforderungen legen fest, **was** das Format gewährleisten muss. Die konkrete technische Umsetzung und das genaue Schema werden im zugehörigen TDD beziehungsweise in der Formatspezifikation ausgearbeitet.
 
-1. **Versionierung:** Jede Datei muss als zu einer unterstützten Formatversion gehörig erkennbar sein.
-2. **LLM-Tauglichkeit:** Feldnamen, Typen und Beispiele sind konsistent und ohne implizites Vorwissen verständlich.
-3. **Einfache Erstellung:** IDs sind für neu erstellte externe Sets optional. Sprachangaben und grundlegende Vokabelinhalte sind erforderlich; Herkunft, Quelle und Bearbeitungsstatus bleiben optional.
-4. **Stabile Identität:** Bei App-Exporten enthalten Set, Sektionen und Einträge stabile IDs. Externe Korrekturen sollen diese IDs unverändert beibehalten.
-5. **Antwortvarianten und Bedeutungen:** Pro Sprachseite kann es eine angezeigte Hauptform und mehrere ausdrücklich akzeptierte Varianten geben. Zusätzlich kann ein Eintrag mehrere unterscheidbare Bedeutungen haben (siehe 4.5). Diese Struktur bereitet spätere Eingabemodi vor.
-6. **Sprachunabhängigkeit:** Sprachkennungen dürfen nicht auf Englisch und Deutsch beschränkt sein.
-7. **Teil-Export:** Ein Export muss erkennen lassen, welche Sektionen enthalten sind, damit beim Reimport nur der beabsichtigte Bereich bearbeitet wird.
-8. **Sichere Verarbeitung:** Importierte Daten werden als Daten behandelt, nicht als ausführbarer Code oder HTML.
-9. **Atomare Übernahme:** Wenn Validierung oder Speicherung fehlschlägt, bleibt der vorherige Datenbestand unverändert.
-10. **Fortschritt schützen:** Inhaltliche Änderungen sollen Lernfortschritt zuordnen können, solange stabile IDs erhalten bleiben. Wird ein Eintrag gelöscht oder seine Identität unklar, muss die App diese Situation nachvollziehbar behandeln.
+- **DF-01 – Versionierung:** Jede Datei muss als zu einer unterstützten Formatversion gehörig erkennbar sein.
+- **DF-02 – LLM-Tauglichkeit:** Feldnamen, Typen und Beispiele sind konsistent und ohne implizites Vorwissen verständlich.
+- **DF-03 – Einfache Erstellung:** IDs sind für neu erstellte externe Sets optional. Sprachangaben und grundlegende Vokabelinhalte sind erforderlich; Herkunft, Quelle und Bearbeitungsstatus bleiben optional.
+- **DF-04 – Stabile Identität:** Bei App-Exporten enthalten Set, Sektionen und Einträge stabile IDs. Externe Korrekturen sollen diese IDs unverändert beibehalten.
+- **DF-05 – Antwortvarianten und Bedeutungen:** Pro Sprachseite kann es eine angezeigte Hauptform und mehrere ausdrücklich akzeptierte Varianten geben. Zusätzlich kann ein Eintrag mehrere unterscheidbare Bedeutungen haben (siehe 4.5). Diese Struktur bereitet spätere Eingabemodi vor.
+- **DF-06 – Sprachunabhängigkeit:** Sprachkennungen dürfen nicht auf Englisch und Deutsch beschränkt sein.
+- **DF-07 – Teil-Export:** Ein Export muss erkennen lassen, welche Sektionen enthalten sind, damit beim Reimport nur der beabsichtigte Bereich bearbeitet wird.
+- **DF-08 – Sichere Verarbeitung:** Importierte Daten werden als Daten behandelt, nicht als ausführbarer Code oder HTML.
+- **DF-09 – Atomare Übernahme:** Wenn Validierung oder Speicherung fehlschlägt, bleibt der vorherige Datenbestand unverändert.
+- **DF-10 – Fortschritt schützen:** Inhaltliche Änderungen sollen Lernfortschritt zuordnen können, solange stabile IDs erhalten bleiben. Wird ein Eintrag gelöscht oder seine Identität unklar, muss die App diese Situation nachvollziehbar behandeln.
+- **DF-11 – Abwärtskompatibilität:** Jede App-Version liest Set-Exporte und Backups aller früher veröffentlichten Formatversionen. Dateien einer neueren, noch unbekannten Formatversion werden nicht teilweise übernommen, sondern mit einem verständlichen Hinweis abgelehnt (z. B. „Diese Datei stammt aus einer neueren App-Version. Bitte lade die App neu.“).
 
 ---
 
@@ -358,76 +371,79 @@ Diese Anforderungen legen fest, **was** das Format gewährleisten muss. Die konk
 
 ### 8.1 Bereitstellung und Offline-Verhalten
 
-- Die Anwendung wird über statisches Hosting (z. B. GitHub Pages) per HTTPS ausgeliefert. Das ist der einzige unterstützte Startmodus; das direkte Öffnen einer lokal gespeicherten Datei (`file://`) wird nicht unterstützt.
-- Die Anwendung besteht im Kern aus einer HTML-Datei mit eingebettetem CSS und JavaScript. Zusätzliche Dateien sind nur für Installation und Offline-Betrieb vorgesehen (z. B. Web-App-Manifest, Service Worker, App-Icon).
-- Die App ist als Web-App zum Home-Bildschirm hinzufügbar und startet nach dem ersten Laden auch ohne Netzwerkverbindung vollständig.
-- Kein eigener Server, keine Anmeldung, kein Backend und keine externen Runtime-Abhängigkeiten.
-- Aktualisierungen der App dürfen gespeicherte Daten nicht gefährden. Eine neue App-Version wird erst aktiv, wenn keine Lernsitzung oder Bearbeitung läuft.
+- **NFR-01:** Die Anwendung wird über statisches Hosting (z. B. GitHub Pages) per HTTPS ausgeliefert. Das ist der einzige unterstützte Startmodus; das direkte Öffnen einer lokal gespeicherten Datei (`file://`) wird nicht unterstützt.
+- **NFR-02:** Die Anwendung besteht im Kern aus einer HTML-Datei mit eingebettetem CSS und JavaScript. Zusätzliche Dateien sind nur für Installation und Offline-Betrieb vorgesehen (z. B. Web-App-Manifest, Service Worker, App-Icon).
+- **NFR-03:** Die App ist als Web-App zum Home-Bildschirm hinzufügbar und startet nach dem ersten Laden auch ohne Netzwerkverbindung vollständig.
+- **NFR-04:** Kein eigener Server, keine Anmeldung, kein Backend und keine externen Runtime-Abhängigkeiten.
+- **NFR-05:** Aktualisierungen der App dürfen gespeicherte Daten nicht gefährden; vorhandene Daten bleiben nach einem Update nutzbar (FR-33). Eine neue App-Version wird erst aktiv, wenn keine Lernsitzung oder Bearbeitung läuft.
 
 ### 8.2 Zielgeräte
 
-- Vorrang: Smartphones und Tablets, mit besonderem Augenmerk auf iOS/Safari und Android/Chrome – jeweils sowohl im Browser als auch als zum Home-Bildschirm hinzugefügte Web-App.
-- Zusätzlich: gängige Desktopbrowser.
-- Der genaue Umfang unterstützter Browserversionen wird in der technischen Spezifikation und Tests festgelegt.
+- **NFR-06:** Vorrang: Smartphones und Tablets, mit besonderem Augenmerk auf iOS/Safari und Android/Chrome – jeweils sowohl im Browser als auch als zum Home-Bildschirm hinzugefügte Web-App.
+- **NFR-07:** Zusätzlich: gängige Desktopbrowser.
+- **NFR-08:** Der genaue Umfang unterstützter Browserversionen wird in der technischen Spezifikation und Tests festgelegt.
 
 ### 8.3 Bedienbarkeit und Barrierearmut
 
-- Bedienung per Touch und Tastatur.
-- Wischgesten sind optional und durch sichtbare Buttons ergänzbar.
-- Ausreichender Kontrast, verständliche Statusanzeigen und semantisch sinnvolle Steuerelemente.
-- Keine Funktion darf ausschließlich durch Farbe oder eine Geste erkennbar beziehungsweise bedienbar sein.
-- Hilfetexte sind knapp, kontextbezogen und bei Bedarf erreichbar. Sie dürfen wichtige Steuerelemente nicht verdecken oder unnötige Schritte erzwingen. Die Oberfläche selbst bleibt die primäre Orientierungshilfe.
+- **NFR-09:** Bedienung per Touch und Tastatur.
+- **NFR-10:** Wischgesten sind optional und durch sichtbare Buttons ergänzbar.
+- **NFR-11:** Ausreichender Kontrast, verständliche Statusanzeigen und semantisch sinnvolle Steuerelemente.
+- **NFR-12:** Keine Funktion darf ausschließlich durch Farbe oder eine Geste erkennbar beziehungsweise bedienbar sein.
+- **NFR-13:** Hilfetexte sind knapp, kontextbezogen und bei Bedarf erreichbar. Sie dürfen wichtige Steuerelemente nicht verdecken oder unnötige Schritte erzwingen. Die Oberfläche selbst bleibt die primäre Orientierungshilfe.
 
 ### 8.4 Zuverlässigkeit
 
-- Import und Wiederherstellung validieren Daten vor der Übernahme.
-- Schreibvorgänge dürfen den lokalen Bestand bei Fehlern nicht teilweise überschreiben.
-- Die App unterscheidet erfolgreich gespeicherte Daten von noch nicht gesicherten Änderungen.
-- Import- und Backupfehler werden verständlich erklärt und lassen den bestehenden Datenbestand unangetastet.
+- **NFR-14:** Import und Wiederherstellung validieren Daten vor der Übernahme.
+- **NFR-15:** Schreibvorgänge dürfen den lokalen Bestand bei Fehlern nicht teilweise überschreiben.
+- **NFR-16:** Die App unterscheidet erfolgreich gespeicherte Daten von noch nicht gesicherten Änderungen.
+- **NFR-17:** Import- und Backupfehler werden verständlich erklärt und lassen den bestehenden Datenbestand unangetastet.
 
 ### 8.5 Erweiterbarkeit und Wartbarkeit
 
-- Datenformat, gespeicherte Inhalte und UI-Logik werden konzeptionell sauber getrennt.
-- Format- und Datenbankänderungen sind versionierbar und ermöglichen spätere Migrationen.
-- Neue Sprachen, optionale grammatische Informationen und weitere Lernmodi erfordern keine grundlegende Neustrukturierung der Daten.
+- **NFR-18:** Datenformat, gespeicherte Inhalte und UI-Logik werden konzeptionell sauber getrennt.
+- **NFR-19:** Format- und Datenbankänderungen sind versioniert. Jede Änderung am gespeicherten Datenmodell wird mit einer Migration ausgeliefert, die den vorhandenen Bestand überführt (FR-33).
+- **NFR-20:** Neue Sprachen, optionale grammatische Informationen und weitere Lernmodi erfordern keine grundlegende Neustrukturierung der Daten.
 
 ---
 
 ## 9. Erfolgskriterien und überprüfbare Akzeptanzkriterien
 
-Die nächste Version gilt als fachlich erfolgreich, wenn mindestens die folgenden Prüfungen bestanden werden:
+Die nächste Version gilt als fachlich erfolgreich, wenn mindestens die folgenden Prüfungen bestanden werden. In Klammern steht, welche Anforderungen ein Kriterium vorrangig prüft.
 
-1. **Neues Set:** Ein gültiges Set ohne interne IDs kann über den zentralen Importablauf sowohl als Datei als auch als eingefügter Text (auch innerhalb eines Markdown-Codeblocks) als neues Set übernommen werden. Die App vergibt benötigte IDs automatisch.
-2. **Mehrere Sets:** Sets für mindestens zwei verschiedene Lernsprachen und mehrere Lernstufen können parallel gespeichert, geöffnet und geübt werden.
-3. **Bearbeitung:** Eine Vokabel kann geändert, ergänzt und gelöscht werden; nach einem Neustart bleiben gültige Änderungen vorhanden.
-4. **Round-trip-Korrektur:** Ein Set wird exportiert, extern inhaltlich korrigiert und erneut importiert. Einträge mit erhaltenen IDs werden erkannt und aktualisiert; der Lernfortschritt bleibt ihnen zugeordnet.
-5. **Teilbereich:** Werden einzelne Sektionen exportiert und zurückimportiert, bleiben nicht exportierte Sektionen unverändert.
-6. **Vorschau:** Vor einer Aktualisierung oder Ersetzung ist erkennbar, welche Bereiche und wie viele Einträge betroffen sind. Abweichungen und Löschungen werden nicht stillschweigend durchgeführt.
-7. **Importfehler:** Eine ungültige Datei verändert den bestehenden Datenbestand nicht teilweise.
-8. **Lernsitzung:** Die vorhandenen Abfrageformen, Fehlerwiederholung und Erstversuchsauswertung funktionieren mit frei ausgewählten Sets und Sektionen.
-9. **Persistenz:** Nach Schließen und erneutem Öffnen sind Vokabelsets, abgeschlossene Lernergebnisse und Einstellungen vorhanden, sofern Browserdaten nicht gelöscht wurden.
-10. **Backup:** Ein vollständiges Backup kann auf einer frischen App-Installation wiederhergestellt werden und enthält Sets, IDs, Lernhistorie, Lernstände und Einstellungen.
-11. **Keine Übertragung:** Die Kernfunktionen sind ohne Backend nutzbar; Vokabeldaten werden nicht an externe Dienste übertragen.
-12. **Mobile Nutzung:** Die zentralen Wege – Set auswählen, Sitzung starten, Karte bewerten, Ergebnis ansehen, Vokabel bearbeiten, importieren und exportieren – funktionieren auf einem Smartphone ohne horizontales Scrollen der Hauptoberfläche.
-13. **Dokumentation:** Eine Person oder ein LLM kann anhand der Formatspezifikation ein neues gültiges Set erstellen und versteht, wie IDs bei einer externen Korrektur zu erhalten sind.
-14. **Erststart:** Bei einer leeren Bibliothek erklärt der Empty State knapp, wie die App funktioniert, und bietet einen gut erkennbaren Weg zum Import des ersten Sets samt schnell auffindbarer Format-Hilfe und Prompt-Vorlage sowie die Möglichkeit, ein Beispielset auszuprobieren. Neue Nutzende müssen weder die interne Datenstruktur noch die Bedeutung von IDs kennen.
-15. **Kontextbezogene Hilfe:** Bei Import, Aktualisierung, Ersetzung und Backup-Wiederherstellung sind die jeweils wichtigen Folgen vor der Bestätigung verständlich erklärt. Hinweise stehen am passenden Schritt und verlangen keine Suche in einer separaten Anleitung.
-16. **Nicht aufdringliche Führung:** Die Kernwege bleiben ohne obligatorische Einführungstour nutzbar. Hilfetexte behindern die Bedienung auf einem kleinen Bildschirm nicht und ersetzen keine notwendigen Verbesserungen an Navigation, Beschriftungen oder Rückmeldungen.
-17. **Antwortprotokoll:** Nach einer Sitzung ist für jede beantwortete Frage ein Protokolleintrag mit Eintrag, Richtung, Abfrageform, Ergebnis, Erstversuch-Kennzeichen und Zeitpunkt gespeichert und im Backup enthalten. Der Lernüberblick zeigt pro Set und Sektion Sitzungszahl, letzte Sitzung und Erstversuchsquote.
-18. **Lokale Änderungen:** Ein Set wird exportiert, danach wird ein Eintrag in der App geändert und derselbe Eintrag in der Exportdatei extern geändert. Beim Reimport weist die Vorschau den Konflikt aus; ohne Entscheidung der Nutzenden wird die lokale Änderung nicht überschrieben.
-19. **Doppelter Import:** Wird dieselbe Datei ohne IDs zweimal importiert, weist die App beim zweiten Mal auf das vorhandene, entsprechende Set hin.
-20. **Speicherschutz:** Gewährt der Browser keinen dauerhaften Speicher, erscheint ein verständlicher Hinweis mit Handlungsempfehlung. Liegt kein oder nur ein über 14 Tage altes Backup vor, erinnert die App daran, ohne das Lernen zu blockieren.
-21. **Installation und Offline-Start:** Die App kann auf iOS und Android zum Home-Bildschirm hinzugefügt werden und startet nach dem ersten Laden auch im Flugmodus mit allen Daten.
-22. **Multiple Choice:** In einer Bibliothek mit Sets in mindestens zwei Lernsprachen stammen alle falschen Antwortmöglichkeiten aus dem Set und von der Sprachseite der jeweiligen Frage; keine falsche Antwort entspricht einer akzeptierten Variante der richtigen.
-23. **Beispielset:** Das Beispielset lässt sich aus dem Empty State laden und üben; Einträge mit Varianten und mehreren Bedeutungen sind korrekt abgebildet. Herkunft und Lizenz sind dokumentiert, und Sektionsnamen und -zuschnitt stammen nicht aus dem Prototyp oder einem Lehrwerk.
+- **AK-01 – Neues Set** (FR-13, FR-16, DF-03): Ein gültiges Set ohne interne IDs kann über den zentralen Importablauf sowohl als Datei als auch als eingefügter Text (auch innerhalb eines Markdown-Codeblocks) als neues Set übernommen werden. Die App vergibt benötigte IDs automatisch.
+- **AK-02 – Mehrere Sets** (FR-01, FR-02, DF-06): Sets für mindestens zwei verschiedene Lernsprachen und mehrere Lernstufen können parallel gespeichert, geöffnet und geübt werden.
+- **AK-03 – Bearbeitung** (FR-04, FR-22): Eine Vokabel kann geändert, ergänzt und gelöscht werden; nach einem Neustart bleiben gültige Änderungen vorhanden.
+- **AK-04 – Round-trip-Korrektur** (FR-14, FR-17, DF-04, DF-10): Ein Set wird exportiert, extern inhaltlich korrigiert und erneut importiert. Einträge mit erhaltenen IDs werden erkannt und aktualisiert; der Lernfortschritt bleibt ihnen zugeordnet.
+- **AK-05 – Teilbereich** (FR-15, FR-18, DF-07): Werden einzelne Sektionen exportiert und zurückimportiert, bleiben nicht exportierte Sektionen unverändert.
+- **AK-06 – Vorschau** (FR-06, FR-16): Vor einer Aktualisierung oder Ersetzung ist erkennbar, welche Bereiche und wie viele Einträge betroffen sind. Abweichungen und Löschungen werden nicht stillschweigend durchgeführt.
+- **AK-07 – Importfehler** (FR-06, FR-16, DF-09, NFR-14, NFR-15, NFR-17): Eine ungültige Datei verändert den bestehenden Datenbestand nicht teilweise.
+- **AK-08 – Lernsitzung** (FR-07, FR-08, FR-09, FR-10, FR-12): Die vorhandenen Abfrageformen, Fehlerwiederholung und Erstversuchsauswertung funktionieren mit frei ausgewählten Sets und Sektionen.
+- **AK-09 – Persistenz** (FR-11, FR-21, FR-22): Nach Schließen und erneutem Öffnen sind Vokabelsets, abgeschlossene Lernergebnisse und Einstellungen vorhanden, sofern Browserdaten nicht gelöscht wurden.
+- **AK-10 – Backup** (FR-19): Ein vollständiges Backup kann auf einer frischen App-Installation wiederhergestellt werden und enthält Sets, IDs, Lernhistorie, Lernstände und Einstellungen.
+- **AK-11 – Keine Übertragung** (FR-26, NFR-04): Die Kernfunktionen sind ohne Backend nutzbar; Vokabeldaten werden nicht an externe Dienste übertragen.
+- **AK-12 – Mobile Nutzung** (FR-24, NFR-06): Die zentralen Wege – Set auswählen, Sitzung starten, Karte bewerten, Ergebnis ansehen, Vokabel bearbeiten, importieren und exportieren – funktionieren auf einem Smartphone ohne horizontales Scrollen der Hauptoberfläche.
+- **AK-13 – Dokumentation** (FR-20, DF-02): Eine Person oder ein LLM kann anhand der Formatspezifikation ein neues gültiges Set erstellen und versteht, wie IDs bei einer externen Korrektur zu erhalten sind.
+- **AK-14 – Erststart** (FR-28, FR-32): Bei einer leeren Bibliothek erklärt der Empty State knapp, wie die App funktioniert, und bietet einen gut erkennbaren Weg zum Import des ersten Sets samt schnell auffindbarer Format-Hilfe und Prompt-Vorlage sowie die Möglichkeit, ein Beispielset auszuprobieren. Neue Nutzende müssen weder die interne Datenstruktur noch die Bedeutung von IDs kennen.
+- **AK-15 – Kontextbezogene Hilfe** (FR-27, FR-28): Bei Import, Aktualisierung, Ersetzung und Backup-Wiederherstellung sind die jeweils wichtigen Folgen vor der Bestätigung verständlich erklärt. Hinweise stehen am passenden Schritt und verlangen keine Suche in einer separaten Anleitung.
+- **AK-16 – Nicht aufdringliche Führung** (FR-28, NFR-13): Die Kernwege bleiben ohne obligatorische Einführungstour nutzbar. Hilfetexte behindern die Bedienung auf einem kleinen Bildschirm nicht und ersetzen keine notwendigen Verbesserungen an Navigation, Beschriftungen oder Rückmeldungen.
+- **AK-17 – Antwortprotokoll** (FR-11, FR-19): Nach einer Sitzung ist für jede beantwortete Frage ein Protokolleintrag mit Eintrag, Richtung, Abfrageform, Ergebnis, Erstversuch-Kennzeichen und Zeitpunkt gespeichert und im Backup enthalten. Der Lernüberblick zeigt pro Set und Sektion Sitzungszahl, letzte Sitzung und Erstversuchsquote.
+- **AK-18 – Lokale Änderungen** (FR-29): Ein Set wird exportiert, danach wird ein Eintrag in der App geändert und derselbe Eintrag in der Exportdatei extern geändert. Beim Reimport weist die Vorschau den Konflikt aus; ohne Entscheidung der Nutzenden wird die lokale Änderung nicht überschrieben.
+- **AK-19 – Doppelter Import** (FR-30): Wird dieselbe Datei ohne IDs zweimal importiert, weist die App beim zweiten Mal auf das vorhandene, entsprechende Set hin.
+- **AK-20 – Speicherschutz** (FR-22, FR-31): Gewährt der Browser keinen dauerhaften Speicher, erscheint ein verständlicher Hinweis mit Handlungsempfehlung. Liegt kein oder nur ein über 14 Tage altes Backup vor, erinnert die App daran, ohne das Lernen zu blockieren.
+- **AK-21 – Installation und Offline-Start** (NFR-03, NFR-06): Die App kann auf iOS und Android zum Home-Bildschirm hinzugefügt werden und startet nach dem ersten Laden auch im Flugmodus mit allen Daten.
+- **AK-22 – Multiple Choice** (FR-09): In einer Bibliothek mit Sets in mindestens zwei Lernsprachen stammen alle falschen Antwortmöglichkeiten aus dem Set und von der Sprachseite der jeweiligen Frage; keine falsche Antwort entspricht einer akzeptierten Variante der richtigen.
+- **AK-23 – Beispielset** (FR-05, FR-32, DF-05): Das Beispielset lässt sich aus dem Empty State laden und üben; Einträge mit Varianten und mehreren Bedeutungen sind korrekt abgebildet. Herkunft und Lizenz sind dokumentiert, und Sektionsnamen und -zuschnitt stammen nicht aus dem Prototyp oder einem Lehrwerk.
+- **AK-24 – App-Update** (FR-33, DF-01, DF-11, NFR-05, NFR-19): Ein Bestand mit Sets, Antwortprotokoll und Einstellungen, der mit Version N angelegt wurde, ist nach dem Update auf Version N+1 vollständig und unverändert nutzbar. Ein mit Version N erstelltes Backup lässt sich in Version N+1 wiederherstellen. Eine absichtlich fehlschlagende Migration lässt den bisherigen Bestand unverändert und bietet den Backup-Export an.
+- **AK-25 – Sets und Sektionen verwalten** (FR-02, FR-03, FR-06): Ein leeres Set kann angelegt, Sektionen können erstellt, umbenannt, umsortiert und gelöscht werden; die Reihenfolge bleibt nach Neustart, Export und Reimport erhalten. Das Löschen eines Sets oder einer Sektion mit Einträgen wird vorab mit seinem Umfang angekündigt.
+- **AK-26 – Speicherfehler** (FR-23, NFR-16): Kann der Browser nicht speichern (z. B. bei vollem Speicher), zeigt die App eine verständliche Meldung und meldet die betroffene Änderung nicht als gespeichert.
 
 ### 9.1 Produktindikatoren für spätere Evaluation
 
-- Lernende können ohne Anleitung ein neues Set importieren und eine erste Sitzung starten.
-- Der Wechsel zwischen Set- und Sektionsebene ist verständlich.
-- Die Erstversuchsquote für wiederholt geübte Sektionen entwickelt sich über mehrere Sitzungen nachvollziehbar.
-- Nutzende können den externen Korrekturworkflow durchführen, ohne versehentlich andere Sektionen oder ihren Lernfortschritt zu verlieren.
-- Neue Nutzende finden beim ersten Aufruf aus dem Empty State heraus den Import ihres ersten Vokabelsets; potenzielle Missverständnisse bei Import und Wiederherstellung werden durch kurze kontextbezogene Erklärungen reduziert.
+- **PI-01:** Lernende können ohne Anleitung ein neues Set importieren und eine erste Sitzung starten.
+- **PI-02:** Der Wechsel zwischen Set- und Sektionsebene ist verständlich.
+- **PI-03:** Die Erstversuchsquote für wiederholt geübte Sektionen entwickelt sich über mehrere Sitzungen nachvollziehbar.
+- **PI-04:** Nutzende können den externen Korrekturworkflow durchführen, ohne versehentlich andere Sektionen oder ihren Lernfortschritt zu verlieren.
+- **PI-05:** Neue Nutzende finden beim ersten Aufruf aus dem Empty State heraus den Import ihres ersten Vokabelsets; potenzielle Missverständnisse bei Import und Wiederherstellung werden durch kurze kontextbezogene Erklärungen reduziert.
 
 Diese Indikatoren sind Ziele für eine spätere Evaluation und keine bereits nachgewiesenen Ergebnisse.
 
@@ -435,17 +451,17 @@ Diese Indikatoren sind Ziele für eine spätere Evaluation und keine bereits nac
 
 ## 10. Risiken und offene Punkte für das TDD
 
-1. **Datenlöschung durch den Browser:** Browser können lokal gespeicherte Daten entfernen – insbesondere Safari auf iOS/iPadOS bei Websites, die einige Tage nicht genutzt wurden und nicht zum Home-Bildschirm hinzugefügt sind. Verhalten mit und ohne Installation sowie mit und ohne gewährten dauerhaften Speicher muss auf den Zielgeräten praktisch geprüft und dokumentiert werden. Backup-Erinnerung und Installationsempfehlung (FR-31) sind die wichtigsten Gegenmaßnahmen.
-2. **Identität nach externer Bearbeitung:** Entfernte oder geänderte IDs erschweren ein sicheres Update. Das Format muss die Erhaltung von IDs für Korrekturen klar erklären; mehrdeutige Fälle benötigen eine sichere, verständliche Behandlung.
-3. **Replace und Teil-Exporte:** Der Umfang einer Ersetzung muss in der Datei erkennbar sein, damit nicht versehentlich das gesamte Set ersetzt wird.
-4. **Lernfortschritt bei inhaltlichen Änderungen:** Es muss festgelegt werden, wann die Historie erhalten bleibt und wann eine Änderung so wesentlich ist, dass ein bisheriger Beherrschungsstatus zurückgesetzt oder als überprüfungsbedürftig markiert wird.
-5. **Datenmigration:** Künftige Versionen benötigen einen Plan für Änderungen am Datenmodell und am lokalen Speicher.
-6. **Importqualität:** Das Format muss ausdrucksstark genug für verschiedene Sprachen sein, dabei aber für manuelle und LLM-gestützte Erstellung einfach bleiben.
-7. **Backup-Wiederherstellung:** Das Produkt muss klar zwischen dem Import von Lerninhalten und dem Ersetzen des vollständigen persönlichen Datenbestands unterscheiden.
-8. **Änderungserkennung seit dem Export:** Für FR-29 muss festgelegt werden, woran die App erkennt, dass ein Eintrag seit einem bestimmten Export lokal geändert wurde, und wie der Bezug einer Importdatei zu diesem Export hergestellt wird.
-9. **Duplikaterkennung:** Für FR-30 sind Kriterien festzulegen, die echte Duplikate zuverlässig erkennen, ohne ähnliche, aber gewollt getrennte Sets (z. B. zwei Auflagen eines Lehrwerks) fälschlich zu melden.
-10. **Qualität eingefügter LLM-Antworten:** LLM-Ausgaben enthalten häufig Begleittext, Codeblöcke oder kleine Formatfehler. Es ist festzulegen, was die App tolerant bereinigt und was sie als verständlichen Fehler meldet.
-11. **App-Aktualisierung im Offline-Betrieb:** Der Mechanismus für Offline-Betrieb kann alte App-Versionen zwischenspeichern. Es ist festzulegen, wie neue Versionen zuverlässig, aber ohne Unterbrechung laufender Sitzungen aktiv werden und wie Datenmigrationen dabei ablaufen.
+- **R-01 – Datenlöschung durch den Browser:** Browser können lokal gespeicherte Daten entfernen – insbesondere Safari auf iOS/iPadOS bei Websites, die einige Tage nicht genutzt wurden und nicht zum Home-Bildschirm hinzugefügt sind. Verhalten mit und ohne Installation sowie mit und ohne gewährten dauerhaften Speicher muss auf den Zielgeräten praktisch geprüft und dokumentiert werden. Backup-Erinnerung und Installationsempfehlung (FR-31) sind die wichtigsten Gegenmaßnahmen.
+- **R-02 – Identität nach externer Bearbeitung:** Entfernte oder geänderte IDs erschweren ein sicheres Update. Das Format muss die Erhaltung von IDs für Korrekturen klar erklären; mehrdeutige Fälle benötigen eine sichere, verständliche Behandlung.
+- **R-03 – Replace und Teil-Exporte:** Der Umfang einer Ersetzung muss in der Datei erkennbar sein, damit nicht versehentlich das gesamte Set ersetzt wird.
+- **R-04 – Lernfortschritt bei inhaltlichen Änderungen:** Es muss festgelegt werden, wann die Historie erhalten bleibt und wann eine Änderung so wesentlich ist, dass ein bisheriger Beherrschungsstatus zurückgesetzt oder als überprüfungsbedürftig markiert wird.
+- **R-05 – Datenmigration:** Für FR-33, DF-11 und NFR-19 ist festzulegen, wie Datenbank- und Formatversionen gezählt, Migrationen ausgeführt und getestet werden und wie eine ältere, parallel laufende App-Version einen neueren Bestand erkennt.
+- **R-06 – Importqualität:** Das Format muss ausdrucksstark genug für verschiedene Sprachen sein, dabei aber für manuelle und LLM-gestützte Erstellung einfach bleiben.
+- **R-07 – Backup-Wiederherstellung:** Das Produkt muss klar zwischen dem Import von Lerninhalten und dem Ersetzen des vollständigen persönlichen Datenbestands unterscheiden.
+- **R-08 – Änderungserkennung seit dem Export:** Für FR-29 muss festgelegt werden, woran die App erkennt, dass ein Eintrag seit einem bestimmten Export lokal geändert wurde, und wie der Bezug einer Importdatei zu diesem Export hergestellt wird.
+- **R-09 – Duplikaterkennung:** Für FR-30 sind Kriterien festzulegen, die echte Duplikate zuverlässig erkennen, ohne ähnliche, aber gewollt getrennte Sets (z. B. zwei Auflagen eines Lehrwerks) fälschlich zu melden.
+- **R-10 – Qualität eingefügter LLM-Antworten:** LLM-Ausgaben enthalten häufig Begleittext, Codeblöcke oder kleine Formatfehler. Es ist festzulegen, was die App tolerant bereinigt und was sie als verständlichen Fehler meldet.
+- **R-11 – App-Aktualisierung im Offline-Betrieb:** Der Mechanismus für Offline-Betrieb kann alte App-Versionen zwischenspeichern. Es ist festzulegen, wie neue Versionen zuverlässig, aber ohne Unterbrechung laufender Sitzungen aktiv werden und wie Datenmigrationen dabei ablaufen.
 
 Diese Punkte sind im TDD zu konkretisieren; sie sollen nicht durch unklare Annahmen in der Implementierung entschieden werden.
 
@@ -504,3 +520,4 @@ Das TDD muss insbesondere sicherstellen, dass die zentrale Produktanforderung er
 |---|---|---|---|
 | 2.1 | 18. Oktober 2026 | UX-Prinzipien, kontextbezogene Hilfe und Onboarding ergänzt | KI-gestützter Entwurf mit ChatGPT (OpenAI), Modell GPT-6, in iterativer Zusammenarbeit mit dem Nutzer; Grundlage: Nutzeranforderungen, Anforderungsdialog und HTML-Prototyp. Reasoning-Stufe und Modell-Snapshot-ID nicht als überprüfbare Metadaten verfügbar; Knowledge Cutoff Dezember 2025. |
 | 2.2 | 19. Oktober 2026 | Review eingearbeitet: Speicherschutz und Backup-Erinnerung (FR-31), statisches Hosting als installierbare Offline-Web-App statt `file://`, Import per eingefügtem Text und Prompt-Vorlage, Protokoll jeder Antwort (FR-11), Warnung bei lokalen Änderungen seit dem Export (FR-29), Duplikaterkennung (FR-30), Meilensteine (5.3), Hierarchie mit Sprache/Lernstufe als Set-Eigenschaften, Unterscheidung von Varianten und Bedeutungen, Regeln für Multiple-Choice-Antworten und Bedienwege (FR-09), Löschen und Leeranlage von Sets, rechtlich unbedenkliches Beispielset ohne unveränderte Prototyp-Vokabeln (FR-32), Zielalter, Wiederherstellung ersetzt immer, freie Eingabe als LATER, Akzeptanzkriterien 17–23, Risiken 8–11 | Review und Überarbeitung mit Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.3 | 19. Oktober 2026 | Eindeutige IDs für Ziele (Z), Datenformat (DF), nicht-funktionale Anforderungen (NFR), Akzeptanzkriterien (AK), Produktindikatoren (PI) und Risiken (R); Akzeptanzkriterien verweisen auf die geprüften Anforderungen; Scope-Überblick verweist auf FR/NFR. Neu: FR-33 (Weiterarbeiten nach App-Updates), DF-11 (Abwärtskompatibilität), NFR-19 verschärft, AK-24 (App-Update), AK-25 (Sets und Sektionen verwalten), AK-26 (Speicherfehler); R-05 konkretisiert | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
