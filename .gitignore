@@ -1,3 +1,7 @@
 docs/code-iteration1/
 node_modules/
 dist/
+
+# Lokale Claude-Code-Dateien (geteilte Einstellungen in .claude/ bleiben versioniert)
+.claude/worktrees/
+.claude/settings.local.json
