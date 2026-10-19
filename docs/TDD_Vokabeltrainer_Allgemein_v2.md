@@ -150,7 +150,7 @@ Vite-Standardziel `baseline-widely-available`; das entspricht etwa Safari/iOS 16
 
 ### 4.4 Bereitstellung (D-19)
 
-- **Vorschlag:** GitHub Pages, deployt per GitHub Actions nach erfolgreicher CI auf `main`. Voraussetzung: öffentliches Repository (zulässig, da keine Lehrwerksinhalte versioniert sind).
+- **Entscheidung:** GitHub Pages, deployt per GitHub Actions nach erfolgreicher CI auf `main`. Voraussetzung: öffentliches Repository (zulässig, da keine Lehrwerksinhalte versioniert sind).
 - **M0:** provisorische Adresse `<benutzer>.github.io/vokabeltrainer`. Diese Adresse teilt sich den Browser-Speicher mit allen anderen Pages-Projekten des Accounts; für Testdaten ist das unkritisch.
 - **Vor der ersten Auslieferung an Nutzende** (Arbeitspaket S-29): eigene Domain einrichten. Ab dann ist die Adresse fest, weil lokale Daten an sie gebunden sind (T-23). Ein späterer Adresswechsel ist nur per Backup möglich.
 - GitHub Pages erlaubt keine eigenen HTTP-Header. Das ist unkritisch: Der Browser prüft `sw.js` auf Updates unter Umgehung des HTTP-Caches, und `index.html` wird vom Service Worker ausgeliefert.
@@ -778,7 +778,7 @@ Fixtures aus 15.3: Import von 3.000 Einträgen (Validierung, Diff, Commit) ohne 
 | D-16 | Duplikaterkennung über Inhaltsüberschneidung ≥ 0,8 oder gleichen Titel | 9.2 | T-07 |
 | D-17 | Dateiauslieferung über Teilen-Menü auf Mobilgeräten, sonst Download (in M0 zu bestätigen) | 11.2 | T-22 |
 | D-18 | Multiple-Choice-Kandidaten aus demselben Set und derselben Sprachseite, ohne Überschneidung mit akzeptierten Antworten | 12.3 | FR-09 |
-| D-19 | Hosting auf GitHub Pages per Actions, eigene Domain vor erster Auslieferung (**Vorschlag, Bestätigung offen**) | 4.4 | F-02 |
+| D-19 | Hosting auf GitHub Pages per Actions, eigene Domain vor erster Auslieferung | 4.4 | F-02, bestätigt am 19. Oktober 2026 |
 | D-20 | Browserziel `baseline-widely-available` (in M0 zu bestätigen) | 4.3 | – |
 
 ---
@@ -787,7 +787,7 @@ Fixtures aus 15.3: Import von 3.000 Einträgen (Validierung, Diff, Commit) ohne 
 
 | ID | Thema | Umgang |
 |---|---|---|
-| O-01 | Hosting endgültig (D-19) | Entscheidung vor S-04 |
+| O-01 | Hosting endgültig (D-19) | Entschieden am 19. Oktober 2026: GitHub Pages |
 | O-02 | Verhalten von `persist()` und der 7-Tage-Regel in Safari, Browser vs. installierte App (R-01) | Messung in S-11 |
 | O-03 | Dateiauslieferung auf iOS in der installierten App (D-17, T-22) | Spike in S-09, Prüfung in S-11 |
 | O-04 | Mindestversionen der Zielbrowser (D-20) | Bestätigung in S-11 |
@@ -841,7 +841,7 @@ Ziel: Jeder riskante Teil läuft einmal von vorn bis hinten, in einfachster Form
 - 🔲 **S-01** Projekt-Setup: Vite + TS + `vite-plugin-singlefile`, Verzeichnisstruktur (3.1), npm-Skripte, Prettier, `CLAUDE.md` (4.6) – D-01–D-05
 - 🔲 **S-02** Test-Setup: Vitest + `fake-indexeddb`, Playwright mit zwei Projekten gegen `vite preview`, Build-Test, `playwright-cli` für den Agent – TAK-01
 - 🔲 **S-03** CI in GitHub Actions (4.5) – TAK-14
-- 🔲 **S-04** Provisorisches Deployment (nach Entscheidung O-01) – NFR-01
+- 🔲 **S-04** Provisorisches Deployment auf GitHub Pages (Repository öffentlich schalten) – NFR-01, D-19
 - 🔲 **S-05** Manifest, Icons, Service Worker, Offline-Start, Update-Hinweis (5) – NFR-03, NFR-05, AK-21, TAK-11, TAK-12
 - 🔲 **S-06** IndexedDB-Grundgerüst: Öffnen, Upgrade, Migrationskette mit Test-Migration v1 → v2, `versionchange`/`VersionError`, Notfall-Backup, `persist()` mit Anzeige des Ergebnisses (6, 7) – FR-22, FR-33, TAK-05, TAK-08
 - 🔲 **S-07** Minimaler Import: Textfeld und Datei, `extract.ts`, Grundvalidierung, Speichern als neues Set ohne Vorschau – FR-13 (Teil)
