@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Projektstand
 
-Mobiler, offlinefähiger Vokabeltrainer als installierbare Web-App (PWA), ohne Backend. Bisher gibt es **nur Dokumente, noch keinen Code**. Nächster Schritt ist Meilenstein M0 (Walking Skeleton), beginnend mit S-01 (Projekt-Setup).
+Mobiler, offlinefähiger Vokabeltrainer als installierbare Web-App (PWA), ohne Backend. Meilenstein M0 (Walking Skeleton) läuft; S-01 (Projekt-Setup) ist erledigt, aktueller Stand siehe TDD Kap. 21.
 
 Maßgebliche Dokumente in `docs/`:
 
@@ -27,15 +27,24 @@ Vor einer Umsetzung das betreffende Arbeitspaket (S-xx) in TDD Kap. 21 und die d
 - Schlank bleiben: **keine Laufzeitabhängigkeiten**, kein Framework, kein CDN (D-04). Neue Entwicklungsabhängigkeiten nur mit klarem Nutzen und Eintrag in TDD 4.1.
 - **Diese Datei aktuell halten:** Neue Erkenntnisse, die künftigen Sitzungen helfen (geänderte Befehle, Stolperstellen, neue Konventionen, Abweichungen vom geplanten Stand), sofort hier ergänzen. Nach Abschluss eines Arbeitspakets prüfen, ob die Datei noch stimmt, und Veraltetes korrigieren oder entfernen. Kurz bleiben: nur, was sich nicht schnell aus Code oder Dokumenten ergibt.
 
-## Befehle (geplant, mit S-01/S-02 einrichten und hier bestätigen)
+## Befehle
+
+Eingerichtet (S-01):
 
 ```bash
 npm run dev          # Vite-Dev-Server (Service Worker deaktiviert)
+npm run build        # App nach dist/index.html (JS und CSS eingebettet)
+npm run preview      # gebautes Artefakt lokal ausliefern
+npm run typecheck    # tsc -b über die Projektreferenzen; `tsc --noEmit` im Wurzelverzeichnis prüft nichts
+npm run format       # Prettier (Markdown ist ausgenommen, Dokumente werden von Hand formatiert)
+```
+
+Geplant, mit S-02/S-05 einrichten und hier bestätigen:
+
+```bash
 npm test             # Vitest: Unit- und Integrationstests (Node, fake-indexeddb)
 npm run test:e2e     # Playwright gegen `vite preview`, Projekte mobile-chromium und mobile-webkit
-npm run build        # App + Service Worker nach dist/, inkl. Prüfung der Build-Ausgabe
-npm run preview      # gebautes Artefakt lokal ausliefern
-npx tsc --noEmit     # Typprüfung
+npm run build        # zusätzlich Service Worker und Prüfung der Build-Ausgabe
 
 npx vitest run src/domain/validate.test.ts      # einzelne Testdatei
 npx vitest run -t "Kurzform"                    # Tests nach Name
@@ -47,6 +56,10 @@ Nach UI-Änderungen das Verhalten mit `playwright-cli` gegen Dev-Server oder `vi
 ## Architektur (Soll, TDD Kap. 3–7)
 
 **Auslieferung:** eine `index.html` mit eingebettetem JS und CSS (`vite-plugin-singlefile`) plus `sw.js`, `manifest.webmanifest` und Icons. Alle Verweise relativ (läuft unter GitHub-Pages-Unterpfad und eigener Domain). Build zweistufig: `vite build` → Hash von `dist/index.html` → `vite build -c vite.sw.config.ts` mit dem Hash als Cache-Version, damit sich `sw.js` genau dann ändert, wenn sich die App ändert. Deployment auf GitHub Pages nur nach grüner CI.
+
+**TypeScript 7** (native `tsc`), Konfiguration über Projektreferenzen: `tsconfig.app.json` (`src/`, DOM), `tsconfig.node.json` (Vite-Konfiguration). Mit dem ersten Modul in `domain/` kommt `tsconfig.domain.json` ohne DOM-Typen dazu (TAK-04) und wird in `tsconfig.json` referenziert. Verzeichnisse aus TDD 3.1 entstehen erst mit ihrer ersten Datei.
+
+**CSS:** kein `light-dark()` verwenden – Vite rechnet es auf `prefers-color-scheme` herunter, dann greift die manuelle Umschaltung (TDD 13.5) nicht. Farben als Variablen in `:root`, Dunkelmodus per Media Query.
 
 **Schichten unter `src/`** – die Importrichtung ist hart:
 

@@ -1,0 +1,5 @@
+# Dokumente werden von Hand formatiert (Tabellen, Zeilenumbrüche).
+*.md
+dist/
+package-lock.json
+.claude/

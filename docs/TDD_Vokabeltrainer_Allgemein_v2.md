@@ -838,7 +838,8 @@ Einzige Stelle mit Umsetzungsstand: 🔲 offen · 🔶 in Arbeit · ✅ erledigt
 
 Ziel: Jeder riskante Teil läuft einmal von vorn bis hinten, in einfachster Form und auf einem echten iPhone geprüft.
 
-- 🔲 **S-01** Projekt-Setup: Vite + TS + `vite-plugin-singlefile`, Verzeichnisstruktur (3.1), npm-Skripte, Prettier, `CLAUDE.md` (4.6) – D-01–D-05
+- ✅ **S-01** Projekt-Setup: Vite + TS + `vite-plugin-singlefile`, Verzeichnisstruktur (3.1), npm-Skripte, Prettier, `CLAUDE.md` (4.6) – D-01–D-05  
+  Erledigt am 19. Oktober 2026 mit Vite 8.3, TypeScript 7.0, `vite-plugin-singlefile` 2.3, Prettier 3.9; DOM-Helfer `h()`, Hash-Router, Platzhalter-Ansicht. `tsconfig.domain.json` ohne DOM-Typen (TAK-04) folgt mit dem ersten Modul in `domain/`.
 - 🔲 **S-02** Test-Setup: Vitest + `fake-indexeddb`, Playwright mit zwei Projekten gegen `vite preview`, Build-Test, `playwright-cli` für den Agent – TAK-01
 - 🔲 **S-03** CI in GitHub Actions (4.5) – TAK-14
 - 🔲 **S-04** Provisorisches Deployment auf GitHub Pages (Repository öffentlich schalten) – NFR-01, D-19
