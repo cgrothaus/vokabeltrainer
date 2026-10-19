@@ -83,4 +83,5 @@ Nach UI-Änderungen das Verhalten mit `playwright-cli` gegen Dev-Server oder `vi
 
 - Domain-Module werden **testgetrieben** entwickelt (Liste der Module und Fälle in TDD 15.2); UI über E2E-Smoke-Tests und manuelle Prüfung.
 - Validator und JSON Schema werden über gemeinsame Fixtures mit Ajv abgeglichen (TAK-10).
+- Vitest 5: Berichte landen in `.vitest/` (in `.gitignore` aufnehmen); `-t` vergleicht mit dem vollen Testnamen, verbunden mit „ > “ (`describe > test`).
 - E2E läuft immer gegen das gebaute Artefakt. Playwright-WebKit ≠ iOS-Safari: Speicherschutz, Installation und Teilen-Menü werden manuell auf echten Geräten geprüft; Ergebnisse beim Arbeitspaket in Kap. 21 festhalten.

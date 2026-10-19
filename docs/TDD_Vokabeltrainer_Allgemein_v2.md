@@ -1,6 +1,6 @@
 # TDD: Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.0 – Neufassung auf Basis von PRD 2.4 und Review von TDD v1  
+**Version:** 2.1 – Vitest 5 als Testwerkzeug  
 **Stand:** 19. Oktober 2026  
 **Bezug:** PRD 2.4 (`PRD_Vokabeltrainer_Allgemein_v2.md`), Formatspezifikation Version 1 (`Formatspezifikation_Vokabelset_v1.md`), Review-Notizen (`20261019_TDD_v1_Review_Notizen.md`)  
 **Status:** Entwurf; Grundlage für M0 (Walking Skeleton)  
@@ -120,7 +120,7 @@ Hash-basiertes Routing (`#/`, `#/set/<id>`, `#/import`, `#/practice`, `#/backup`
 | Laufzeit für Entwicklung | Node.js (aktuelle LTS) + npm | Offiziell unterstützt von Vite, Vitest und Playwright. Bun wurde verworfen, weil Playwright darauf nicht offiziell unterstützt wird. |
 | Sprache | TypeScript, `strict`, `erasableSyntaxOnly` | Typen schützen das Datenmodell; nur Syntax, die beim Übersetzen ersatzlos entfällt (keine `enum`, keine `namespace`). |
 | Build und Dev-Server | Vite 8 + `vite-plugin-singlefile` | Schneller Dev-Server mit Hot Reload; Plugin bettet JS und CSS in `index.html` ein; Konfiguration wird mit Vitest geteilt. |
-| Unit- und Integrationstests | Vitest 4 + `fake-indexeddb` | Gleiche Konfiguration wie Vite; IndexedDB-Logik ohne Browser testbar. |
+| Unit- und Integrationstests | Vitest 5 + `fake-indexeddb` | Gleiche Konfiguration wie Vite; IndexedDB-Logik ohne Browser testbar. Vitest 5 (seit September 2026) unterstützt Vite 8 und Node.js ab 22.12; die Änderungen gegenüber Vitest 4 betreffen ein neues Projekt nicht. |
 | Schemaabgleich | Ajv (nur Entwicklung) | Prüft Testfixtures gegen das JSON Schema (TAK-10). |
 | End-to-End-Tests | Playwright Test | Chromium und WebKit, mobile Emulation, Offline-Simulation. |
 | Browserprüfung durch den Coding-Agent | `playwright-cli` | Für Coding-Agents empfohlen; Snapshots landen in Dateien statt im Kontext. |
@@ -812,7 +812,7 @@ Geprüft am 18. bzw. 19. Oktober 2026.
 9. W3C – WCAG 2.2: https://www.w3.org/TR/WCAG22/
 10. Vite 8: https://vite.dev/blog/announcing-vite8
 11. vite-plugin-singlefile: https://github.com/richardtallent/vite-plugin-singlefile
-12. Vitest 4: https://voidzero.dev/posts/announcing-vitest-4
+12. Vitest 5 – Migrationshinweise und Voraussetzungen: https://vitest.dev/guide/migration
 13. Playwright CLI vs. MCP für Coding-Agents: https://betterstack.com/community/guides/ai/playwright-cli-vs-mcp-browser/
 14. Bun Standalone HTML (verworfene Alternative): https://bun.com/docs/bundler/standalone-html
 15. GitHub-Pläne (Pages im Free-Plan nur für öffentliche Repositories): https://docs.github.com/en/get-started/learning-about-github/githubs-plans
@@ -827,6 +827,7 @@ Geprüft am 18. bzw. 19. Oktober 2026.
 |---|---|---|---|
 | 1.0 | 18. Oktober 2026 | Erster technischer Entwurf auf Basis von PRD 2.1 | KI-gestützter Entwurf mit ChatGPT (OpenAI), Modell GPT-6, in Zusammenarbeit mit dem Nutzer; Reasoning-Stufe und Snapshot-ID nicht als überprüfbare Metadaten verfügbar; Knowledge Cutoff Dezember 2025 |
 | 2.0 | 19. Oktober 2026 | Neufassung nach Review (T-01–T-24, F-01–F-09): Build-Pipeline und Werkzeuge, PWA und Updates, Speicherschutz, Kurz-IDs und `rev`-Konflikterkennung, Aktualisieren mit `null`-Löschung, tolerante Validierung, mehrere Bedeutungen, Migrationskette, kein `progress`-Store, Multiple-Choice-Regeln, Sitzungs-Lebenszyklus, Teststrategie mit Werkzeugen, IDs für Entscheidungen und Abnahmekriterien, Umsetzungsplan mit Walking Skeleton; `file://` und Lehrwerksbezüge entfernt; Austauschformat in eigene Formatspezifikation ausgelagert | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.1 | 19. Oktober 2026 | Vitest 5 statt Vitest 4 (4.1, Quelle 12) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 
 ---
 
