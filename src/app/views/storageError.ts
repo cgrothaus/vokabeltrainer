@@ -93,7 +93,8 @@ function backupButton(backup: BackupFile): Node {
       type: "button",
       onclick: () => {
         const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
-        deliverFile(blob, backupFileName(new Date()));
+        // Ohne Datenbank gibt es kein `lastBackupAt`; das Ergebnis wird nicht gebraucht.
+        void deliverFile(blob, backupFileName(new Date()));
       },
     },
     "Notfall-Backup speichern",

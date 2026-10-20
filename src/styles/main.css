@@ -214,6 +214,27 @@ input[type="file"] {
   opacity: 0.75;
 }
 
+/* Backup (TDD 11.3, 11.4) */
+.backup h2 {
+  margin-top: 2rem;
+  font-size: 1.25rem;
+}
+
+/* Bestätigung vor dem Ersetzen: abgesetzt, damit die Folge nicht übersehen wird. */
+.backup .confirm {
+  margin: 1rem 0;
+  padding: 0.25rem 1rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--surface);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
 /* Hinweisleiste am unteren Rand, z. B. „Neue Version verfügbar“ (TDD 5.3). */
 .notice {
   position: fixed;

@@ -44,6 +44,7 @@ export function libraryView(context: LibraryContext): Node {
     h("h1", null, "Vokabeltrainer"),
     sets,
     h("p", null, h("a", { href: "#/import", class: "action" }, "Vokabelset importieren")),
+    h("p", null, h("a", { href: "#/backup" }, "Backup und Wiederherstellung")),
     status,
     context.persistence === "not-granted" && request,
   );

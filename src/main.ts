@@ -1,8 +1,10 @@
 import "./styles/main.css";
+import { checkBackup, lastBackupAt, prepareBackup, restore, saveBackup } from "./app/backup";
 import { mountUpdateNotice, showUpdateNotice } from "./app/components/updateNotice";
 import { importText } from "./app/importText";
 import { beginPractice, currentPractice } from "./app/practice";
 import { startRouter } from "./app/router";
+import { backupView } from "./app/views/backup";
 import { importView } from "./app/views/import";
 import { libraryView } from "./app/views/library";
 import { notFoundView } from "./app/views/notFound";
@@ -86,9 +88,17 @@ async function start(): Promise<void> {
       onSaved: () => void askOnceAfterSave(),
     });
   const practicePage = (signal: AbortSignal) => practiceView(currentPractice(), signal);
+  const backupPage = () =>
+    backupView({
+      prepareBackup: () => prepareBackup(db, __APP_VERSION__),
+      saveBackup: (prepared) => saveBackup(db, prepared),
+      lastBackupAt: () => lastBackupAt(db),
+      checkBackup,
+      restore: (backup) => restore(db, backup),
+    });
   stopRouter = startRouter(
     root!,
-    { "/": library, "/import": importPage, "/practice": practicePage },
+    { "/": library, "/import": importPage, "/practice": practicePage, "/backup": backupPage },
     notFoundView,
   );
 }

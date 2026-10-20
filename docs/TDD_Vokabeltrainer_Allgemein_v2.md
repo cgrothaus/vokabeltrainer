@@ -1,6 +1,6 @@
 # TDD: Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.9 – LLM-Test der Formatspezifikation  
+**Version:** 2.10 – Backup und Wiederherstellung  
 **Stand:** 20. Oktober 2026  
 **Bezug:** PRD 2.4 (`PRD_Vokabeltrainer_Allgemein_v2.md`), Formatspezifikation Version 1 (`Formatspezifikation_Vokabelset_v1.md`), Review-Notizen (`20261019_TDD_v1_Review_Notizen.md`)  
 **Status:** Entwurf; Grundlage für M0 (Walking Skeleton)  
@@ -81,6 +81,8 @@ src/
 │   ├── practice.ts      Sitzungswarteschlange, Multiple-Choice-Auswahl
 │   ├── stats.ts         Lernstand und Überblick aus Events
 │   ├── exportFormat.ts  Set-Export
+│   ├── backup.ts        Backup-Hülle, Prüfen und Migrieren beim Wiederherstellen
+│   ├── validateRecords.ts gespeicherte Datensätze prüfen (Backup, später DB-Fixtures)
 │   └── migrations/      Migrationen von Datensätzen und Dateiformaten
 ├── storage/             IndexedDB: Öffnen, Upgrade, Repositories, Backup
 ├── platform/            Browserfunktionen: Service Worker, persist(), Datei liefern, Zwischenablage
@@ -498,12 +500,14 @@ Ungültiges JSON, unbekannte Formatversion, Validierungsfehler, widersprüchlich
 
 ### 11.2 Datei ausliefern (D-17, T-22)
 
-`platform/deliverFile(blob, filename)`:
+`platform/deliverFile(blob, filename)` liefert `"shared"`, `"downloaded"` oder `"cancelled"`:
 
-- Wenn `navigator.canShare?.({ files: [file] })` zutrifft und das Gerät mobil ist (Touch-Gerät oder installierte App), öffnet `navigator.share({ files })` das Teilen-Menü. Dort lässt sich die Datei unter anderem in „Dateien“ sichern.
+- Wenn `navigator.canShare?.({ files: [file] })` zutrifft und das Gerät mobil ist (`pointer: coarse`, `display-mode: standalone` oder `navigator.standalone`), öffnet `navigator.share({ files })` das Teilen-Menü. Dort lässt sich die Datei unter anderem in „Dateien“ sichern.
 - Sonst wird ein Download über `<a download>` mit einer Blob-URL ausgelöst.
-- Bricht die Person das Teilen ab (`AbortError`), gilt der Export als nicht erfolgt.
-- Die genaue Auswahlregel wird im M0-Spike (S-09, S-11) auf iPhone und Android bestätigt.
+- Bricht die Person das Teilen ab (`AbortError`), gilt der Export als nicht erfolgt (`"cancelled"`).
+- Scheitert `share()` mit einem anderen Fehler (z. B. `NotAllowedError`, wenn die Nutzergeste verbraucht ist), wird stattdessen heruntergeladen. Mobiles Chromium unter Playwright meldet `canShare` als erfüllt, lehnt `share()` aber so ab.
+- `share()` verlangt eine frische Nutzergeste. Der Inhalt muss deshalb vor dem Tippen fertig sein; zwischen Tippen und Aufruf liegt nichts, worauf gewartet wird.
+- Die genaue Auswahlregel wird im M0-Spike (S-09, S-11) auf iPhone und Android bestätigt. Vermutung: Chrome auf Android lässt `.json` im Teilen-Menü nicht zu und lädt herunter.
 
 ### 11.3 Backupformat
 
@@ -525,16 +529,17 @@ Ungültiges JSON, unbekannte Formatversion, Validierungsfehler, widersprüchlich
 
 - `formatVersion` betrifft die Hülle, `dataVersion` den Stand der Datensätze (= `DB_VERSION` beim Export).
 - Die Datensätze sind Rohkopien der Stores. `meta` wird nicht exportiert.
-- Alle Stores werden in **einer** Read-only-Transaktion gelesen (konsistenter Stand); Serialisierung und Auslieferung folgen danach.
-- Nach erfolgreicher Auslieferung wird `meta.lastBackupAt` gesetzt. Beim Download ohne Erfolgsrückmeldung des Browsers gilt der Zeitpunkt des Auslösens.
+- Alle Stores werden in **einer** Read-only-Transaktion gelesen (konsistenter Stand); Serialisierung und Auslieferung folgen danach. Die Backup-Ansicht liest und serialisiert schon beim Öffnen (und nach einer Wiederherstellung erneut), damit das Teilen-Menü direkt in der Tipp-Geste startet (11.2).
+- Nach erfolgreicher Auslieferung (`"shared"` oder `"downloaded"`) wird `meta.lastBackupAt` auf `exportedAt` des ausgelieferten Backups gesetzt. Beim Download ohne Erfolgsrückmeldung des Browsers gilt das Auslösen als Erfolg.
+- Abläufe: Prüfen in `domain/backup.ts` (`parseBackup`) und `domain/validateRecords.ts`, Lesen und Ersetzen in `storage/backup.ts`, Verbindung in `app/backup.ts`, Ansicht `#/backup`.
 
 ### 11.4 Wiederherstellung (FR-19, AK-10)
 
-1. Datei wählen (oder Text einfügen), herauslösen und parsen.
-2. Hülle prüfen. Bei `formatVersion` oder `dataVersion` größer als die eigene wird abgelehnt mit „bitte App neu laden“.
-3. Datensätze per Migrationskette (7.1) auf den aktuellen Stand bringen und vollständig validieren, einschließlich Referenzen von Events auf Sets.
-4. Vorschau: Zahl der Sets, Einträge, Sitzungen und Events sowie Exportdatum. Sind lokale Daten vorhanden, folgt die Warnung „Alle Daten auf diesem Gerät werden ersetzt“ mit dem Angebot, vorher ein Backup des aktuellen Stands zu speichern.
-5. Alle Stores außer `meta` in **einer** Read-Write-Transaktion leeren und befüllen. Danach `meta.lastBackupAt = exportedAt` des Backups setzen.
+1. Datei wählen (oder Text einfügen), herauslösen und parsen. Größengrenze 100 MB (Backups wachsen mit den Antworten über die 10 MB des Imports hinaus).
+2. Hülle prüfen. Bei `formatVersion` oder `dataVersion` größer als die eigene wird abgelehnt mit „bitte App neu laden“. Ein Vokabelset (auch ohne Formatkennung) wird als solches erkannt und abgelehnt. Alle vier Bereiche unter `data` müssen Listen sein; `meta` und unbekannte Bereiche werden übergangen.
+3. Datensätze per Migrationskette (7.1) auf den aktuellen Stand bringen und vollständig validieren: Pflichtangaben und Typen nach 6.2, 12.4 und 12.5, eindeutige Schlüssel pro Store, eindeutige Sektions- und Eintrags-IDs pro Set, Referenzen von Sitzungen auf Sets und von Events auf Sets und Sitzungen (Event-Set = Sitzungs-Set). `entryId` wird nicht geprüft, weil Events gelöschter Einträge erhalten bleiben (9.7, 10). Meldungen nennen nur Positionen („Set 2, Sektion 1, Eintrag 3“), keine Inhalte (14). Eine scheiternde Migration ergibt eine Meldung, keine Ausnahme.
+4. Vorschau: Zahl der Sets, Einträge, Sitzungen und Events sowie Exportdatum. Sind lokale Daten vorhanden, folgt die Warnung „Alle Daten auf diesem Gerät werden ersetzt“ mit dem Angebot, vorher ein Backup des aktuellen Stands zu speichern. In M0 (S-09) steht der Umfang in einer Zeile mit dem Satz „Alle Daten auf diesem Gerät werden dadurch ersetzt.“ und den Schaltflächen „Alle Daten ersetzen“ und „Abbrechen“, unabhängig vom lokalen Bestand; den Rest ergänzt S-25.
+5. Alle Stores außer `meta` in **einer** Read-Write-Transaktion leeren und befüllen; in derselben Transaktion `meta.lastBackupAt = exportedAt` des Backups setzen. Andere Einträge in `meta` bleiben. Scheitert etwas, bleibt der alte Bestand einschließlich `lastBackupAt` erhalten.
 6. UI neu laden, Erfolg melden.
 
 Es gibt kein Zusammenführen von Backups.
@@ -889,6 +894,7 @@ Geprüft am 18. bis 20. Oktober 2026.
 | 2.7 | 20. Oktober 2026 | Minimaler Import (S-07): `importSet.ts` (3.1); Zufallsquelle für IDs wird übergeben, Ablehnungsverfahren (6.3); Fundstelle bei ungültigem JSON über eigenen Syntaxprüfer, gezählt im eingefügten Text (8.2, D-23); E2E-13 (15.4); O-08 (`accept` im iOS-Dateiwähler); Quellen 25–27 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.8 | 20. Oktober 2026 | Minimale Lernsitzung (S-08): Router meldet das Verlassen einer Ansicht (3.3); Kodierung von `rev` präzisiert – Basis 31 statt „Base32“, niederwertigste Stellen, leere Objekte, rund 39,6 Bit (6.4); Ende einer Sitzung beim Verlassen, `interrupted` ohne `endedAt` (12.5); E2E-14 (15.4, 16) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.9 | 20. Oktober 2026 | LLM-Tauglichkeit der Formatspezifikation ohne Prompt-Vorlage als manueller Test (15.7) und offener Punkt O-09, Anschluss an S-15 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.10 | 20. Oktober 2026 | Backup und Wiederherstellung (S-09): `backup.ts` und `validateRecords.ts` (3.1); Rückgabewert von `deliverFile`, Rückfall auf Download, Inhalt vor der Geste fertig (11.2); Backup beim Öffnen der Ansicht lesen, `lastBackupAt` = `exportedAt` (11.3); Prüfregeln, Größengrenze, M0-Bestätigung, `lastBackupAt` in derselben Transaktion (11.4) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 
 ---
 
@@ -918,13 +924,14 @@ Ziel: Jeder riskante Teil läuft einmal von vorn bis hinten, in einfachster Form
   Erledigt am 20. Oktober 2026. Domain testgetrieben: `extract.ts` vollständig nach 8.2 mit eigenem Syntaxprüfer für die Fundstelle (D-23); `validate.ts` prüft Format und Formatversion (fehlend → Warnung, neuer → Ablehnung, Backup erkannt), Pflichtfelder, Antworten in Kurz- und Langform samt Varianten, `meaning` (Einzahl, Warnung), Sprachcodes, IDs (Muster, doppelte), Teil-Export (abgelehnt) und Mengengrenzen; `normalize.ts` baut die Langform, trimmt, NFC, kanonisiert Sprachcodes; `ids.ts` mit übergebener Zufallsquelle; `importSet.ts` verbindet alles. `storage/sets.ts` speichert mit `add()`, ein Set mit bekannter ID wird abgelehnt statt überschrieben (Nutzerentscheidung). Nach dem ersten gespeicherten Set fragt die App einmal nach dauerhaftem Speicher (6.6). Die Bibliothek zeigt die Sets als einfache Liste mit Zahl der Einträge und einen Link zum Import. Bewusst noch nicht enthalten: optionale Felder (Nutzerentscheidung, siehe S-12), Vorschau und Duplikate (S-13), Zwischenablage (S-13). Gegenproben: `put()` statt `add()`, Fundstelle ohne Versatz der Extraktion, NFC und Kollisionsprüfung entfernt – jeweils scheitert der passende Test. Import per Text (mit Begleittext und Codeblock) und Datei sowie E2E-13 laufen in mobile-chromium und mobile-webkit; dort stammt die Fundstelle aus dem eigenen Prüfer. Mit `playwright-cli` (mobiles Chromium, 320 px) geprüft: kein horizontales Scrollen auch bei langem Titel ohne Umbruch, hell und dunkel lesbar, Fehlerbox mit Rahmen statt nur Farbe, Erfolgsmeldung samt Warnung im Live-Bereich, `persistRequested` nach dem Speichern in `meta`, Konsole leer.
 - ✅ **S-08** Minimale Lernsitzung: ganzes Set, nur Karteikarten, Review-Events und Sitzung werden gespeichert – FR-11 (Teil)  
   Erledigt am 20. Oktober 2026. Domain testgetrieben: `hash.ts` (cyrb53 gegen die Referenzwerte, kanonische Darstellung, `entryRev` mit eingefrorenem Referenzwert; Kurz- und Langform ergeben denselben Wert) und `practice.ts` (Mischen mit übergebenem Zufall, Wiedereinfügen an Position 4 bzw. am Ende, Erstversuch pro Eintrag, Anzeige mehrerer Bedeutungen; `mixed` schon enthalten). TDD 6.4 sprach von Base32, das Alphabet aus 6.3 hat aber 31 Zeichen; `rev` nutzt jetzt die Basis 31 (6.4 präzisiert). `storage/sessions.ts` mit Integrationstests: Sitzung anlegen und abschließen, jede Antwort in eigener Transaktion, aktive Sitzungen beim Start auf `interrupted`. Die Bibliothek bietet pro Set „Lernen“; die Sitzung umfasst alle Einträge in Richtung `termToMeaning`, Aufdecken per Tippen auf die Karte, Bewerten mit „Nochmal“/„Gewusst“; die nächste Karte erscheint erst nach dem Speichern, ein Speicherfehler zeigt einen Hinweis, die Sitzung läuft weiter. Abschluss mit Erstversuchsquote. „Beenden“, Zurück-Taste und jedes Verlassen beenden die Sitzung als `ended` (Router-Signal, 3.3); während der Sitzung ist der Update-Hinweis zurückgehalten (TAK-12). E2E-01 (Import → Lernen → Neuladen, Events mit `entryRev`), Beenden, Neuladen (`interrupted`) und E2E-14 laufen in mobile-chromium und mobile-webkit. Gegenproben: Wiedereinfügen am Ende, vertauschte Stellenreihenfolge in `rev`, fehlendes `setUpdateBlocked(true)` und fehlendes Unterbrechen beim Start lassen jeweils den passenden Test scheitern. Mit `playwright-cli` (mobiles Chromium, 320 px) geprüft: kein horizontales Scrollen auch bei langem Titel, hell und dunkel lesbar, `lang` an Frage und Antwort, Fokus nach dem Start auf der Karte, nach dem Aufdecken auf der Antwort (nicht auf einer Schaltfläche, damit ein gehaltenes Enter nicht gleich bewertet), danach auf der nächsten Karte und am Ende auf „Geschafft“; gescheiterter Start und gescheiterte Antwort zeigen ihren Hinweis; Konsole sonst leer. Tastatur (Pfeile) und Wischen folgen mit S-18, Zwischenstand und „Nur Fehler üben“ mit S-19.
-- 🔲 **S-09** Backup-Export (Teilen-Menü bzw. Download, Spike D-17) und Wiederherstellung (ersetzt alles) inkl. `lastBackupAt` – FR-19 (Teil), TAK-09
+- ✅ **S-09** Backup-Export (Teilen-Menü bzw. Download, Spike D-17) und Wiederherstellung (ersetzt alles) inkl. `lastBackupAt` – FR-19 (Teil), TAK-09  
+  Erledigt am 20. Oktober 2026. Domain testgetrieben: `validateRecords.ts` (Pflichtangaben und Typen pro Store, eindeutige Schlüssel, eindeutige Sektions- und Eintrags-IDs pro Set, Verweise von Sitzungen und Events, `entryId` bewusst ungeprüft, Meldungen ohne Inhalte) und `parseBackup` in `backup.ts` (Hülle, Vokabelset erkannt, neuere Version abgelehnt, Migration über die Kette, scheiternde Migration als Meldung). `storage/backup.ts` mit Integrationstests: Lesen in einer Transaktion (auch für das Notfall-Backup), Ersetzen samt `lastBackupAt` in einer Transaktion; Hin und zurück ergibt denselben Bestand (TAK-09), ein doppelter Schlüssel lässt alles unverändert (TAK-05). `deliverFile` mit Teilen-Menü (11.2). Ansicht `#/backup` mit Link in der Bibliothek; Wiederherstellen nur per Datei mit knapper Bestätigung (Nutzerentscheidung, 11.4). E2E-02 (frischer Browserkontext als neues Gerät), Teilen-Menü, Abbrechen im Teilen-Menü und Ablehnung eines Vokabelsets laufen in mobile-chromium und mobile-webkit; das Teilen-Menü wird dort per Init-Skript ersetzt oder entfernt. Gegenproben: ohne `clear()`, `lastBackupAt` vor der Transaktion, `AbortError` als Erfolg – jeweils scheitert der passende Test. Mit `playwright-cli` (mobiles Chromium, 320 px) geprüft: kein horizontales Scrollen, hell und dunkel lesbar, Fokus auf dem Umfang und danach auf „Backup wiederhergestellt.“, Dateiname `Vokabeltrainer-Backup_2026-10-20.json`. Dort meldet `canShare` Erfolg, `share()` scheitert aber mit `NotAllowedError`; der Rückfall auf den Download greift. Der Gerätecheck (Teilen-Menü auf iPhone im Tab und als Home-Bildschirm-App, Android, Wiederherstellen aus „Dateien“) folgt mit S-11 und bestätigt oder ändert D-17.
 - 🔲 **S-10** E2E-01 bis E2E-04 in der CI (E2E-03 besteht seit S-05, E2E-01 seit S-08)
 - 🔶 **S-11** Manuelle Prüfung auf echtem iPhone und Android (15.5); Ergebnisse zu O-02, O-03, O-04, O-08 hier festhalten  
   Erste Prüfung am 20. Oktober 2026 mit dem Stand von S-06 unter https://cgrothaus.github.io/vokabeltrainer/:
   - Android (Chrome): Hinzufügen zum Startbildschirm funktioniert; `persist()` wird schon im Browser gewährt.
   - iPhone 17 mit aktuellem iOS (Stand 20. Oktober 2026), Safari: Hinzufügen zum Home-Bildschirm funktioniert, Name „Vokabeln“ und Icon stimmen, die App startet vom Home-Bildschirm im Flugmodus (AK-21). Im Safari-Tab gewährt `persist()` nichts, die Schaltfläche wirkt wirkungslos, weil der Hinweis unverändert bleibt. Als Home-Bildschirm-App wird `persist()` gewährt (O-02, R-01). Die Empfehlung „Teilen → Zum Home-Bildschirm“ aus 6.6 ist damit auf iOS der entscheidende Schutz; für S-26: Eine abgelehnte Anfrage braucht eine sichtbare Rückmeldung mit dieser Empfehlung.
-  - Offen: Offline-Start im Flugmodus sowie Gerät und Version auf Android, genaue iOS-Version (O-04), Update-Hinweis auf dem Gerät, 7-Tage-Regel in Safari (O-02), Dateiauslieferung (O-03, nach S-09), Import per Dateiauswahl und Einfügen aus einer LLM-App (O-08, seit S-07).
+  - Offen: Offline-Start im Flugmodus sowie Gerät und Version auf Android, genaue iOS-Version (O-04), Update-Hinweis auf dem Gerät, 7-Tage-Regel in Safari (O-02), Dateiauslieferung und Wiederherstellen (O-03, D-17, seit S-09: „Backup speichern“ im Safari-Tab, als Home-Bildschirm-App und auf Android; landet die Datei in „Dateien“ bzw. „Downloads“, zählt Abbrechen nicht als Backup, ist die Datei beim Wiederherstellen wählbar?), Import per Dateiauswahl und Einfügen aus einer LLM-App (O-08, seit S-07).
 
 ### M1 – Lernen mit eigenen Sets
 
@@ -947,7 +954,8 @@ Ziel: Jeder riskante Teil läuft einmal von vorn bis hinten, in einfachster Form
 
 ### M2 – Daten sichern
 
-- 🔲 **S-25** Backup vollständig: Vorschau mit Umfang, Warnung, Angebot eines vorherigen Backups – FR-19, AK-10
+- 🔲 **S-25** Backup vollständig: Vorschau mit Umfang, Warnung, Angebot eines vorherigen Backups – FR-19, AK-10  
+  Baut auf S-09 auf. Ergänzen: Warnung nur bei vorhandenen lokalen Daten, Angebot eines Backups des aktuellen Stands vor dem Ersetzen, Wiederherstellen per eingefügtem Text (11.4).
 - 🔲 **S-26** Speicherschutz-Hinweise und iOS-Installationsanleitung – FR-31, AK-20
 - 🔲 **S-27** Backup-Erinnerung mit Zurückstellen – FR-31, AK-20
 - 🔲 **S-28** Sicherungskopie vor Migrationen (7.3) – FR-33, D-14
