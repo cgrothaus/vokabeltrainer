@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Zwei Karteikarten; das Motiv liegt im Sicherheitskreis für maskierbare Icons (Radius 40 %). -->
+  <rect width="512" height="512" fill="#ffffff"/>
+  <g transform="translate(256 256) scale(1.28) translate(-252 -248)">
+    <rect x="136" y="166" width="220" height="150" rx="18" fill="#9dbbe8" transform="rotate(-10 246 241)"/>
+    <rect x="156" y="196" width="220" height="150" rx="18" fill="#1f5fbf"/>
+    <rect x="186" y="238" width="120" height="16" rx="8" fill="#ffffff"/>
+    <rect x="186" y="288" width="160" height="16" rx="8" fill="#ffffff" opacity="0.7"/>
+  </g>
+</svg>

@@ -1,6 +1,6 @@
 # TDD: Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.4 – Deployment über den Branch `production`  
+**Version:** 2.5 – Installation, Offline-Betrieb und Updates  
 **Stand:** 20. Oktober 2026  
 **Bezug:** PRD 2.4 (`PRD_Vokabeltrainer_Allgemein_v2.md`), Formatspezifikation Version 1 (`Formatspezifikation_Vokabelset_v1.md`), Review-Notizen (`20261019_TDD_v1_Review_Notizen.md`)  
 **Status:** Entwurf; Grundlage für M0 (Walking Skeleton)  
@@ -124,6 +124,7 @@ Hash-basiertes Routing (`#/`, `#/set/<id>`, `#/import`, `#/practice`, `#/backup`
 | Schemaabgleich | Ajv (nur Entwicklung) | Prüft Testfixtures gegen das JSON Schema (TAK-10). |
 | End-to-End-Tests | Playwright Test | Chromium und WebKit, mobile Emulation, Offline-Simulation. |
 | Browserprüfung durch den Coding-Agent | `playwright-cli` | Für Coding-Agents empfohlen; Snapshots landen in Dateien statt im Kontext. Global installiert (nicht in `package.json`, da es eine eigene Playwright-Version mitbringt); der Skill liegt versioniert unter `.claude/skills/`. |
+| App-Icons | Playwright (Chromium) per `npm run icons` | Rendert die PNG-Größen aus einer SVG-Vorlage, ohne zusätzliche Abhängigkeit; die PNGs werden eingecheckt (D-22). |
 | Formatierung | Prettier | Einheitlicher Stil ohne Diskussion. Ein Linter wird erst bei Bedarf ergänzt. |
 | CI und Deployment | GitHub Actions | Prüfungen als Bedingung für das Deployment. |
 
@@ -136,13 +137,15 @@ dist/
 ├── index.html              App mit eingebettetem JS und CSS
 ├── sw.js                   Service Worker
 ├── manifest.webmanifest    Web-App-Manifest
-└── icons/                  App-Icons (u. a. 192, 512, apple-touch-icon 180)
+└── icons/                  icon.svg (Vorlage, Favicon), icon-180.png (apple-touch-icon), icon-192.png, icon-512.png
 ```
 
 - Alle Verweise sind **relativ**, damit die App unter einem Unterpfad (z. B. GitHub Pages ohne eigene Domain) und unter einer eigenen Domain gleichermaßen läuft.
-- Build-Schritte: `vite build` (App) → Hash von `dist/index.html` berechnen → `vite build -c vite.sw.config.ts` (Service Worker, mit dem Hash als Cache-Version per `define`). So ändert sich `sw.js` genau dann, wenn sich die App ändert.
+- Manifest und Icons liegen in `public/` und werden unverändert kopiert. In `index.html` stehen die Verweise mit Wurzelpfad (`/manifest.webmanifest`); Vite schreibt sie mit `base: "./"` relativ um.
+- Build-Schritte: `vite build` (App) → `vite build -c vite.sw.config.ts` (Service Worker als IIFE nach `dist/sw.js`). Die zweite Konfiguration ermittelt mit `scripts/precache.ts` die vorab zu speichernden Dateien (`index.html`, Manifest, Icons) und einen Hash über deren Pfade und Inhalte; Dateiliste und Hash (Cache-Version) gehen per `define` in `sw.js` ein. So ändert sich `sw.js` genau dann, wenn sich eine dieser Dateien ändert, auch bei einem neuen Icon.
+- `src/sw/` wird mit eigener TS-Konfiguration (`tsconfig.sw.json`, Typen `WebWorker` statt `DOM`) geprüft.
 - Die App-Version (`package.json`-Version plus kurzer Git-Commit) wird per `define` eingebettet und in den Einstellungen angezeigt.
-- Ein Test prüft die Build-Ausgabe: keine externen URLs in `index.html`, kein `<script src>`, kein `<link rel="stylesheet">` (TAK-01).
+- Ein Test prüft die Build-Ausgabe (TAK-01): keine externen URLs in `index.html`, kein `<script src>`, kein `<link rel="stylesheet">`; Kopfzeilen verweisen relativ auf vorhandene Dateien; Manifest mit Pflichtangaben und vorhandenen Icons; `sw.js` ist ein klassisches Skript ohne externe URLs und lädt beim Installieren – in einer Attrappe ausgeführt – genau die Dateien aus `scripts/precache.ts` in den Cache der aktuellen Version.
 
 ### 4.3 Browserziel (D-20)
 
@@ -182,26 +185,29 @@ Workflow `.github/workflows/ci.yml`, ausgelöst bei jedem Push, Pull Request und
 
 ### 5.1 Manifest und Installation (NFR-03)
 
-- `manifest.webmanifest` mit `name`, `short_name`, `start_url: "./"`, `scope: "./"`, `display: "standalone"`, `theme_color`, `background_color` und Icons (192, 512, maskable).
-- `apple-touch-icon` und `apple-mobile-web-app-*`-Metaangaben für iOS.
+- `manifest.webmanifest` mit `id: "./"`, `name` („Vokabeltrainer“), `short_name` („Vokabeln“, wird auf dem Home-Bildschirm nicht gekürzt), `lang: "de"`, `start_url: "./"`, `scope: "./"`, `display: "standalone"`, `theme_color`, `background_color` und Icons (192, 512, 512 als `maskable`).
+- Icons (D-22): Vorlage `public/icons/icon.svg` (zwei Karteikarten auf weißem Grund, dient auch als Favicon). Das Motiv liegt im Sicherheitskreis für maskierbare Icons (Radius 40 %), daher nutzt der `maskable`-Eintrag dieselbe Datei wie das normale 512er-Icon. `npm run icons` erzeugt daraus die PNGs.
+- Für iOS: `apple-touch-icon` (180 px, nicht transparent; iOS nutzt die Icons aus dem Manifest nicht) und `apple-mobile-web-app-title`. `apple-mobile-web-app-capable` entfällt: iOS öffnet Home-Bildschirm-Seiten seit iOS 26 standardmäßig als Web-App, ältere Versionen ab 16.4 werten `display` im Manifest aus.
+- `theme-color` als Metaangabe je Farbschema (hell `#ffffff`, dunkel `#121212`).
 - Die App erkennt den installierten Betrieb über `matchMedia("(display-mode: standalone)")` bzw. `navigator.standalone` (iOS) und nutzt das für den Installationshinweis (Kapitel 6.6).
 
 ### 5.2 Service Worker (D-15)
 
 Handgeschrieben, ohne Workbox.
 
-- **install:** lädt `./`, `./index.html`, `./manifest.webmanifest` und die Icons in einen Cache `vokabeltrainer-<hash>`.
-- **activate:** löscht ältere Caches mit dem Präfix `vokabeltrainer-`.
-- **fetch:** Anfragen an die eigene Adresse werden **cache-first** aus dem aktuellen Cache beantwortet; Navigationen liefern `index.html`. Andere Anfragen gibt es nicht (TAK-02).
-- Im Dev-Server ist der Service Worker deaktiviert.
+- **install:** lädt `./` (die App), `./manifest.webmanifest` und die Icons in einen Cache `vokabeltrainer-<hash>`, jeweils mit `cache: "reload"`. GitHub Pages liefert mit `max-age=600` aus; ohne `reload` könnte ein alter Stand aus dem HTTP-Cache unter dem neuen Cache-Namen landen. `./index.html` wird nicht eigens gespeichert, weil jede Navigation `./` bekommt.
+- **activate:** löscht ältere Caches mit dem Präfix `vokabeltrainer-`. Kein `clients.claim()`: Beim allerersten Laden bleibt die Seite ungesteuert, ab dem nächsten Start läuft sie offline.
+- **fetch:** GET-Anfragen an die eigene Adresse werden **cache-first** aus dem aktuellen Cache beantwortet; jede Navigation (auch mit Parametern) liefert `./`. Fehlt eine Datei im Cache, geht die Anfrage ans Netz. Andere Anfragen gibt es nicht (TAK-02).
+- **message:** `SKIP_WAITING` aktiviert eine wartende Version (5.3).
+- Registriert wird relativ (`./sw.js`), der Gültigkeitsbereich ist also das Verzeichnis der App. Im Dev-Server ist der Service Worker deaktiviert (`import.meta.env.PROD`).
 
 ### 5.3 Updates ohne Unterbrechung (NFR-05, R-11)
 
-1. Die App ruft beim Start und beim Zurückkehren in den Vordergrund `registration.update()` auf.
+1. Die App ruft beim Start (wenn schon eine Version aktiv ist) und beim Zurückkehren in den Vordergrund `registration.update()` auf; zusätzlich prüft der Browser bei jeder Navigation. Offline schlägt die Prüfung still fehl.
 2. Eine neue Version wird installiert und bleibt im Zustand *waiting*.
-3. Die App zeigt außerhalb von Lernsitzungen und Bearbeitung einen Hinweis „Neue Version verfügbar“ mit der Aktion „Jetzt aktualisieren“.
-4. Bei Bestätigung sendet die App `SKIP_WAITING` an den wartenden Service Worker und lädt nach `controllerchange` neu.
-5. Läuft gerade eine Sitzung oder Bearbeitung, erscheint der Hinweis erst danach (TAK-12).
+3. Die App zeigt außerhalb von Lernsitzungen und Bearbeitung einen Hinweis „Neue Version verfügbar“ mit der Aktion „Jetzt aktualisieren“. Er steht in einer Leiste am unteren Rand (`role="status"`, außerhalb der Ansichten). Bei der ersten Installation (noch kein steuernder Service Worker) gibt es keinen Hinweis.
+4. Bei Bestätigung sendet die App `SKIP_WAITING` an den wartenden Service Worker und lädt nach `controllerchange` neu. Neu lädt **nur der Tab, in dem bestätigt wurde**; andere Tabs laufen mit der geladenen Version weiter, bis sie neu geladen werden. Hat ein anderer Tab die Version schon aktiviert, lädt die Aktion nur neu.
+5. Läuft gerade eine Sitzung oder Bearbeitung, erscheint der Hinweis erst danach (TAK-12). Dafür melden Sitzung und Editor ihren Zustand über `setUpdateBlocked()` (`app/components/updateNotice.ts`).
 
 Datenmigrationen laufen nach dem Neuladen beim Öffnen der Datenbank (Kapitel 7).
 
@@ -721,6 +727,7 @@ Projekte: `mobile-chromium` (Pixel-Emulation) und `mobile-webkit` (iPhone-Emulat
 | E2E-08 Teil-Export → Datei ändern → Aktualisieren; andere Sektionen unverändert | M4 | AK-04, AK-05 |
 | E2E-09 Konflikt: lokal und in Datei geändert → Vorschau zeigt Konflikt | M4 | AK-18 |
 | E2E-10 Datensatz mit `<img onerror>` im Text → wird als Text angezeigt | M1 | TAK-03, DF-08 |
+| E2E-11 Update: neue Version wird gefunden, bleibt auch nach Neuladen wartend, wird erst nach „Jetzt aktualisieren“ aktiv | M0 | NFR-05, TAK-12 (ohne Sitzung) |
 
 Playwright-WebKit entspricht nicht Safari auf iOS. Speicherlöschung, Installation, `persist()` und Teilen-Menü werden manuell geprüft (15.5).
 
@@ -791,6 +798,7 @@ Fixtures aus 15.3: Import von 3.000 Einträgen (Validierung, Diff, Commit) ohne 
 | D-19 | Hosting auf GitHub Pages per Actions, eigene Domain vor erster Auslieferung | 4.4 | F-02, bestätigt am 19. Oktober 2026 |
 | D-20 | Browserziel `baseline-widely-available` (in M0 zu bestätigen) | 4.3 | – |
 | D-21 | Deployment nur vom Branch `production`, der ausschließlich per Fast-Forward aus `main` nachgezogen wird | 4.4, 4.5 | Nutzerentscheidung in S-04, 20. Oktober 2026 |
+| D-22 | App-Icons aus einer SVG-Vorlage; PNGs per Playwright-Skript erzeugt und eingecheckt; Cache-Version über alle vorab gespeicherten Dateien | 4.1, 4.2, 5.1 | Nutzerentscheidung in S-05, 20. Oktober 2026 |
 
 ---
 
@@ -835,6 +843,7 @@ Geprüft am 18. bis 20. Oktober 2026.
 21. GitHub Pages – Custom Workflows: https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages
 22. `actions/upload-pages-artifact` (v5) und `actions/deploy-pages` (v5): https://github.com/actions/upload-pages-artifact/releases, https://github.com/actions/deploy-pages/releases
 23. GitHub – Rulesets und Deployment-Umgebungen: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets, https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments
+24. heise – iOS 26: geändertes Verhalten von Web-Apps auf dem Home-Bildschirm: https://heise.de/-10749652
 
 ---
 
@@ -848,6 +857,7 @@ Geprüft am 18. bis 20. Oktober 2026.
 | 2.2 | 20. Oktober 2026 | Test-Setup (S-02): `@types/node` und globale Installation von `playwright-cli` in 4.1; `fake-indexeddb` wird mit S-06 eingerichtet | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.3 | 20. Oktober 2026 | CI (S-03): 4.5 präzisiert – Typprüfung über `npm run typecheck` statt `tsc --noEmit`, Formatprüfung, Browserinstallation ohne Cache und Container-Image, Report-Artefakt, Abhängigkeit des Deploy-Jobs; Quellen 18–20 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.4 | 20. Oktober 2026 | Deployment (S-04): Branch `production` nur per Fast-Forward aus `main` (D-21), Pages-Quelle „GitHub Actions“, Artefakt aus dem Prüfjob, konkrete Adresse in 4.4; 4.5 entsprechend; Quellen 21–23 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.5 | 20. Oktober 2026 | Installation, Offline-Betrieb und Updates (S-05): Icons aus SVG-Vorlage per Playwright-Skript und Cache-Version über alle vorab gespeicherten Dateien (D-22, 4.1, 4.2); Manifest- und iOS-Angaben konkretisiert (5.1); Service Worker mit `cache: "reload"`, ohne `clients.claim()`, ohne eigenen Eintrag für `index.html` (5.2); Neuladen nur im bestätigenden Tab, `setUpdateBlocked()` für TAK-12 (5.3); Build-Prüfung erweitert (4.2); E2E-11 (15.4); Quelle 24 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 
 ---
 
@@ -868,12 +878,13 @@ Ziel: Jeder riskante Teil läuft einmal von vorn bis hinten, in einfachster Form
 - ✅ **S-04** Provisorisches Deployment auf GitHub Pages (Repository öffentlich schalten) – NFR-01, D-19, D-21  
   Erledigt am 20. Oktober 2026 mit `actions/upload-pages-artifact@v5` und `actions/deploy-pages@v5`; App läuft unter https://cgrothaus.github.io/vokabeltrainer/. Ein Lauf auf `production` dauert etwa 1,5 Minuten (Job `deploy` rund 15 Sekunden). Die ausgelieferte `index.html` ist bytegleich mit dem lokalen Build. Pages liefert mit `cache-control: max-age=600` aus; eine neue Version kann im Browser also bis zu 10 Minuten verzögert erscheinen. Die Umgebung `github-pages` wurde von GitHub mit `main` angelegt und auf `production` umgestellt; das Ruleset `production` sperrt Force-Push und Löschen. Mit `playwright-cli` (mobiles Chromium) geprüft: Startseite und Hash-Routing funktionieren, angefragt wird nur `index.html`. Chrome fragt `favicon.ico` am Ursprung `cgrothaus.github.io/` an (404); S-05 behebt das mit einem relativen `<link rel="icon">`. Öffnen auf dem iPhone folgt mit S-11.  
   Vor dem Öffentlichschalten am 20. Oktober 2026 die Git-Historie mit `git filter-repo --replace-text` bereinigt: Das frühere TDD v1 enthielt ein Beispiel mit Lehrwerkstitel, Sektionsnamen und zwei Vokabelpaaren aus dem Prototyp, die Review-Notizen zitierten den Titel unter T-10. Alle Commit-Hashes vor diesem Datum haben sich dadurch geändert; die alten Actions-Läufe wurden gelöscht. Lizenztext für den eingecheckten Skill `playwright-cli` (Apache-2.0) beigelegt. Eine Lizenz für das Projekt wird vorerst nicht vergeben.
-- 🔲 **S-05** Manifest, Icons, Service Worker, Offline-Start, Update-Hinweis (5) – NFR-03, NFR-05, AK-21, TAK-11, TAK-12
+- ✅ **S-05** Manifest, Icons, Service Worker, Offline-Start, Update-Hinweis (5) – NFR-03, NFR-05, AK-21, TAK-11, TAK-12  
+  Erledigt am 20. Oktober 2026. Manifest und Icons liegen in `public/`, die PNGs entstehen per `npm run icons` aus der SVG-Vorlage (D-22). Der Service Worker ist ein eigener Vite-Build (IIFE, unter 1 kB); seine Cache-Version ist ein Hash über alle vorab gespeicherten Dateien. Die Build-Prüfung führt `sw.js` in einer Attrappe aus. E2E-03 (Offline-Start) und E2E-11 (Update erst nach Bestätigung) laufen in mobile-chromium und mobile-webkit. E2E-11 startet einen eigenen `vite preview` auf einer Kopie von `dist/` (Ports ab 4280; 4190 sperrt WebKit als „bad port“), weil Chromium die Update-Prüfung des Service Workers nicht über `page.route` leitet. Gegenproben: `skipWaiting()` beim Installieren lässt E2E-11 scheitern, ein geändertes Icon ohne neuen `sw.js` die Build-Prüfung. Mit `playwright-cli` (mobiles Chromium) geprüft: Manifest fehlerfrei erkannt (einziger Installationshinderungsgrund ist das Inkognito-Profil); Hinweisleiste hell und dunkel bei 320 px ohne horizontales Scrollen; nach „Jetzt aktualisieren“ besteht nur noch der neue Cache, die Konsole bleibt leer; im Dev-Server wird kein Service Worker registriert. Der `favicon.ico`-Fehler aus S-02 und S-04 ist behoben; der Smoke-Test meldet jetzt auch fehlgeschlagene Anfragen. TAK-12 ist vorbereitet (`setUpdateBlocked()`); angeschlossen und geprüft wird es mit S-08. Installation und Offline-Start auf echtem iPhone und Android-Gerät (AK-21) folgen nach dem nächsten Deployment, spätestens in S-11.
 - 🔲 **S-06** IndexedDB-Grundgerüst (inkl. `fake-indexeddb` für die Integrationstests): Öffnen, Upgrade, Migrationskette mit Test-Migration v1 → v2, `versionchange`/`VersionError`, Notfall-Backup, `persist()` mit Anzeige des Ergebnisses (6, 7) – FR-22, FR-33, TAK-05, TAK-08
 - 🔲 **S-07** Minimaler Import: Textfeld und Datei, `extract.ts`, Grundvalidierung, Speichern als neues Set ohne Vorschau – FR-13 (Teil)
 - 🔲 **S-08** Minimale Lernsitzung: ganzes Set, nur Karteikarten, Review-Events und Sitzung werden gespeichert – FR-11 (Teil)
 - 🔲 **S-09** Backup-Export (Teilen-Menü bzw. Download, Spike D-17) und Wiederherstellung (ersetzt alles) inkl. `lastBackupAt` – FR-19 (Teil), TAK-09
-- 🔲 **S-10** E2E-01 bis E2E-04 in der CI
+- 🔲 **S-10** E2E-01 bis E2E-04 in der CI (E2E-03 besteht seit S-05)
 - 🔲 **S-11** Manuelle Prüfung auf echtem iPhone und Android (15.5); Ergebnisse zu O-02, O-03, O-04 hier festhalten
 
 ### M1 – Lernen mit eigenen Sets

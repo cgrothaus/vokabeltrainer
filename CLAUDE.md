@@ -50,14 +50,15 @@ Die Historie wurde am 20. Oktober 2026 vor dem Öffentlichschalten umgeschrieben
 
 ## Befehle
 
-Eingerichtet (S-01, S-02):
+Eingerichtet (S-01, S-02, S-05):
 
 ```bash
 npm run dev          # Vite-Dev-Server (Service Worker deaktiviert)
-npm run build        # App nach dist/index.html (JS und CSS eingebettet), danach Build-Prüfung (TAK-01)
+npm run build        # App nach dist/index.html (JS und CSS eingebettet), dann dist/sw.js, danach Build-Prüfung (TAK-01)
 npm run preview      # gebautes Artefakt lokal ausliefern (Port 4173)
 npm run typecheck    # tsc -b über die Projektreferenzen; `tsc --noEmit` im Wurzelverzeichnis prüft nichts
 npm run format       # Prettier (Markdown ist ausgenommen, Dokumente werden von Hand formatiert)
+npm run icons        # PNG-Icons aus public/icons/icon.svg neu erzeugen (Playwright-Chromium), Ergebnis einchecken
 npm test             # Vitest-Projekt `unit`: src/**/*.test.ts in Node
 npm run test:e2e     # Playwright, Projekte mobile-chromium und mobile-webkit; baut selbst und startet `vite preview` auf Port 4180
 
@@ -69,7 +70,7 @@ npx playwright test --project=mobile-webkit -g "Startseite"
 
 Einmalig pro Rechner: `npx playwright install chromium webkit` (Browser für E2E) und `npm i -g @playwright/cli` (Browserprüfung durch den Agent; Skill liegt unter `.claude/skills/playwright-cli/`, Aktualisierung mit `playwright-cli install --skills`). Prüfung z. B. mit `npm run preview` und `playwright-cli open --mobile http://localhost:4173/`; Ausgaben landen in `.playwright-cli/`. `playwright-cli` bringt eine eigene Playwright-Version mit und nutzt Chromium; für `--browser=webkit` einmalig `playwright-cli install-browser webkit`.
 
-Geplant mit S-05: `npm run build` baut zusätzlich den Service Worker; die Build-Prüfung kontrolliert dann auch `sw.js`, Manifest und Icons.
+**Service Worker beim lokalen Prüfen:** `vite preview` (4173) registriert ihn, der Dev-Server nicht. Nach einem neuen Build zeigt ein schon geöffneter Browser auf 4173 weiter den alten Stand, bis man „Jetzt aktualisieren“ wählt; `playwright-cli` ohne `--persistent` startet dagegen jedes Mal leer. Der E2E-Update-Test startet eigene Preview-Server auf Ports ab 4280 (neue Testports nicht aus der „bad ports“-Liste des Fetch-Standards wählen, z. B. 4190 – WebKit lädt dort nichts).
 
 Nach UI-Änderungen das Verhalten mit `playwright-cli` gegen Dev-Server oder `vite preview` prüfen und die E2E-Smoke-Tests laufen lassen.
 
@@ -79,9 +80,9 @@ Nach UI-Änderungen das Verhalten mit `playwright-cli` gegen Dev-Server oder `vi
 
 ## Architektur (Soll, TDD Kap. 3–7)
 
-**Auslieferung:** eine `index.html` mit eingebettetem JS und CSS (`vite-plugin-singlefile`) plus `sw.js`, `manifest.webmanifest` und Icons. Alle Verweise relativ (läuft unter GitHub-Pages-Unterpfad und eigener Domain). Build zweistufig: `vite build` → Hash von `dist/index.html` → `vite build -c vite.sw.config.ts` mit dem Hash als Cache-Version, damit sich `sw.js` genau dann ändert, wenn sich die App ändert. Deployment auf GitHub Pages nur vom Branch `production` nach grüner CI.
+**Auslieferung:** eine `index.html` mit eingebettetem JS und CSS (`vite-plugin-singlefile`) plus `sw.js`, `manifest.webmanifest` und Icons. Alle Verweise relativ (läuft unter GitHub-Pages-Unterpfad und eigener Domain). Manifest und Icons liegen in `public/`; in `index.html` mit Wurzelpfad verweisen (`/manifest.webmanifest`), Vite macht daraus `./…`. Build zweistufig: `vite build` → `vite build -c vite.sw.config.ts`; `scripts/precache.ts` liefert Dateiliste und Cache-Version (Hash über alle vorab gespeicherten Dateien), damit sich `sw.js` genau dann ändert, wenn sich eine davon ändert. Neue Dateien, die offline nötig sind, dort aufnehmen. Deployment auf GitHub Pages nur vom Branch `production` nach grüner CI.
 
-**TypeScript 7** (native `tsc`), Konfiguration über Projektreferenzen: `tsconfig.app.json` (`src/`, DOM), `tsconfig.node.json` (Vite-Konfiguration). Mit dem ersten Modul in `domain/` kommt `tsconfig.domain.json` ohne DOM-Typen dazu (TAK-04) und wird in `tsconfig.json` referenziert. Verzeichnisse aus TDD 3.1 entstehen erst mit ihrer ersten Datei.
+**TypeScript 7** (native `tsc`), Konfiguration über Projektreferenzen: `tsconfig.app.json` (`src/` ohne `src/sw`, DOM), `tsconfig.sw.json` (`src/sw`, WebWorker), `tsconfig.node.json` (Vite-Konfigurationen, `scripts/precache.ts`), `tsconfig.test.json` (`tests/`, `scripts/`). Kein `enum`, kein `namespace`, keine Parameter-Properties im Konstruktor (`erasableSyntaxOnly`). Mit dem ersten Modul in `domain/` kommt `tsconfig.domain.json` ohne DOM-Typen dazu (TAK-04) und wird in `tsconfig.json` referenziert. Verzeichnisse aus TDD 3.1 entstehen erst mit ihrer ersten Datei.
 
 **CSS:** kein `light-dark()` verwenden – Vite rechnet es auf `prefers-color-scheme` herunter, dann greift die manuelle Umschaltung (TDD 13.5) nicht. Farben als Variablen in `:root`, Dunkelmodus per Media Query.
 
@@ -101,7 +102,7 @@ Nach UI-Änderungen das Verhalten mit `playwright-cli` gegen Dev-Server oder `vi
 - Intern immer Langform (`{ text, acceptedVariants? }`); Kurzformen aus Dateien werden beim Import aufgelöst, beim Export wieder geschrieben.
 - `rev` ist ein berechneter Inhalts-Hash (cyrb53 über kanonische Darstellung, nicht gespeichert) und Grundlage der Konflikterkennung beim Reimport (TDD 9.5 – Tabelle exakt umsetzen, TAK-16). Zuordnung beim Import nur über IDs, nie über Worttexte.
 - Migrationen sind reine Funktionen pro Datensatz in `domain/migrations/` und werden sowohl im `upgradeneeded`-Handler als auch beim Wiederherstellen älterer Backups verwendet. Bis zur ersten Auslieferung (S-29) bleibt `DB_VERSION` = 1; danach braucht jede Schemaänderung Migration + Fixture. Fixtures früherer Stände unter `tests/fixtures/` werden nie gelöscht.
-- Eine neue App-Version wird nie während einer Lernsitzung oder Bearbeitung aktiviert (TAK-12).
+- Eine neue App-Version wird nie während einer Lernsitzung oder Bearbeitung aktiviert (TAK-12): Sitzung und Editor rufen dafür `setUpdateBlocked(true/false)` aus `app/components/updateNotice.ts` auf (Anschluss in S-08).
 
 ## Tests (TDD Kap. 15)
 

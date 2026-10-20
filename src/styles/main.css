@@ -3,6 +3,8 @@
   --bg: #ffffff;
   --fg: #1a1a1a;
   --accent: #1f5fbf;
+  --surface: #f1f4f9;
+  --border: #d5dbe5;
   font-family:
     system-ui,
     -apple-system,
@@ -20,6 +22,8 @@
     --bg: #121212;
     --fg: #ececec;
     --accent: #7fb0ff;
+    --surface: #1e2229;
+    --border: #353b46;
   }
 }
 
@@ -45,4 +49,51 @@ main {
 
 a {
   color: var(--accent);
+}
+
+button {
+  min-height: 44px;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: var(--accent);
+  color: var(--bg);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Hinweisleiste am unteren Rand, z. B. „Neue Version verfügbar“ (TDD 5.3). */
+.notice {
+  position: fixed;
+  inset: auto 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.75rem max(1rem, env(safe-area-inset-right)) max(0.75rem, env(safe-area-inset-bottom))
+    max(1rem, env(safe-area-inset-left));
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+/* Leer ohne Höhe, aber nicht ausgeblendet: Die Live-Region muss bestehen, damit Screenreader den Hinweis ansagen. */
+.notice:empty {
+  padding: 0;
+  border: none;
+}
+
+.notice p {
+  margin: 0;
+}
+
+/* Platz unter dem Inhalt, solange die Hinweisleiste steht, damit sie nichts verdeckt. */
+body:has(.notice:not(:empty)) main {
+  padding-bottom: 8rem;
 }

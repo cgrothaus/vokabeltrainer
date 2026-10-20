@@ -8,10 +8,18 @@
       content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'"
     />
     <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)" />
+    <meta name="apple-mobile-web-app-title" content="Vokabeln" />
     <title>Vokabeltrainer</title>
+    <!-- Wurzelpfade zeigen auf public/; Vite schreibt sie mit base "./" relativ um. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icons/icon-180.png" />
   </head>
   <body>
     <div id="app"></div>
+    <div id="update-notice" class="notice" role="status"></div>
     <script type="module" src="./src/main.ts"></script>
   </body>
 </html>
