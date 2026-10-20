@@ -3,3 +3,9 @@
 dist/
 package-lock.json
 .claude/
+
+# Testberichte und Browserprüfung
+.vitest/
+playwright-report/
+test-results/
+.playwright-cli/

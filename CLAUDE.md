@@ -29,27 +29,26 @@ Vor einer Umsetzung das betreffende Arbeitspaket (S-xx) in TDD Kap. 21 und die d
 
 ## Befehle
 
-Eingerichtet (S-01):
+Eingerichtet (S-01, S-02):
 
 ```bash
 npm run dev          # Vite-Dev-Server (Service Worker deaktiviert)
-npm run build        # App nach dist/index.html (JS und CSS eingebettet)
-npm run preview      # gebautes Artefakt lokal ausliefern
+npm run build        # App nach dist/index.html (JS und CSS eingebettet), danach Build-Prüfung (TAK-01)
+npm run preview      # gebautes Artefakt lokal ausliefern (Port 4173)
 npm run typecheck    # tsc -b über die Projektreferenzen; `tsc --noEmit` im Wurzelverzeichnis prüft nichts
 npm run format       # Prettier (Markdown ist ausgenommen, Dokumente werden von Hand formatiert)
-```
-
-Geplant, mit S-02/S-05 einrichten und hier bestätigen:
-
-```bash
-npm test             # Vitest: Unit- und Integrationstests (Node, fake-indexeddb)
-npm run test:e2e     # Playwright gegen `vite preview`, Projekte mobile-chromium und mobile-webkit
-npm run build        # zusätzlich Service Worker und Prüfung der Build-Ausgabe
+npm test             # Vitest-Projekt `unit`: src/**/*.test.ts in Node
+npm run test:e2e     # Playwright, Projekte mobile-chromium und mobile-webkit; baut selbst und startet `vite preview` auf Port 4180
 
 npx vitest run src/domain/validate.test.ts      # einzelne Testdatei
 npx vitest run -t "Kurzform"                    # Tests nach Name
-npx playwright test --project=mobile-webkit -g "E2E-01"
+npx vitest run --project build                  # nur Build-Prüfung gegen vorhandenes dist/
+npx playwright test --project=mobile-webkit -g "Startseite"
 ```
+
+Einmalig pro Rechner: `npx playwright install chromium webkit` (Browser für E2E) und `npm i -g @playwright/cli` (Browserprüfung durch den Agent; Skill liegt unter `.claude/skills/playwright-cli/`, Aktualisierung mit `playwright-cli install --skills`). Prüfung z. B. mit `npm run preview` und `playwright-cli open --mobile http://localhost:4173/`; Ausgaben landen in `.playwright-cli/`.
+
+Geplant mit S-05: `npm run build` baut zusätzlich den Service Worker; die Build-Prüfung kontrolliert dann auch `sw.js`, Manifest und Icons.
 
 Nach UI-Änderungen das Verhalten mit `playwright-cli` gegen Dev-Server oder `vite preview` prüfen und die E2E-Smoke-Tests laufen lassen.
 
@@ -83,5 +82,8 @@ Nach UI-Änderungen das Verhalten mit `playwright-cli` gegen Dev-Server oder `vi
 
 - Domain-Module werden **testgetrieben** entwickelt (Liste der Module und Fälle in TDD 15.2); UI über E2E-Smoke-Tests und manuelle Prüfung.
 - Validator und JSON Schema werden über gemeinsame Fixtures mit Ajv abgeglichen (TAK-10).
-- Vitest 5: Berichte landen in `.vitest/` (in `.gitignore` aufnehmen); `-t` vergleicht mit dem vollen Testnamen, verbunden mit „ > “ (`describe > test`).
+- Vitest 5: Berichte landen in `.vitest/`; `-t` vergleicht mit dem vollen Testnamen, verbunden mit „ > “ (`describe > test`).
+- Vitest-Konfiguration steht in `vite.config.ts` (Projekte `unit` und `build`). `passWithNoTests` ist nur gesetzt, solange es keinen Unit-Test gibt – mit dem ersten Test entfernen.
+- `fake-indexeddb` kommt mit S-06 und wird **pro Testdatei** importiert (`import "fake-indexeddb/auto"`), nicht global – sonst sähen `domain/`-Tests ein `indexedDB`.
+- Tests unter `tests/` und `playwright.config.ts` prüft `tsconfig.test.json` (Node-Typen).
 - E2E läuft immer gegen das gebaute Artefakt. Playwright-WebKit ≠ iOS-Safari: Speicherschutz, Installation und Teilen-Menü werden manuell auf echten Geräten geprüft; Ergebnisse beim Arbeitspaket in Kap. 21 festhalten.

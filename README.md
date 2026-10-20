@@ -33,13 +33,14 @@ Voraussetzung ist Node.js mit npm.
 
 ```bash
 npm install
+npx playwright install chromium webkit   # einmalig: Browser für die E2E-Tests
 npm run dev         # Dev-Server
-npm run build       # Build nach dist/index.html
+npm run build       # Build nach dist/index.html mit Prüfung der Ausgabe
 npm run preview     # Build lokal ausliefern
 npm run typecheck   # Typprüfung
+npm test            # Unit- und Integrationstests (Vitest)
+npm run test:e2e    # End-to-End-Tests (Playwright, mobiles Chromium und WebKit)
 ```
-
-Tests (Vitest, Playwright) kommen mit dem nächsten Arbeitspaket.
 
 Hinweise für Coding-Agents stehen in [CLAUDE.md](CLAUDE.md).
 

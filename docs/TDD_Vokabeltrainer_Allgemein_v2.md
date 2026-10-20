@@ -1,7 +1,7 @@
 # TDD: Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.1 – Vitest 5 als Testwerkzeug  
-**Stand:** 19. Oktober 2026  
+**Version:** 2.2 – Test-Setup: `@types/node`, `playwright-cli` global  
+**Stand:** 20. Oktober 2026  
 **Bezug:** PRD 2.4 (`PRD_Vokabeltrainer_Allgemein_v2.md`), Formatspezifikation Version 1 (`Formatspezifikation_Vokabelset_v1.md`), Review-Notizen (`20261019_TDD_v1_Review_Notizen.md`)  
 **Status:** Entwurf; Grundlage für M0 (Walking Skeleton)  
 **Entstehung und Autorenschaft:** siehe Kapitel 20 (Änderungshistorie)
@@ -118,12 +118,12 @@ Hash-basiertes Routing (`#/`, `#/set/<id>`, `#/import`, `#/practice`, `#/backup`
 | Zweck | Werkzeug | Begründung |
 |---|---|---|
 | Laufzeit für Entwicklung | Node.js (aktuelle LTS) + npm | Offiziell unterstützt von Vite, Vitest und Playwright. Bun wurde verworfen, weil Playwright darauf nicht offiziell unterstützt wird. |
-| Sprache | TypeScript, `strict`, `erasableSyntaxOnly` | Typen schützen das Datenmodell; nur Syntax, die beim Übersetzen ersatzlos entfällt (keine `enum`, keine `namespace`). |
+| Sprache | TypeScript, `strict`, `erasableSyntaxOnly`; `@types/node` für Tests und Konfiguration | Typen schützen das Datenmodell; nur Syntax, die beim Übersetzen ersatzlos entfällt (keine `enum`, keine `namespace`). |
 | Build und Dev-Server | Vite 8 + `vite-plugin-singlefile` | Schneller Dev-Server mit Hot Reload; Plugin bettet JS und CSS in `index.html` ein; Konfiguration wird mit Vitest geteilt. |
 | Unit- und Integrationstests | Vitest 5 + `fake-indexeddb` | Gleiche Konfiguration wie Vite; IndexedDB-Logik ohne Browser testbar. Vitest 5 (seit September 2026) unterstützt Vite 8 und Node.js ab 22.12; die Änderungen gegenüber Vitest 4 betreffen ein neues Projekt nicht. |
 | Schemaabgleich | Ajv (nur Entwicklung) | Prüft Testfixtures gegen das JSON Schema (TAK-10). |
 | End-to-End-Tests | Playwright Test | Chromium und WebKit, mobile Emulation, Offline-Simulation. |
-| Browserprüfung durch den Coding-Agent | `playwright-cli` | Für Coding-Agents empfohlen; Snapshots landen in Dateien statt im Kontext. |
+| Browserprüfung durch den Coding-Agent | `playwright-cli` | Für Coding-Agents empfohlen; Snapshots landen in Dateien statt im Kontext. Global installiert (nicht in `package.json`, da es eine eigene Playwright-Version mitbringt); der Skill liegt versioniert unter `.claude/skills/`. |
 | Formatierung | Prettier | Einheitlicher Stil ohne Diskussion. Ein Linter wird erst bei Bedarf ergänzt. |
 | CI und Deployment | GitHub Actions | Prüfungen als Bedingung für das Deployment. |
 
@@ -828,6 +828,7 @@ Geprüft am 18. bzw. 19. Oktober 2026.
 | 1.0 | 18. Oktober 2026 | Erster technischer Entwurf auf Basis von PRD 2.1 | KI-gestützter Entwurf mit ChatGPT (OpenAI), Modell GPT-6, in Zusammenarbeit mit dem Nutzer; Reasoning-Stufe und Snapshot-ID nicht als überprüfbare Metadaten verfügbar; Knowledge Cutoff Dezember 2025 |
 | 2.0 | 19. Oktober 2026 | Neufassung nach Review (T-01–T-24, F-01–F-09): Build-Pipeline und Werkzeuge, PWA und Updates, Speicherschutz, Kurz-IDs und `rev`-Konflikterkennung, Aktualisieren mit `null`-Löschung, tolerante Validierung, mehrere Bedeutungen, Migrationskette, kein `progress`-Store, Multiple-Choice-Regeln, Sitzungs-Lebenszyklus, Teststrategie mit Werkzeugen, IDs für Entscheidungen und Abnahmekriterien, Umsetzungsplan mit Walking Skeleton; `file://` und Lehrwerksbezüge entfernt; Austauschformat in eigene Formatspezifikation ausgelagert | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.1 | 19. Oktober 2026 | Vitest 5 statt Vitest 4 (4.1, Quelle 12) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.2 | 20. Oktober 2026 | Test-Setup (S-02): `@types/node` und globale Installation von `playwright-cli` in 4.1; `fake-indexeddb` wird mit S-06 eingerichtet | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 
 ---
 
@@ -841,11 +842,12 @@ Ziel: Jeder riskante Teil läuft einmal von vorn bis hinten, in einfachster Form
 
 - ✅ **S-01** Projekt-Setup: Vite + TS + `vite-plugin-singlefile`, Verzeichnisstruktur (3.1), npm-Skripte, Prettier, `CLAUDE.md` (4.6) – D-01–D-05  
   Erledigt am 19. Oktober 2026 mit Vite 8.3, TypeScript 7.0, `vite-plugin-singlefile` 2.3, Prettier 3.9; DOM-Helfer `h()`, Hash-Router, Platzhalter-Ansicht. `tsconfig.domain.json` ohne DOM-Typen (TAK-04) folgt mit dem ersten Modul in `domain/`.
-- 🔲 **S-02** Test-Setup: Vitest + `fake-indexeddb`, Playwright mit zwei Projekten gegen `vite preview`, Build-Test, `playwright-cli` für den Agent – TAK-01
+- ✅ **S-02** Test-Setup: Vitest + `fake-indexeddb`, Playwright mit zwei Projekten gegen `vite preview`, Build-Test, `playwright-cli` für den Agent – TAK-01  
+  Erledigt am 20. Oktober 2026 mit Vitest 5.0, Playwright 1.64, `playwright-cli` 0.1.22 (global). Vitest-Projekte `unit` (`src/**/*.test.ts`) und `build` (Build-Prüfung, läuft in `npm run build`); E2E-Smoke-Test prüft Start, Routing, fremde Anfragen (TAK-02) und Konsolenfehler. `fake-indexeddb` folgt mit dem ersten Storage-Test in S-06. Offen für S-05: Chrome fordert `favicon.ico` an (404), bis Icons vorhanden sind.
 - 🔲 **S-03** CI in GitHub Actions (4.5) – TAK-14
 - 🔲 **S-04** Provisorisches Deployment auf GitHub Pages (Repository öffentlich schalten) – NFR-01, D-19
 - 🔲 **S-05** Manifest, Icons, Service Worker, Offline-Start, Update-Hinweis (5) – NFR-03, NFR-05, AK-21, TAK-11, TAK-12
-- 🔲 **S-06** IndexedDB-Grundgerüst: Öffnen, Upgrade, Migrationskette mit Test-Migration v1 → v2, `versionchange`/`VersionError`, Notfall-Backup, `persist()` mit Anzeige des Ergebnisses (6, 7) – FR-22, FR-33, TAK-05, TAK-08
+- 🔲 **S-06** IndexedDB-Grundgerüst (inkl. `fake-indexeddb` für die Integrationstests): Öffnen, Upgrade, Migrationskette mit Test-Migration v1 → v2, `versionchange`/`VersionError`, Notfall-Backup, `persist()` mit Anzeige des Ergebnisses (6, 7) – FR-22, FR-33, TAK-05, TAK-08
 - 🔲 **S-07** Minimaler Import: Textfeld und Datei, `extract.ts`, Grundvalidierung, Speichern als neues Set ohne Vorschau – FR-13 (Teil)
 - 🔲 **S-08** Minimale Lernsitzung: ganzes Set, nur Karteikarten, Review-Events und Sitzung werden gespeichert – FR-11 (Teil)
 - 🔲 **S-09** Backup-Export (Teilen-Menü bzw. Download, Spike D-17) und Wiederherstellung (ersetzt alles) inkl. `lastBackupAt` – FR-19 (Teil), TAK-09

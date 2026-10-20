@@ -5,3 +5,9 @@ dist/
 # Lokale Claude-Code-Dateien (geteilte Einstellungen in .claude/ bleiben versioniert)
 .claude/worktrees/
 .claude/settings.local.json
+
+# Testberichte und Browserprüfung
+.vitest/
+playwright-report/
+test-results/
+.playwright-cli/
