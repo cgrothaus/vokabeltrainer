@@ -1,6 +1,6 @@
 # TDD: Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.5 – Installation, Offline-Betrieb und Updates  
+**Version:** 2.6 – Datenbank, Migrationen und Speicherschutz  
 **Stand:** 20. Oktober 2026  
 **Bezug:** PRD 2.4 (`PRD_Vokabeltrainer_Allgemein_v2.md`), Formatspezifikation Version 1 (`Formatspezifikation_Vokabelset_v1.md`), Review-Notizen (`20261019_TDD_v1_Review_Notizen.md`)  
 **Status:** Entwurf; Grundlage für M0 (Walking Skeleton)  
@@ -107,7 +107,8 @@ Hash-basiertes Routing (`#/`, `#/set/<id>`, `#/import`, `#/practice`, `#/backup`
 
 - Nach jedem erfolgreichen Schreibvorgang sendet die App über `BroadcastChannel("vokabeltrainer")` eine Nachricht `{ type: "data-changed", setId? }`. Andere Tabs laden die betroffenen Daten neu.
 - Eine offene Importvorschau wird zusätzlich beim Bestätigen über `editCount` geprüft (Kapitel 9.7).
-- `versionchange` auf der Datenbank führt zum Schließen der Verbindung und zum Hinweis „Die App wurde in einem anderen Tab aktualisiert. Bitte neu laden.“
+- `versionchange` auf der Datenbank führt zum Schließen der Verbindung und zum Hinweis „Die App wurde in einem anderen Tab aktualisiert. Bitte neu laden.“ Das Routing endet; die App schreibt danach nichts mehr.
+- Hält ein Tab mit älterer Version die Verbindung trotzdem offen (`blocked`), bittet die App, diesen Tab zu schließen, und setzt den Start danach von selbst fort.
 
 ---
 
@@ -322,14 +323,18 @@ interface Answer {
 - Dieselben Funktionen werden verwendet
   - im `upgradeneeded`-Handler (per Cursor über die betroffenen Stores) und
   - beim Wiederherstellen eines Backups, das einen älteren `dataVersion`-Stand enthält.
-- Strukturelle Änderungen (neue Stores, Indizes) gehören zusätzlich in den `upgradeneeded`-Handler.
+- Strukturelle Änderungen (neue Stores, Indizes) stehen als Schritt pro Version in `storage/schema.ts` und laufen im `upgradeneeded`-Handler vor der Datenumwandlung.
+- Die Kette enthält für **jede** Version ab 2 einen Eintrag, auch wenn sich nur die Struktur ändert (dann ohne Datensatz-Funktionen). Fehlt ein Eintrag, scheitert die Migration, statt Daten unverwandelt zu übernehmen.
+- Im `upgradeneeded`-Handler läuft **ein Cursor-Durchlauf pro betroffenem Store**, der jeden Datensatz durch alle Schritte von der alten bis zur neuen Version führt. Zwei offene Cursor auf demselben Store würden sich verschränken.
+- Migrationen ändern den Schlüssel eines Datensatzes nicht.
 - Für Set-Dateien gibt es eine eigene Kette `migrateSetFileV1toV2(...)`, falls die Formatversion steigt.
 
 ### 7.2 Ablauf beim Start
 
 1. Die App öffnet die Datenbank mit `DB_VERSION`.
-2. Ist die vorhandene Version älter, läuft `upgradeneeded`. Schlägt eine Migration fehl, bricht der Browser die Upgrade-Transaktion ab; die Datenbank bleibt vollständig im alten Stand.
+2. Ist die vorhandene Version älter, läuft `upgradeneeded`. Schlägt eine Migration fehl, bricht die App die Upgrade-Transaktion ausdrücklich ab (eine Ausnahme im Handler oder in einem Cursor-Callback allein genügt nicht in jeder Umgebung); die Datenbank bleibt vollständig im alten Stand.
 3. In diesem Fall öffnet die App die Datenbank ohne Versionsangabe (alter Stand), liest alle Stores roh aus und bietet sie als Backup-Datei an („Notfall-Backup“). Der Bildschirm erklärt, dass die neue Version die Daten nicht übernehmen konnte.
+   Scheitert dagegen die erste Einrichtung (es gab noch keine Datenbank), gibt es nichts zu sichern. Die App öffnet die Datenbank dann **nicht** ohne Versionsangabe: Das legte eine leere Datenbank ohne Stores an, und beim nächsten Start liefe die Einrichtung nicht mehr. Sie bittet stattdessen, neu zu laden.
 4. Ist die vorhandene Version **neuer** als `DB_VERSION` (alte App in altem Tab oder aus altem Cache), schlägt das Öffnen mit `VersionError` fehl. Die App zeigt „Bitte neu laden“ und schreibt nichts.
 
 ### 7.3 Sicherungskopie vor Migrationen (D-14)
@@ -728,6 +733,7 @@ Projekte: `mobile-chromium` (Pixel-Emulation) und `mobile-webkit` (iPhone-Emulat
 | E2E-09 Konflikt: lokal und in Datei geändert → Vorschau zeigt Konflikt | M4 | AK-18 |
 | E2E-10 Datensatz mit `<img onerror>` im Text → wird als Text angezeigt | M1 | TAK-03, DF-08 |
 | E2E-11 Update: neue Version wird gefunden, bleibt auch nach Neuladen wartend, wird erst nach „Jetzt aktualisieren“ aktiv | M0 | NFR-05, TAK-12 (ohne Sitzung) |
+| E2E-12 Neuere Datenbankversion aus einem anderen Tab: App gibt die Verbindung frei und bittet ums Neuladen; nach dem Neuladen bleibt die neuere Datenbank unverändert | M0 | 3.4, 7.2, TAK-08 (Teil) |
 
 Playwright-WebKit entspricht nicht Safari auf iOS. Speicherlöschung, Installation, `persist()` und Teilen-Menü werden manuell geprüft (15.5).
 
@@ -858,6 +864,7 @@ Geprüft am 18. bis 20. Oktober 2026.
 | 2.3 | 20. Oktober 2026 | CI (S-03): 4.5 präzisiert – Typprüfung über `npm run typecheck` statt `tsc --noEmit`, Formatprüfung, Browserinstallation ohne Cache und Container-Image, Report-Artefakt, Abhängigkeit des Deploy-Jobs; Quellen 18–20 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.4 | 20. Oktober 2026 | Deployment (S-04): Branch `production` nur per Fast-Forward aus `main` (D-21), Pages-Quelle „GitHub Actions“, Artefakt aus dem Prüfjob, konkrete Adresse in 4.4; 4.5 entsprechend; Quellen 21–23 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.5 | 20. Oktober 2026 | Installation, Offline-Betrieb und Updates (S-05): Icons aus SVG-Vorlage per Playwright-Skript und Cache-Version über alle vorab gespeicherten Dateien (D-22, 4.1, 4.2); Manifest- und iOS-Angaben konkretisiert (5.1); Service Worker mit `cache: "reload"`, ohne `clients.claim()`, ohne eigenen Eintrag für `index.html` (5.2); Neuladen nur im bestätigenden Tab, `setUpdateBlocked()` für TAK-12 (5.3); Build-Prüfung erweitert (4.2); E2E-11 (15.4); Quelle 24 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.6 | 20. Oktober 2026 | Datenbank-Grundgerüst (S-06): Blockierung durch ältere Tabs und Ende des Routings nach `versionchange` (3.4); Strukturschritte pro Version, lückenlose Kette, ein Cursor-Durchlauf pro Store, unveränderliche Schlüssel (7.1); ausdrücklicher Abbruch des Upgrades und kein Notfall-Backup bei gescheiterter Ersteinrichtung (7.2); E2E-12 (15.4) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 
 ---
 
@@ -880,7 +887,9 @@ Ziel: Jeder riskante Teil läuft einmal von vorn bis hinten, in einfachster Form
   Vor dem Öffentlichschalten am 20. Oktober 2026 die Git-Historie mit `git filter-repo --replace-text` bereinigt: Das frühere TDD v1 enthielt ein Beispiel mit Lehrwerkstitel, Sektionsnamen und zwei Vokabelpaaren aus dem Prototyp, die Review-Notizen zitierten den Titel unter T-10. Alle Commit-Hashes vor diesem Datum haben sich dadurch geändert; die alten Actions-Läufe wurden gelöscht. Lizenztext für den eingecheckten Skill `playwright-cli` (Apache-2.0) beigelegt. Eine Lizenz für das Projekt wird vorerst nicht vergeben.
 - ✅ **S-05** Manifest, Icons, Service Worker, Offline-Start, Update-Hinweis (5) – NFR-03, NFR-05, AK-21, TAK-11, TAK-12  
   Erledigt am 20. Oktober 2026. Manifest und Icons liegen in `public/`, die PNGs entstehen per `npm run icons` aus der SVG-Vorlage (D-22). Der Service Worker ist ein eigener Vite-Build (IIFE, unter 1 kB); seine Cache-Version ist ein Hash über alle vorab gespeicherten Dateien. Die Build-Prüfung führt `sw.js` in einer Attrappe aus. E2E-03 (Offline-Start) und E2E-11 (Update erst nach Bestätigung) laufen in mobile-chromium und mobile-webkit. E2E-11 startet einen eigenen `vite preview` auf einer Kopie von `dist/` (Ports ab 4280; 4190 sperrt WebKit als „bad port“), weil Chromium die Update-Prüfung des Service Workers nicht über `page.route` leitet. Gegenproben: `skipWaiting()` beim Installieren lässt E2E-11 scheitern, ein geändertes Icon ohne neuen `sw.js` die Build-Prüfung. Mit `playwright-cli` (mobiles Chromium) geprüft: Manifest fehlerfrei erkannt (einziger Installationshinderungsgrund ist das Inkognito-Profil); Hinweisleiste hell und dunkel bei 320 px ohne horizontales Scrollen; nach „Jetzt aktualisieren“ besteht nur noch der neue Cache, die Konsole bleibt leer; im Dev-Server wird kein Service Worker registriert. Der `favicon.ico`-Fehler aus S-02 und S-04 ist behoben; der Smoke-Test meldet jetzt auch fehlgeschlagene Anfragen. TAK-12 ist vorbereitet (`setUpdateBlocked()`); angeschlossen und geprüft wird es mit S-08. Installation und Offline-Start auf echtem iPhone und Android-Gerät (AK-21) folgen nach dem nächsten Deployment, spätestens in S-11.
-- 🔲 **S-06** IndexedDB-Grundgerüst (inkl. `fake-indexeddb` für die Integrationstests): Öffnen, Upgrade, Migrationskette mit Test-Migration v1 → v2, `versionchange`/`VersionError`, Notfall-Backup, `persist()` mit Anzeige des Ergebnisses (6, 7) – FR-22, FR-33, TAK-05, TAK-08
+- ✅ **S-06** IndexedDB-Grundgerüst (inkl. `fake-indexeddb` für die Integrationstests): Öffnen, Upgrade, Migrationskette mit Test-Migration v1 → v2, `versionchange`/`VersionError`, Notfall-Backup, `persist()` mit Anzeige des Ergebnisses (6, 7) – FR-22, FR-33, TAK-05, TAK-08  
+  Erledigt am 20. Oktober 2026 mit `fake-indexeddb` 6.2. Erstes Modul in `domain/` (Migrationskette, Backup-Hülle); `tsconfig.domain.json` ohne DOM- und Node-Typen, Gegenprobe: `document` in `domain/` lässt `npm run typecheck` scheitern (TAK-04). `openDatabase` liefert ein Ergebnis pro Lage (geöffnet, kein Speicher, neuere Version, Einrichtung gescheitert, Migration gescheitert mit Notfall-Backup); geschrieben wird nur über `runTransaction`, das erst nach `complete` erfüllt (TAK-05). Integrationstests decken Einrichtung, Migration v1 → v2, fehlschlagende Migration mit unverändertem Altstand (TAK-08), fehlende Kettenglieder, `VersionError`, `versionchange` und `blocked` ab. Gegenprobe: Ohne ausdrückliches `abort()` übernimmt `fake-indexeddb` die halbe Migration; deshalb bricht die App selbst ab (7.2). E2E-12 läuft in mobile-chromium und mobile-webkit. Die App-Version (`0.1.0+<Commit>`) wird per `define` eingebettet und steht im Notfall-Backup. Datei-Auslieferung vorerst nur als Download; das Teilen-Menü folgt mit S-09.  
+  Provisorisch für M0: Die Bibliothek zeigt den Speicherschutz und eine Schaltfläche „Dauerhaften Speicher anfordern“ für die Messung in S-11; der automatische Aufruf nach dem ersten gespeicherten Set (6.6) kommt mit S-07, die Schaltfläche entfällt spätestens mit S-26. Der Dev-Schalter `?testmigration=ok|fail` (nur `npm run dev`, nicht im Build) führt die Test-Migration auf einer eigenen Datenbank `vokabeltrainer-testmigration` aus. Mit `playwright-cli` (mobiles Chromium) geprüft: `fail` zeigt „Daten nicht übernommen“, das heruntergeladene Notfall-Backup enthält den unveränderten Datensatz mit `dataVersion` 1; `ok` hebt die Testdatenbank auf Version 2 mit umbenanntem Feld und neuem Index; Chromium lehnt `persist()` für die frisch besuchte Seite ab, die Anfrage wird in `meta` vermerkt; Konsole ohne Fehler. Offen für S-10: E2E-04 braucht gegen das gebaute Artefakt einen Weg zu einer älteren Datenbank, solange `DB_VERSION` 1 ist.
 - 🔲 **S-07** Minimaler Import: Textfeld und Datei, `extract.ts`, Grundvalidierung, Speichern als neues Set ohne Vorschau – FR-13 (Teil)
 - 🔲 **S-08** Minimale Lernsitzung: ganzes Set, nur Karteikarten, Review-Events und Sitzung werden gespeichert – FR-11 (Teil)
 - 🔲 **S-09** Backup-Export (Teilen-Menü bzw. Download, Spike D-17) und Wiederherstellung (ersetzt alles) inkl. `lastBackupAt` – FR-19 (Teil), TAK-09

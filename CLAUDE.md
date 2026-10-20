@@ -53,7 +53,7 @@ Die Historie wurde am 20. Oktober 2026 vor dem Öffentlichschalten umgeschrieben
 Eingerichtet (S-01, S-02, S-05):
 
 ```bash
-npm run dev          # Vite-Dev-Server (Service Worker deaktiviert)
+npm run dev          # Vite-Dev-Server (Service Worker deaktiviert); `?testmigration=ok|fail` prüft die Test-Migration
 npm run build        # App nach dist/index.html (JS und CSS eingebettet), dann dist/sw.js, danach Build-Prüfung (TAK-01)
 npm run preview      # gebautes Artefakt lokal ausliefern (Port 4173)
 npm run typecheck    # tsc -b über die Projektreferenzen; `tsc --noEmit` im Wurzelverzeichnis prüft nichts
@@ -68,7 +68,7 @@ npx vitest run --project build                  # nur Build-Prüfung gegen vorha
 npx playwright test --project=mobile-webkit -g "Startseite"
 ```
 
-Einmalig pro Rechner: `npx playwright install chromium webkit` (Browser für E2E) und `npm i -g @playwright/cli` (Browserprüfung durch den Agent; Skill liegt unter `.claude/skills/playwright-cli/`, Aktualisierung mit `playwright-cli install --skills`). Prüfung z. B. mit `npm run preview` und `playwright-cli open --mobile http://localhost:4173/`; Ausgaben landen in `.playwright-cli/`. `playwright-cli` bringt eine eigene Playwright-Version mit und nutzt Chromium; für `--browser=webkit` einmalig `playwright-cli install-browser webkit`.
+Einmalig pro Rechner: `npx playwright install chromium webkit` (Browser für E2E) und `npm i -g @playwright/cli` (Browserprüfung durch den Agent; Skill liegt unter `.claude/skills/playwright-cli/`, Aktualisierung mit `playwright-cli install --skills`). Prüfung z. B. mit `npm run preview` und `playwright-cli open --mobile http://localhost:4173/`; Ausgaben landen in `.playwright-cli/`. `playwright-cli` bringt eine eigene Playwright-Version mit und nutzt Chromium; für `--browser=webkit` einmalig `playwright-cli install-browser webkit`. In Worktree-Sitzungen lehnt Claude Code `playwright-cli eval` ab; dann Code als Datei mit `playwright-cli run-code --filename=<datei>` ausführen (Inhalt `async (page) => …`, ohne abschließendes Semikolon).
 
 **Service Worker beim lokalen Prüfen:** `vite preview` (4173) registriert ihn, der Dev-Server nicht. Nach einem neuen Build zeigt ein schon geöffneter Browser auf 4173 weiter den alten Stand, bis man „Jetzt aktualisieren“ wählt; `playwright-cli` ohne `--persistent` startet dagegen jedes Mal leer. Der E2E-Update-Test startet eigene Preview-Server auf Ports ab 4280 (neue Testports nicht aus der „bad ports“-Liste des Fetch-Standards wählen, z. B. 4190 – WebKit lädt dort nichts).
 
@@ -82,14 +82,14 @@ Nach UI-Änderungen das Verhalten mit `playwright-cli` gegen Dev-Server oder `vi
 
 **Auslieferung:** eine `index.html` mit eingebettetem JS und CSS (`vite-plugin-singlefile`) plus `sw.js`, `manifest.webmanifest` und Icons. Alle Verweise relativ (läuft unter GitHub-Pages-Unterpfad und eigener Domain). Manifest und Icons liegen in `public/`; in `index.html` mit Wurzelpfad verweisen (`/manifest.webmanifest`), Vite macht daraus `./…`. Build zweistufig: `vite build` → `vite build -c vite.sw.config.ts`; `scripts/precache.ts` liefert Dateiliste und Cache-Version (Hash über alle vorab gespeicherten Dateien), damit sich `sw.js` genau dann ändert, wenn sich eine davon ändert. Neue Dateien, die offline nötig sind, dort aufnehmen. Deployment auf GitHub Pages nur vom Branch `production` nach grüner CI.
 
-**TypeScript 7** (native `tsc`), Konfiguration über Projektreferenzen: `tsconfig.app.json` (`src/` ohne `src/sw`, DOM), `tsconfig.sw.json` (`src/sw`, WebWorker), `tsconfig.node.json` (Vite-Konfigurationen, `scripts/precache.ts`), `tsconfig.test.json` (`tests/`, `scripts/`). Kein `enum`, kein `namespace`, keine Parameter-Properties im Konstruktor (`erasableSyntaxOnly`). Mit dem ersten Modul in `domain/` kommt `tsconfig.domain.json` ohne DOM-Typen dazu (TAK-04) und wird in `tsconfig.json` referenziert. Verzeichnisse aus TDD 3.1 entstehen erst mit ihrer ersten Datei.
+**TypeScript 7** (native `tsc`), Konfiguration über Projektreferenzen: `tsconfig.app.json` (`src/` ohne `src/sw`, DOM), `tsconfig.sw.json` (`src/sw`, WebWorker), `tsconfig.node.json` (Vite-Konfigurationen, `scripts/precache.ts`), `tsconfig.test.json` (`tests/`, `scripts/`), `tsconfig.domain.json` (`src/domain` ohne DOM- und Node-Typen, TAK-04; `tsconfig.app.json` prüft `domain/` zusätzlich mit). Kein `enum`, kein `namespace`, keine Parameter-Properties im Konstruktor (`erasableSyntaxOnly`). Verzeichnisse aus TDD 3.1 entstehen erst mit ihrer ersten Datei.
 
 **CSS:** kein `light-dark()` verwenden – Vite rechnet es auf `prefers-color-scheme` herunter, dann greift die manuelle Umschaltung (TDD 13.5) nicht. Farben als Variablen in `:root`, Dunkelmodus per Media Query.
 
 **Schichten unter `src/`** – die Importrichtung ist hart:
 
 - `domain/` – reine Funktionen (Validierung, Normalisierung, Diff/Merge, Übungslogik, Statistik, Migrationen). Importiert nichts aus `app/`, `storage/`, `platform/` und nutzt kein `window`, `document` oder `indexedDB` (TAK-04).
-- `storage/` – IndexedDB; kennt `domain/model.ts`, aber keine UI.
+- `storage/` – IndexedDB; kennt `domain/model.ts`, aber keine UI. Geöffnet wird nur über `openDatabase` (`storage/database.ts`, liefert ein Ergebnis pro Fehlerlage statt zu werfen), geschrieben nur über `runTransaction` (`storage/transaction.ts`, erfüllt erst nach `complete`).
 - `platform/` – Browser-APIs (Service Worker, `persist()`, Datei ausliefern, Zwischenablage).
 - `app/` – UI ohne Framework: Hash-Routing, Store mit `subscribe`, Ansichten als Funktionen Zustand → DOM über Helfer `h()`. Keine Merge-, Validierungs- oder Datenbanklogik in der UI.
 - `sw/sw.ts` – handgeschriebener Service Worker (eigener Build, cache-first, kein Workbox).
@@ -101,7 +101,7 @@ Nach UI-Änderungen das Verhalten mit `playwright-cli` gegen Dev-Server oder `vi
 - Ein Set ist **ein Dokument** im Store `sets` (Sektionen und Einträge eingebettet, Reihenfolge = Array-Reihenfolge). Lernstand wird aus `reviewEvents`/`sessions` berechnet; es gibt keinen `progress`-Store.
 - Intern immer Langform (`{ text, acceptedVariants? }`); Kurzformen aus Dateien werden beim Import aufgelöst, beim Export wieder geschrieben.
 - `rev` ist ein berechneter Inhalts-Hash (cyrb53 über kanonische Darstellung, nicht gespeichert) und Grundlage der Konflikterkennung beim Reimport (TDD 9.5 – Tabelle exakt umsetzen, TAK-16). Zuordnung beim Import nur über IDs, nie über Worttexte.
-- Migrationen sind reine Funktionen pro Datensatz in `domain/migrations/` und werden sowohl im `upgradeneeded`-Handler als auch beim Wiederherstellen älterer Backups verwendet. Bis zur ersten Auslieferung (S-29) bleibt `DB_VERSION` = 1; danach braucht jede Schemaänderung Migration + Fixture. Fixtures früherer Stände unter `tests/fixtures/` werden nie gelöscht.
+- Migrationen sind reine Funktionen pro Datensatz in `domain/migrations/` (`migrateRecord`) und werden sowohl im `upgradeneeded`-Handler als auch beim Wiederherstellen älterer Backups verwendet. Struktur (Stores, Indizes) steht pro Version in `storage/schema.ts`; jede Version ab 2 braucht zusätzlich einen Eintrag in der Kette, auch ohne Datenänderung. Bis zur ersten Auslieferung (S-29) bleibt `DB_VERSION` = 1; danach braucht jede Schemaänderung Migration + Fixture. Die Test-Migration v1 → v2 (`testMigration.ts` in `domain/migrations/` und `storage/`) gehört nie in die Kette der App. Fixtures früherer Stände unter `tests/fixtures/` werden nie gelöscht.
 - Eine neue App-Version wird nie während einer Lernsitzung oder Bearbeitung aktiviert (TAK-12): Sitzung und Editor rufen dafür `setUpdateBlocked(true/false)` aus `app/components/updateNotice.ts` auf (Anschluss in S-08).
 
 ## Tests (TDD Kap. 15)
@@ -109,7 +109,7 @@ Nach UI-Änderungen das Verhalten mit `playwright-cli` gegen Dev-Server oder `vi
 - Domain-Module werden **testgetrieben** entwickelt (Liste der Module und Fälle in TDD 15.2); UI über E2E-Smoke-Tests und manuelle Prüfung.
 - Validator und JSON Schema werden über gemeinsame Fixtures mit Ajv abgeglichen (TAK-10).
 - Vitest 5: Berichte landen in `.vitest/`; `-t` vergleicht mit dem vollen Testnamen, verbunden mit „ > “ (`describe > test`).
-- Vitest-Konfiguration steht in `vite.config.ts` (Projekte `unit` und `build`). `passWithNoTests` ist nur gesetzt, solange es keinen Unit-Test gibt – mit dem ersten Test entfernen.
-- `fake-indexeddb` kommt mit S-06 und wird **pro Testdatei** importiert (`import "fake-indexeddb/auto"`), nicht global – sonst sähen `domain/`-Tests ein `indexedDB`.
+- Vitest-Konfiguration steht in `vite.config.ts` (Projekte `unit` und `build`).
+- `fake-indexeddb` wird **pro Testdatei** importiert (`import "fake-indexeddb/auto"`), nicht global – sonst sähen `domain/`-Tests ein `indexedDB`. Frische Datenbanken pro Test mit `beforeEach(() => { indexedDB = new IDBFactory(); })`. `fake-indexeddb` bricht ein Upgrade bei einer Ausnahme im Handler nicht von selbst ab; deshalb ruft `openDatabase` `abort()` ausdrücklich auf.
 - Tests unter `tests/` und `playwright.config.ts` prüft `tsconfig.test.json` (Node-Typen).
 - E2E läuft immer gegen das gebaute Artefakt. Playwright-WebKit ≠ iOS-Safari: Speicherschutz, Installation und Teilen-Menü werden manuell auf echten Geräten geprüft; Ergebnisse beim Arbeitspaket in Kap. 21 festhalten.

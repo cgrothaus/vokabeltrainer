@@ -23,6 +23,8 @@ test("Startseite zeigt die Bibliothek ohne fremde oder fehlgeschlagene Anfragen 
 
   await page.goto("./");
   await expect(page.getByRole("heading", { name: "Vokabeltrainer" })).toBeVisible();
+  // Die Statuszeile zum Speicherschutz erscheint erst, wenn die Datenbank offen ist (FR-22).
+  await expect(page.getByText(/dauerhaft/)).toBeVisible();
   // Icons und Manifest lädt der Browser nachgelagert, z. B. favicon.ico ohne <link rel="icon">.
   await page.waitForLoadState("networkidle");
 
