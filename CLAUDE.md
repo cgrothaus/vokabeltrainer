@@ -67,7 +67,7 @@ npx vitest run --project build                  # nur Build-Prüfung gegen vorha
 npx playwright test --project=mobile-webkit -g "Startseite"
 ```
 
-Einmalig pro Rechner: `npx playwright install chromium webkit` (Browser für E2E) und `npm i -g @playwright/cli` (Browserprüfung durch den Agent; Skill liegt unter `.claude/skills/playwright-cli/`, Aktualisierung mit `playwright-cli install --skills`). Prüfung z. B. mit `npm run preview` und `playwright-cli open --mobile http://localhost:4173/`; Ausgaben landen in `.playwright-cli/`.
+Einmalig pro Rechner: `npx playwright install chromium webkit` (Browser für E2E) und `npm i -g @playwright/cli` (Browserprüfung durch den Agent; Skill liegt unter `.claude/skills/playwright-cli/`, Aktualisierung mit `playwright-cli install --skills`). Prüfung z. B. mit `npm run preview` und `playwright-cli open --mobile http://localhost:4173/`; Ausgaben landen in `.playwright-cli/`. `playwright-cli` bringt eine eigene Playwright-Version mit und nutzt Chromium; für `--browser=webkit` einmalig `playwright-cli install-browser webkit`.
 
 Geplant mit S-05: `npm run build` baut zusätzlich den Service Worker; die Build-Prüfung kontrolliert dann auch `sw.js`, Manifest und Icons.
 
