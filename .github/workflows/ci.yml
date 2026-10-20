@@ -1,0 +1,58 @@
+# CI (TDD 4.5): dieselben Prüfungen wie lokal vor jedem Commit, plus E2E gegen das gebaute Artefakt.
+# S-04 ergänzt einen Job `deploy` mit `needs: check`, der nur bei Push auf `main` läuft (TAK-14).
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  # Auf `main` nicht abbrechen, damit ein laufendes Deployment (ab S-04) nicht unterbrochen wird.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - name: Abhängigkeiten installieren
+        run: npm ci
+
+      - name: Formatprüfung
+        run: npm run format:check
+
+      - name: Typprüfung
+        run: npm run typecheck
+
+      - name: Unit-Tests
+        run: npm test
+
+      - name: Build mit Prüfung der Ausgabe
+        run: npm run build
+
+      # Nicht gecacht: Wiederherstellen dauert so lange wie der Download, Systempakete sind nicht cachebar.
+      - name: Browser für E2E installieren
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: E2E-Tests (Chromium, WebKit)
+        run: npm run test:e2e
+
+      - name: Playwright-Report hochladen
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14

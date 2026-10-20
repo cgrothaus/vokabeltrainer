@@ -1,6 +1,6 @@
 # TDD: Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.2 – Test-Setup: `@types/node`, `playwright-cli` global  
+**Version:** 2.3 – CI-Ablauf präzisiert  
 **Stand:** 20. Oktober 2026  
 **Bezug:** PRD 2.4 (`PRD_Vokabeltrainer_Allgemein_v2.md`), Formatspezifikation Version 1 (`Formatspezifikation_Vokabelset_v1.md`), Review-Notizen (`20261019_TDD_v1_Review_Notizen.md`)  
 **Status:** Entwurf; Grundlage für M0 (Walking Skeleton)  
@@ -158,7 +158,15 @@ Vite-Standardziel `baseline-widely-available`; das entspricht etwa Safari/iOS 16
 
 ### 4.5 CI (GitHub Actions)
 
-Bei jedem Push und Pull Request: `npm ci` → Typprüfung (`tsc --noEmit`) → Unit- und Integrationstests → Build mit Prüfung der Build-Ausgabe → Playwright-Tests gegen `vite preview` (Chromium und WebKit). Bei Fehlern wird der Playwright-Report als Artefakt hochgeladen. Nur wenn alles grün ist, deployt der Job auf `main` (TAK-14).
+Workflow `.github/workflows/ci.yml`, ausgelöst bei jedem Push, Pull Request und von Hand. Ein Job `check` auf `ubuntu-latest` mit Node.js `lts/*` führt dieselben Prüfungen aus wie lokal vor jedem Commit:
+
+`npm ci` → Formatprüfung (`npm run format:check`) → Typprüfung (`npm run typecheck`, also `tsc -b` über die Projektreferenzen) → Unit- und Integrationstests → Build mit Prüfung der Build-Ausgabe → Playwright-Tests gegen `vite preview` (Chromium und WebKit, ein Worker, keine Wiederholungen).
+
+- Die Browser werden in jedem Lauf per `npx playwright install --with-deps chromium webkit` installiert, weder gecacht (laut Playwright so schnell wie das Wiederherstellen, Systempakete sind nicht cachebar) noch über das Playwright-Container-Image. So steht die Playwright-Version nur in `package.json`.
+- npm-Abhängigkeiten cacht `actions/setup-node` (`cache: npm`); ein `packageManager`-Feld ist dafür nicht nötig.
+- Bei Fehlern wird der Playwright-Report (mit Traces) als Artefakt `playwright-report` für 14 Tage hochgeladen; Fehler erscheinen zusätzlich als Annotationen am Lauf.
+- Ein neuerer Lauf derselben Ref bricht den älteren ab, außer auf `main`.
+- Der Deploy-Job (S-04) hängt mit `needs: check` vom Prüfjob ab und läuft nur bei Push auf `main`: Nur wenn alles grün ist, wird deployt (TAK-14).
 
 ### 4.6 Arbeitsweise mit dem Coding-Agent
 
@@ -799,7 +807,7 @@ Fixtures aus 15.3: Import von 3.000 Einträgen (Validierung, Diff, Commit) ohne 
 
 ## 19. Quellen
 
-Geprüft am 18. bzw. 19. Oktober 2026.
+Geprüft am 18. bis 20. Oktober 2026.
 
 1. MDN – IndexedDB API und Using IndexedDB: https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API
 2. W3C – Indexed Database API 3.0 (Transaktionen, Upgrade-Abbruch): https://www.w3.org/TR/IndexedDB/
@@ -818,6 +826,9 @@ Geprüft am 18. bzw. 19. Oktober 2026.
 15. GitHub-Pläne (Pages im Free-Plan nur für öffentliche Repositories): https://docs.github.com/en/get-started/learning-about-github/githubs-plans
 16. Netlify Free Plan Limits 2026: https://netli.fyi/blog/netlify-free-plan-limits-2026
 17. Vercel Free Tier Limits 2026: https://deploywise.dev/blog/vercel-free-tier-limits-2026
+18. Playwright – Continuous Integration: https://playwright.dev/docs/ci
+19. `actions/setup-node` – Caching und Node-Versionen: https://github.com/actions/setup-node
+20. GitHub Actions – Abrechnung, Kontingente im Free-Plan: https://docs.github.com/en/billing/concepts/product-billing/github-actions
 
 ---
 
@@ -829,6 +840,7 @@ Geprüft am 18. bzw. 19. Oktober 2026.
 | 2.0 | 19. Oktober 2026 | Neufassung nach Review (T-01–T-24, F-01–F-09): Build-Pipeline und Werkzeuge, PWA und Updates, Speicherschutz, Kurz-IDs und `rev`-Konflikterkennung, Aktualisieren mit `null`-Löschung, tolerante Validierung, mehrere Bedeutungen, Migrationskette, kein `progress`-Store, Multiple-Choice-Regeln, Sitzungs-Lebenszyklus, Teststrategie mit Werkzeugen, IDs für Entscheidungen und Abnahmekriterien, Umsetzungsplan mit Walking Skeleton; `file://` und Lehrwerksbezüge entfernt; Austauschformat in eigene Formatspezifikation ausgelagert | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.1 | 19. Oktober 2026 | Vitest 5 statt Vitest 4 (4.1, Quelle 12) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.2 | 20. Oktober 2026 | Test-Setup (S-02): `@types/node` und globale Installation von `playwright-cli` in 4.1; `fake-indexeddb` wird mit S-06 eingerichtet | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.3 | 20. Oktober 2026 | CI (S-03): 4.5 präzisiert – Typprüfung über `npm run typecheck` statt `tsc --noEmit`, Formatprüfung, Browserinstallation ohne Cache und Container-Image, Report-Artefakt, Abhängigkeit des Deploy-Jobs; Quellen 18–20 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 
 ---
 
@@ -844,7 +856,8 @@ Ziel: Jeder riskante Teil läuft einmal von vorn bis hinten, in einfachster Form
   Erledigt am 19. Oktober 2026 mit Vite 8.3, TypeScript 7.0, `vite-plugin-singlefile` 2.3, Prettier 3.9; DOM-Helfer `h()`, Hash-Router, Platzhalter-Ansicht. `tsconfig.domain.json` ohne DOM-Typen (TAK-04) folgt mit dem ersten Modul in `domain/`.
 - ✅ **S-02** Test-Setup: Vitest + `fake-indexeddb`, Playwright mit zwei Projekten gegen `vite preview`, Build-Test, `playwright-cli` für den Agent – TAK-01  
   Erledigt am 20. Oktober 2026 mit Vitest 5.0, Playwright 1.64, `playwright-cli` 0.1.22 (global). Vitest-Projekte `unit` (`src/**/*.test.ts`) und `build` (Build-Prüfung, läuft in `npm run build`); E2E-Smoke-Test prüft Start, Routing, fremde Anfragen (TAK-02) und Konsolenfehler. `fake-indexeddb` folgt mit dem ersten Storage-Test in S-06. Offen für S-05: Chrome fordert `favicon.ico` an (404), bis Icons vorhanden sind.
-- 🔲 **S-03** CI in GitHub Actions (4.5) – TAK-14
+- ✅ **S-03** CI in GitHub Actions (4.5) – TAK-14  
+  Erledigt am 20. Oktober 2026 mit `actions/checkout@v7`, `actions/setup-node@v7` (Node.js `lts/*`, im ersten Lauf 24.22), `actions/upload-artifact@v7`. Ein Lauf dauert etwa 1,5 Minuten, davon rund 1 Minute für die Browserinstallation; ein Container-Image lohnt sich daher nicht. Fehlerfall einmal absichtlich ausgelöst: Annotationen am Test und Artefakt `playwright-report` mit Traces vorhanden. TAK-14 ist vollständig erfüllt, sobald S-04 den Deploy-Job mit `needs: check` ergänzt. Die Läufe nutzten noch Ubuntu 24.04; `ubuntu-latest` wechselt ab 19. Oktober 2026 schrittweise auf Ubuntu 26, das Playwright 1.64 unterstützt.
 - 🔲 **S-04** Provisorisches Deployment auf GitHub Pages (Repository öffentlich schalten) – NFR-01, D-19
 - 🔲 **S-05** Manifest, Icons, Service Worker, Offline-Start, Update-Hinweis (5) – NFR-03, NFR-05, AK-21, TAK-11, TAK-12
 - 🔲 **S-06** IndexedDB-Grundgerüst (inkl. `fake-indexeddb` für die Integrationstests): Öffnen, Upgrade, Migrationskette mit Test-Migration v1 → v2, `versionchange`/`VersionError`, Notfall-Backup, `persist()` mit Anzeige des Ergebnisses (6, 7) – FR-22, FR-33, TAK-05, TAK-08

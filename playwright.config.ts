@@ -6,6 +6,8 @@ const port = 4180;
 export default defineConfig({
   testDir: "tests/e2e",
   forbidOnly: !!process.env.CI,
+  // Empfehlung von Playwright für CI; keine Wiederholungen, damit instabile Tests auffallen.
+  workers: process.env.CI ? 1 : undefined,
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : [["list"]],
   use: { baseURL: `http://localhost:${port}/`, trace: "retain-on-failure" },
   projects: [

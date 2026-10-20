@@ -69,6 +69,10 @@ Geplant mit S-05: `npm run build` baut zusätzlich den Service Worker; die Build
 
 Nach UI-Änderungen das Verhalten mit `playwright-cli` gegen Dev-Server oder `vite preview` prüfen und die E2E-Smoke-Tests laufen lassen.
 
+## CI (S-03, TDD 4.5)
+
+`.github/workflows/ci.yml` läuft bei jedem Push (jeder Branch) und Pull Request: `npm ci` → `format:check` → `typecheck` → `test` → `build` → Browserinstallation → `test:e2e`. Lokal nachstellen mit denselben Befehlen und `CI=1` vor `npm run test:e2e` (ein Worker, `github`-Reporter). Läufe verfolgen mit `gh run watch`; bei Fehlern liegt der Playwright-Report als Artefakt `playwright-report` am Lauf (`gh run download <id> -n playwright-report`). Die Playwright-Version steht nur in `package.json` (kein Container-Image, kein Browser-Cache).
+
 ## Architektur (Soll, TDD Kap. 3–7)
 
 **Auslieferung:** eine `index.html` mit eingebettetem JS und CSS (`vite-plugin-singlefile`) plus `sw.js`, `manifest.webmanifest` und Icons. Alle Verweise relativ (läuft unter GitHub-Pages-Unterpfad und eigener Domain). Build zweistufig: `vite build` → Hash von `dist/index.html` → `vite build -c vite.sw.config.ts` mit dem Hash als Cache-Version, damit sich `sw.js` genau dann ändert, wenn sich die App ändert. Deployment auf GitHub Pages nur nach grüner CI.
