@@ -27,6 +27,23 @@ Vor einer Umsetzung das betreffende Arbeitspaket (S-xx) in TDD Kap. 21 und die d
 - Schlank bleiben: **keine Laufzeitabhängigkeiten**, kein Framework, kein CDN (D-04). Neue Entwicklungsabhängigkeiten nur mit klarem Nutzen und Eintrag in TDD 4.1.
 - **Diese Datei aktuell halten:** Neue Erkenntnisse, die künftigen Sitzungen helfen (geänderte Befehle, Stolperstellen, neue Konventionen, Abweichungen vom geplanten Stand), sofort hier ergänzen. Nach Abschluss eines Arbeitspakets prüfen, ob die Datei noch stimmt, und Veraltetes korrigieren oder entfernen. Kurz bleiben: nur, was sich nicht schnell aus Code oder Dokumenten ergibt.
 
+## Git-Ablauf
+
+Diese Regeln gelten als Auftrag zum Committen und Mergen; gepusht wird nur auf ausdrückliche Anweisung.
+
+1. **Branch anlegen:** Für jedes nicht-triviale Arbeitspaket (jedes S-xx, jede Änderung mit Code oder Tests, jede neue Dokumentversion) vor der ersten Änderung vom aktuellen `main` abzweigen: `git switch -c s-07-import-validierung` (mit S-Nummer `s-<nr>-<stichwort>`, sonst nur `<stichwort>`; klein, mit Bindestrichen). Direkt auf `main` nur Triviales, das in einen einzigen Commit passt und weder Code, Tests noch PRD/TDD berührt, z. B. Tippfehler, README, CLAUDE.md, `.gitignore`.
+2. **Klein committen:** Auf dem Branch nach jedem in sich stimmigen Schritt committen, z. B. Test und Implementierung einer Funktion, ein Konfigurationsschritt, eine Dokumentanpassung. Message: eine Zeile, Deutsch, Infinitivstil wie „Kurzform beim Import auflösen“, ohne S-Präfix. `npm run typecheck` und `npm test` sind vor jedem Commit grün (testgetrieben: Test und Implementierung zusammen committen).
+3. **Abschließen mit Squash-Merge:** Wenn das Paket fertig ist – Akzeptanzkriterien erfüllt, `typecheck`, `test`, `build` und bei UI-Änderungen `test:e2e` grün, Status in TDD Kap. 21 noch auf dem Branch auf ✅, CLAUDE.md geprüft:
+
+   ```bash
+   git switch main
+   git merge --squash s-07-import-validierung
+   git commit                               # Message siehe unten
+   git branch -D s-07-import-validierung    # -D nötig: Squash markiert den Branch nicht als gemergt
+   ```
+
+   Message wie bei `8bd94ea`: Betreff `S-07: <Zusammenfassung> (TDD 2.3)` (Dokumentversion nur, wenn sie erhöht wurde), darunter eine knappe Stichpunktliste der wesentlichen Änderungen.
+
 ## Befehle
 
 Eingerichtet (S-01, S-02):
