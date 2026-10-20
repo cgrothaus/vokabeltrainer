@@ -25,7 +25,12 @@ Vor einer Umsetzung das betreffende Arbeitspaket (S-xx) in TDD Kap. 21 und die d
 - Inhaltliche Änderungen an PRD/TDD erhöhen die Version im Dokumentkopf und bekommen eine Zeile in der Änderungshistorie (inkl. Spalte „Entstehung“ mit Modell). Commit-Messages nennen das Dokument und die Version, z. B. „PRD 2.4: …“.
 - `docs/code-iteration1/` (per `.gitignore` ausgeschlossen) enthält den alten Prototyp mit **Lehrwerksvokabeln**. Diese Inhalte dürfen nicht in das Repository, in Fixtures oder in das Beispielset übernommen werden; das Repository ist öffentlich. Das Ablaufverhalten des Prototyps (z. B. Karteikarten-Warteschlange) darf als Vorlage dienen.
 - Schlank bleiben: **keine Laufzeitabhängigkeiten**, kein Framework, kein CDN (D-04). Neue Entwicklungsabhängigkeiten nur mit klarem Nutzen und Eintrag in TDD 4.1.
-- **Diese Datei aktuell halten:** Neue Erkenntnisse, die künftigen Sitzungen helfen (geänderte Befehle, Stolperstellen, neue Konventionen, Abweichungen vom geplanten Stand), sofort hier ergänzen. Nach Abschluss eines Arbeitspakets prüfen, ob die Datei noch stimmt, und Veraltetes korrigieren oder entfernen. Kurz bleiben: nur, was sich nicht schnell aus Code oder Dokumenten ergibt.
+- **Diese Datei aktuell halten:** Neue Erkenntnisse, die künftigen Sitzungen helfen (geänderte Befehle, Stolperstellen, neue Konventionen, Abweichungen vom geplanten Stand), sofort hier ergänzen. Kurz bleiben: nur, was sich nicht schnell aus Code oder Dokumenten ergibt.
+- **Rückschau nach jedem Arbeitspaket und jeder längeren Sitzung**, vor dem Abschlussbericht:
+  1. Was hat Zeit gekostet oder überrascht (Fehlversuche, Werkzeugmacken, falsche Annahmen über Code oder Dokumente)? Was hat der Nutzer korrigiert oder ausdrücklich bestätigt? Würde das einer künftigen Sitzung helfen?
+  2. Jede solche Erkenntnis an den passenden Ort schreiben: Befehle, Stolperstellen, Arbeitsweise → diese Datei; fachliche oder technische Klarstellungen → PRD, TDD oder Formatspezifikation (mit Version und Änderungshistorie); neue Entscheidungen → D-Nummer in TDD Kap. 17; Ergebnisse manueller Prüfungen → beim Arbeitspaket in Kap. 21.
+  3. Diese Datei gegenlesen: Veraltetes korrigieren oder entfernen.
+  4. Im Abschlussbericht in einem Satz nennen, was festgehalten wurde – oder dass es nichts Neues gab.
 
 ## Git-Ablauf
 
@@ -33,7 +38,7 @@ Diese Regeln gelten als Auftrag zum Committen und Mergen; gepusht wird nur auf a
 
 1. **Branch anlegen:** Für jedes nicht-triviale Arbeitspaket (jedes S-xx, jede Änderung mit Code oder Tests, jede neue Dokumentversion) vor der ersten Änderung vom aktuellen `main` abzweigen: `git switch -c s-07-import-validierung` (mit S-Nummer `s-<nr>-<stichwort>`, sonst nur `<stichwort>`; klein, mit Bindestrichen). Direkt auf `main` nur Triviales, das in einen einzigen Commit passt und weder Code, Tests noch PRD/TDD berührt, z. B. Tippfehler, README, CLAUDE.md, `.gitignore`.
 2. **Klein committen:** Auf dem Branch nach jedem in sich stimmigen Schritt committen, z. B. Test und Implementierung einer Funktion, ein Konfigurationsschritt, eine Dokumentanpassung. Message: eine Zeile, Deutsch, Infinitivstil wie „Kurzform beim Import auflösen“, ohne S-Präfix. `npm run typecheck` und `npm test` sind vor jedem Commit grün (testgetrieben: Test und Implementierung zusammen committen). Dateien gezielt stagen (`git add <pfad>`), kein `git commit -a` und kein `git add -A`, solange noch andere Änderungen offen sind; vor dem Commit `git diff --cached --stat` prüfen. Sonst landen unfertige Änderungen im falschen Commit, und nach einem Push hilft kein Amend mehr.
-3. **Abschließen mit Squash-Merge:** Wenn das Paket fertig ist – Akzeptanzkriterien erfüllt, `typecheck`, `test`, `build` und bei UI-Änderungen `test:e2e` grün, Status in TDD Kap. 21 noch auf dem Branch auf ✅, CLAUDE.md geprüft:
+3. **Abschließen mit Squash-Merge:** Wenn das Paket fertig ist – Akzeptanzkriterien erfüllt, `typecheck`, `test`, `build` und bei UI-Änderungen `test:e2e` grün, Status in TDD Kap. 21 noch auf dem Branch auf ✅, Rückschau (siehe Arbeitsregeln) auf dem Branch erledigt:
 
    ```bash
    git switch main
