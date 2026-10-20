@@ -1,6 +1,6 @@
 # TDD: Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.7 – Minimaler Import  
+**Version:** 2.8 – Minimale Lernsitzung  
 **Stand:** 20. Oktober 2026  
 **Bezug:** PRD 2.4 (`PRD_Vokabeltrainer_Allgemein_v2.md`), Formatspezifikation Version 1 (`Formatspezifikation_Vokabelset_v1.md`), Review-Notizen (`20261019_TDD_v1_Review_Notizen.md`)  
 **Status:** Entwurf; Grundlage für M0 (Walking Skeleton)  
@@ -102,6 +102,7 @@ Hash-basiertes Routing (`#/`, `#/set/<id>`, `#/import`, `#/practice`, `#/backup`
 
 - Ein kleiner Helfer `h(tag, props, ...children)` erzeugt DOM-Elemente. Kinder vom Typ String werden **immer als Textknoten** eingefügt. `innerHTML` wird im gesamten Code nicht für Daten verwendet (TAK-03).
 - Jede Ansicht ist eine Funktion, die aus dem Zustand ein DOM-Teilbaum erzeugt. Bei Zustandsänderungen wird die aktive Ansicht neu gerendert; Fokus und Scrollposition werden dabei gezielt erhalten.
+- Der Router übergibt jeder Ansicht ein `AbortSignal`, das beim Verlassen der Ansicht (auch über die Zurück-Taste) und beim Ende des Routings abgebrochen wird. Die Lernsitzung beendet sich darüber (12.5).
 - Der Zustand liegt in `store.ts` (ein Objekt plus `subscribe`). Persistente Daten werden aus IndexedDB geladen; der Store ist nur eine Darstellung davon.
 
 ### 3.4 Mehrere Tabs (T-21)
@@ -290,12 +291,12 @@ interface Answer {
 
 ### 6.4 Prüfwert `rev` (D-09, F-06)
 
-- `rev` = die ersten 8 Zeichen der Base32-Kodierung (Alphabet aus 6.3) eines 53-Bit-Hashes (cyrb53) über die **kanonische Darstellung** des Objekts.
-- Kanonische Darstellung: normalisierte Langform, Schlüssel alphabetisch sortiert, fehlende optionale Felder und leere Arrays weggelassen, `id` und `rev` selbst ausgenommen, ebenso die Unterelemente (Sektionen eines Sets, Einträge einer Sektion).
+- `rev` = 8 Zeichen aus dem Alphabet aus 6.3, gebildet aus einem 53-Bit-Hash (cyrb53, Startwert 0, über die UTF-16-Codeeinheiten) der **kanonischen Darstellung** des Objekts: die niederwertigsten 8 Stellen des Hashwerts zur Basis 31, die kleinste Stelle zuerst (also der Wert modulo 31⁸). Die höchstwertigen Stellen eines 53-Bit-Werts wären ungleich verteilt.
+- Kanonische Darstellung: JSON der normalisierten Langform ohne Leerraum, Schlüssel auf jeder Ebene nach UTF-16-Codeeinheiten sortiert, fehlende optionale Felder, leere Arrays und leere Objekte (auch solche, die erst durch das Weglassen leer werden) weggelassen, `id` und `rev` selbst ausgenommen, ebenso die Unterelemente (Sektionen eines Sets, Einträge einer Sektion).
   - **Set:** alle Set-Felder aus 6.2 außer `id`, `editCount`, `createdAt`, `updatedAt`, `sections`.
   - **Sektion:** `title`.
   - **Eintrag:** alle Felder außer `id`.
-- Der Hash ist kein Sicherheitsmerkmal. Er erkennt lediglich zufällige Änderungen; Kollisionen sind bei 40 Bit pro Objektversion praktisch ausgeschlossen.
+- Der Hash ist kein Sicherheitsmerkmal. Er erkennt lediglich zufällige Änderungen; Kollisionen sind bei rund 39,6 Bit (31⁸ Werte) pro Objektversion praktisch ausgeschlossen.
 - `rev` wird beim Export für jedes Objekt mitgeschrieben und dient beim Reimport der Konflikterkennung (Kapitel 9.5).
 
 ### 6.5 Schreibvorgänge und Fehler
@@ -605,8 +606,8 @@ interface Session {
 ```
 
 - Wird beim Start mit `status: "active"` geschrieben.
-- `completed`: alle Karten beantwortet. `ended`: vorzeitig beendet und nicht fortgesetzt.
-- Sitzungen, die beim nächsten App-Start noch `active` sind, werden auf `interrupted` gesetzt.
+- `completed`: alle Karten beantwortet. `ended`: vorzeitig beendet und nicht fortgesetzt, auch durch Verlassen der Ansicht.
+- Sitzungen, die beim nächsten App-Start noch `active` sind, werden auf `interrupted` gesetzt, bevor eine neue Sitzung beginnen kann. `endedAt` bleibt dabei leer, weil der Zeitpunkt des Abbruchs unbekannt ist.
 - Kennzahlen (Zahl der Antworten, Erstversuchsquote) werden aus den Events berechnet, nicht in der Sitzung gespeichert.
 
 ### 12.6 Lernstand und Überblick (FR-11, D-07, F-08)
@@ -736,6 +737,7 @@ Projekte: `mobile-chromium` (Pixel-Emulation) und `mobile-webkit` (iPhone-Emulat
 | E2E-11 Update: neue Version wird gefunden, bleibt auch nach Neuladen wartend, wird erst nach „Jetzt aktualisieren“ aktiv | M0 | NFR-05, TAK-12 (ohne Sitzung) |
 | E2E-12 Neuere Datenbankversion aus einem anderen Tab: App gibt die Verbindung frei und bittet ums Neuladen; nach dem Neuladen bleibt die neuere Datenbank unverändert | M0 | 3.4, 7.2, TAK-08 (Teil) |
 | E2E-13 Ungültiger Import (kein gültiges JSON, fehlende Pflichtfelder) und bekanntes Set werden mit Meldung abgelehnt; der Bestand bleibt unverändert | M0 | AK-07, 8.2, 9.8 |
+| E2E-14 Update während einer Lernsitzung: neue Version wird gefunden, der Hinweis erscheint erst nach dem Ende der Sitzung | M0 | TAK-12 |
 
 Playwright-WebKit entspricht nicht Safari auf iOS. Speicherlöschung, Installation, `persist()` und Teilen-Menü werden manuell geprüft (15.5).
 
@@ -773,7 +775,7 @@ Fixtures aus 15.3: Import von 3.000 Einträgen (Validierung, Diff, Commit) ohne 
 | TAK-09 | Backup → Wiederherstellen ergibt denselben Bestand (tiefer Vergleich aller Stores außer `meta`). | Integrationstest, E2E-02 |
 | TAK-10 | Validator und JSON Schema urteilen bei allen Fixtures gleich. | Schemaabgleich |
 | TAK-11 | Die App startet nach dem ersten Laden offline vollständig. | E2E-03 |
-| TAK-12 | Eine neue App-Version wird während einer Sitzung oder Bearbeitung nicht aktiviert. | E2E / manuell |
+| TAK-12 | Eine neue App-Version wird während einer Sitzung oder Bearbeitung nicht aktiviert. | E2E-11, E2E-14 (Sitzung), manuell |
 | TAK-13 | Alle in 15.2 genannten Module haben Unit-Tests für die dort genannten Fälle. | Review |
 | TAK-14 | Deployment erfolgt nur nach grüner CI. | Workflow-Konfiguration |
 | TAK-15 | Performancegrenzen aus 15.6 werden auf einem echten Mittelklasse-Smartphone eingehalten. | Manuelle Messung |
@@ -873,6 +875,7 @@ Geprüft am 18. bis 20. Oktober 2026.
 | 2.5 | 20. Oktober 2026 | Installation, Offline-Betrieb und Updates (S-05): Icons aus SVG-Vorlage per Playwright-Skript und Cache-Version über alle vorab gespeicherten Dateien (D-22, 4.1, 4.2); Manifest- und iOS-Angaben konkretisiert (5.1); Service Worker mit `cache: "reload"`, ohne `clients.claim()`, ohne eigenen Eintrag für `index.html` (5.2); Neuladen nur im bestätigenden Tab, `setUpdateBlocked()` für TAK-12 (5.3); Build-Prüfung erweitert (4.2); E2E-11 (15.4); Quelle 24 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.6 | 20. Oktober 2026 | Datenbank-Grundgerüst (S-06): Blockierung durch ältere Tabs und Ende des Routings nach `versionchange` (3.4); Strukturschritte pro Version, lückenlose Kette, ein Cursor-Durchlauf pro Store, unveränderliche Schlüssel (7.1); ausdrücklicher Abbruch des Upgrades und kein Notfall-Backup bei gescheiterter Ersteinrichtung (7.2); E2E-12 (15.4) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.7 | 20. Oktober 2026 | Minimaler Import (S-07): `importSet.ts` (3.1); Zufallsquelle für IDs wird übergeben, Ablehnungsverfahren (6.3); Fundstelle bei ungültigem JSON über eigenen Syntaxprüfer, gezählt im eingefügten Text (8.2, D-23); E2E-13 (15.4); O-08 (`accept` im iOS-Dateiwähler); Quellen 25–27 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.8 | 20. Oktober 2026 | Minimale Lernsitzung (S-08): Router meldet das Verlassen einer Ansicht (3.3); Kodierung von `rev` präzisiert – Basis 31 statt „Base32“, niederwertigste Stellen, leere Objekte, rund 39,6 Bit (6.4); Ende einer Sitzung beim Verlassen, `interrupted` ohne `endedAt` (12.5); E2E-14 (15.4, 16) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 
 ---
 
@@ -900,9 +903,10 @@ Ziel: Jeder riskante Teil läuft einmal von vorn bis hinten, in einfachster Form
   Provisorisch für M0: Die Bibliothek zeigt den Speicherschutz und eine Schaltfläche „Dauerhaften Speicher anfordern“ für die Messung in S-11; der automatische Aufruf nach dem ersten gespeicherten Set (6.6) kommt mit S-07, die Schaltfläche entfällt spätestens mit S-26. Der Dev-Schalter `?testmigration=ok|fail` (nur `npm run dev`, nicht im Build) führt die Test-Migration auf einer eigenen Datenbank `vokabeltrainer-testmigration` aus. Mit `playwright-cli` (mobiles Chromium) geprüft: `fail` zeigt „Daten nicht übernommen“, das heruntergeladene Notfall-Backup enthält den unveränderten Datensatz mit `dataVersion` 1; `ok` hebt die Testdatenbank auf Version 2 mit umbenanntem Feld und neuem Index; Chromium lehnt `persist()` für die frisch besuchte Seite ab, die Anfrage wird in `meta` vermerkt; Konsole ohne Fehler. Offen für S-10: E2E-04 braucht gegen das gebaute Artefakt einen Weg zu einer älteren Datenbank, solange `DB_VERSION` 1 ist.
 - ✅ **S-07** Minimaler Import: Textfeld und Datei, `extract.ts`, Grundvalidierung, Speichern als neues Set ohne Vorschau – FR-13 (Teil)  
   Erledigt am 20. Oktober 2026. Domain testgetrieben: `extract.ts` vollständig nach 8.2 mit eigenem Syntaxprüfer für die Fundstelle (D-23); `validate.ts` prüft Format und Formatversion (fehlend → Warnung, neuer → Ablehnung, Backup erkannt), Pflichtfelder, Antworten in Kurz- und Langform samt Varianten, `meaning` (Einzahl, Warnung), Sprachcodes, IDs (Muster, doppelte), Teil-Export (abgelehnt) und Mengengrenzen; `normalize.ts` baut die Langform, trimmt, NFC, kanonisiert Sprachcodes; `ids.ts` mit übergebener Zufallsquelle; `importSet.ts` verbindet alles. `storage/sets.ts` speichert mit `add()`, ein Set mit bekannter ID wird abgelehnt statt überschrieben (Nutzerentscheidung). Nach dem ersten gespeicherten Set fragt die App einmal nach dauerhaftem Speicher (6.6). Die Bibliothek zeigt die Sets als einfache Liste mit Zahl der Einträge und einen Link zum Import. Bewusst noch nicht enthalten: optionale Felder (Nutzerentscheidung, siehe S-12), Vorschau und Duplikate (S-13), Zwischenablage (S-13). Gegenproben: `put()` statt `add()`, Fundstelle ohne Versatz der Extraktion, NFC und Kollisionsprüfung entfernt – jeweils scheitert der passende Test. Import per Text (mit Begleittext und Codeblock) und Datei sowie E2E-13 laufen in mobile-chromium und mobile-webkit; dort stammt die Fundstelle aus dem eigenen Prüfer. Mit `playwright-cli` (mobiles Chromium, 320 px) geprüft: kein horizontales Scrollen auch bei langem Titel ohne Umbruch, hell und dunkel lesbar, Fehlerbox mit Rahmen statt nur Farbe, Erfolgsmeldung samt Warnung im Live-Bereich, `persistRequested` nach dem Speichern in `meta`, Konsole leer.
-- 🔲 **S-08** Minimale Lernsitzung: ganzes Set, nur Karteikarten, Review-Events und Sitzung werden gespeichert – FR-11 (Teil)
+- ✅ **S-08** Minimale Lernsitzung: ganzes Set, nur Karteikarten, Review-Events und Sitzung werden gespeichert – FR-11 (Teil)  
+  Erledigt am 20. Oktober 2026. Domain testgetrieben: `hash.ts` (cyrb53 gegen die Referenzwerte, kanonische Darstellung, `entryRev` mit eingefrorenem Referenzwert; Kurz- und Langform ergeben denselben Wert) und `practice.ts` (Mischen mit übergebenem Zufall, Wiedereinfügen an Position 4 bzw. am Ende, Erstversuch pro Eintrag, Anzeige mehrerer Bedeutungen; `mixed` schon enthalten). TDD 6.4 sprach von Base32, das Alphabet aus 6.3 hat aber 31 Zeichen; `rev` nutzt jetzt die Basis 31 (6.4 präzisiert). `storage/sessions.ts` mit Integrationstests: Sitzung anlegen und abschließen, jede Antwort in eigener Transaktion, aktive Sitzungen beim Start auf `interrupted`. Die Bibliothek bietet pro Set „Lernen“; die Sitzung umfasst alle Einträge in Richtung `termToMeaning`, Aufdecken per Tippen auf die Karte, Bewerten mit „Nochmal“/„Gewusst“; die nächste Karte erscheint erst nach dem Speichern, ein Speicherfehler zeigt einen Hinweis, die Sitzung läuft weiter. Abschluss mit Erstversuchsquote. „Beenden“, Zurück-Taste und jedes Verlassen beenden die Sitzung als `ended` (Router-Signal, 3.3); während der Sitzung ist der Update-Hinweis zurückgehalten (TAK-12). E2E-01 (Import → Lernen → Neuladen, Events mit `entryRev`), Beenden, Neuladen (`interrupted`) und E2E-14 laufen in mobile-chromium und mobile-webkit. Gegenproben: Wiedereinfügen am Ende, vertauschte Stellenreihenfolge in `rev`, fehlendes `setUpdateBlocked(true)` und fehlendes Unterbrechen beim Start lassen jeweils den passenden Test scheitern. Mit `playwright-cli` (mobiles Chromium, 320 px) geprüft: kein horizontales Scrollen auch bei langem Titel, hell und dunkel lesbar, `lang` an Frage und Antwort, Fokus nach dem Start auf der Karte, nach dem Aufdecken auf der Antwort (nicht auf einer Schaltfläche, damit ein gehaltenes Enter nicht gleich bewertet), danach auf der nächsten Karte und am Ende auf „Geschafft“; gescheiterter Start und gescheiterte Antwort zeigen ihren Hinweis; Konsole sonst leer. Tastatur (Pfeile) und Wischen folgen mit S-18, Zwischenstand und „Nur Fehler üben“ mit S-19.
 - 🔲 **S-09** Backup-Export (Teilen-Menü bzw. Download, Spike D-17) und Wiederherstellung (ersetzt alles) inkl. `lastBackupAt` – FR-19 (Teil), TAK-09
-- 🔲 **S-10** E2E-01 bis E2E-04 in der CI (E2E-03 besteht seit S-05)
+- 🔲 **S-10** E2E-01 bis E2E-04 in der CI (E2E-03 besteht seit S-05, E2E-01 seit S-08)
 - 🔶 **S-11** Manuelle Prüfung auf echtem iPhone und Android (15.5); Ergebnisse zu O-02, O-03, O-04, O-08 hier festhalten  
   Erste Prüfung am 20. Oktober 2026 mit dem Stand von S-06 unter https://cgrothaus.github.io/vokabeltrainer/:
   - Android (Chrome): Hinzufügen zum Startbildschirm funktioniert; `persist()` wird schon im Browser gewährt.

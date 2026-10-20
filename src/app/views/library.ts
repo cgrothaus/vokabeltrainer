@@ -7,7 +7,12 @@ export interface LibraryContext {
   /** Provisorisch für M0 (Messung in S-11), entfällt spätestens mit S-26. */
   requestPersistence: () => Promise<PersistenceState>;
   loadSets: () => Promise<StoredSet[]>;
+  /** Legt die Sitzung an und wechselt zu ihr; lehnt ab, wenn das Speichern scheitert. */
+  startPractice: (set: StoredSet) => Promise<void>;
 }
+
+const NOT_STARTED =
+  "Die Lernsitzung konnte nicht gestartet werden. Lade die Seite neu und versuche es noch einmal.";
 
 const persistenceText: Record<PersistenceState, string> = {
   granted: "Deine Daten sind auf diesem Gerät dauerhaft geschützt.",
@@ -32,7 +37,7 @@ export function libraryView(context: LibraryContext): Node {
     "Dauerhaften Speicher anfordern",
   );
   const sets = h("section", { "aria-label": "Vokabelsets" });
-  void showSets(sets, context.loadSets);
+  void showSets(sets, context);
   return h(
     "main",
     null,
@@ -45,10 +50,10 @@ export function libraryView(context: LibraryContext): Node {
 }
 
 /** Minimal für M0; Gruppierung nach Sprache, Set-Ansicht und Löschen folgen mit S-14. */
-async function showSets(container: HTMLElement, load: () => Promise<StoredSet[]>): Promise<void> {
+async function showSets(container: HTMLElement, context: LibraryContext): Promise<void> {
   let sets: StoredSet[];
   try {
-    sets = await load();
+    sets = await context.loadSets();
   } catch (error) {
     console.error("Sets nicht lesbar", error);
     container.replaceChildren(h("p", null, "Die Vokabelsets konnten nicht geladen werden."));
@@ -59,20 +64,47 @@ async function showSets(container: HTMLElement, load: () => Promise<StoredSet[]>
     return;
   }
   const sorted = [...sets].sort((a, b) => a.title.localeCompare(b.title, "de"));
+  const problem = h("div", { role: "alert" });
   container.replaceChildren(
     h(
       "ul",
       { class: "sets" },
       sorted.map((set) => {
         const count = set.sections.reduce((sum, section) => sum + section.entries.length, 0);
+        const learn = h(
+          "button",
+          {
+            type: "button",
+            // Der sichtbare Text steckt im Namen, damit auch Sprachsteuerung „Lernen“ findet.
+            "aria-label": `${set.title} lernen`,
+            onclick: async () => {
+              learn.disabled = true;
+              problem.textContent = "";
+              try {
+                await context.startPractice(set);
+              } catch (error) {
+                console.error("Sitzung nicht gestartet", error);
+                problem.textContent = NOT_STARTED;
+                learn.disabled = false;
+              }
+            },
+          },
+          "Lernen",
+        );
         return h(
           "li",
           null,
-          h("span", { class: "title" }, set.title),
-          " ",
-          h("span", { class: "count" }, count === 1 ? "1 Eintrag" : `${count} Einträge`),
+          h(
+            "div",
+            null,
+            h("span", { class: "title" }, set.title),
+            " ",
+            h("span", { class: "count" }, count === 1 ? "1 Eintrag" : `${count} Einträge`),
+          ),
+          count > 0 && learn,
         );
       }),
     ),
+    problem,
   );
 }

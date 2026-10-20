@@ -47,3 +47,38 @@ export interface StoredSet {
   reviewStatus?: ReviewStatus;
   sections: StoredSection[];
 }
+
+export type Direction = "termToMeaning" | "meaningToTerm";
+
+/** Eine Antwort (TDD 12.4); wird sofort und einzeln gespeichert. */
+export interface ReviewEvent {
+  /** 12 Zeichen. */
+  id: string;
+  sessionId: string;
+  setId: string;
+  entryId: string;
+  /** `rev` des Eintrags zum Zeitpunkt der Antwort (R-04). */
+  entryRev: string;
+  /** ISO 8601, UTC. */
+  occurredAt: string;
+  direction: Direction;
+  mode: "flashcard" | "multipleChoice";
+  /** Bei Selbstbewertung: `correct` = „gewusst“, `incorrect` = „nochmal“. */
+  result: "correct" | "incorrect";
+  /** Nur die erste Antwort zu einem Eintrag in einer Sitzung. */
+  firstAttempt: boolean;
+}
+
+export type SessionStatus = "active" | "completed" | "ended" | "interrupted";
+
+/** Eine Lernsitzung (TDD 12.5). Kennzahlen werden aus den Events berechnet, nicht hier gespeichert. */
+export interface Session {
+  /** 12 Zeichen. */
+  id: string;
+  setId: string;
+  sectionIds: string[];
+  startedAt: string;
+  endedAt?: string;
+  status: SessionStatus;
+  config: { direction: Direction | "mixed"; count: number; mcShare: number };
+}

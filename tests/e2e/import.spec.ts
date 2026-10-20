@@ -1,41 +1,6 @@
-// Minimaler Import (S-07): Vorstufe von E2E-01 (das Lernen ergänzt S-10) und E2E-13 (AK-07).
-// Die Vokabeln sind frei gewählter Grundwortschatz.
-import { expect, type Page, test } from "@playwright/test";
-
-function setFile(title: string, id?: string): string {
-  return JSON.stringify(
-    {
-      format: "vokabeltrainer-set",
-      formatVersion: 1,
-      set: { ...(id && { id }), title, termLanguage: "en", meaningLanguage: "de" },
-      sections: [
-        {
-          title: "Wetter",
-          entries: [
-            { term: "rain", meanings: ["Regen"] },
-            { term: "sun", meanings: ["Sonne"] },
-            { term: { text: "autumn", acceptedVariants: ["fall"] }, meanings: ["Herbst"] },
-          ],
-        },
-      ],
-    },
-    null,
-    2,
-  );
-}
-
-const library = (page: Page) =>
-  page.getByRole("region", { name: "Vokabelsets" }).getByRole("listitem");
-
-/** Sammelt Fehler aus der Seite; der Import soll auch im Fehlerfall keine erzeugen. */
-function collectErrors(page: Page): string[] {
-  const errors: string[] = [];
-  page.on("pageerror", (error) => errors.push(error.message));
-  page.on("console", (message) => {
-    if (message.type() === "error") errors.push(message.text());
-  });
-  return errors;
-}
+// Minimaler Import (S-07) und E2E-13 (AK-07). Import → Lernen → Neuladen prüft E2E-01 in practice.spec.ts.
+import { expect, test } from "@playwright/test";
+import { collectErrors, librarySets as library, setFile } from "./support";
 
 test("Import (Text) mit Begleittext → Bibliothek → Neuladen → Set ist noch da", async ({
   page,
