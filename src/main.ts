@@ -1,13 +1,16 @@
 import "./styles/main.css";
 import { mountUpdateNotice, showUpdateNotice } from "./app/components/updateNotice";
+import { importText } from "./app/importText";
 import { startRouter } from "./app/router";
+import { importView } from "./app/views/import";
 import { libraryView } from "./app/views/library";
 import { notFoundView } from "./app/views/notFound";
 import { storageErrorView } from "./app/views/storageError";
 import { persistenceState, requestPersistence } from "./platform/persistence";
 import { registerServiceWorker } from "./platform/serviceWorker";
 import { type OpenOptions, type OpenResult, openDatabase } from "./storage/database";
-import { setMeta } from "./storage/meta";
+import { getMeta, setMeta } from "./storage/meta";
+import { listSets } from "./storage/sets";
 
 declare const __APP_VERSION__: string;
 
@@ -48,18 +51,30 @@ async function start(): Promise<void> {
   if (!result.ok) return show(storageErrorView(result));
   const { db } = result;
   let persistence = await persistenceState();
+  const askForPersistence = async () => {
+    persistence = await requestPersistence();
+    await setMeta(db, "persistRequested", true).catch((error: unknown) => {
+      console.warn("Anfrage nach dauerhaftem Speicher nicht vermerkt", error);
+    });
+    return persistence;
+  };
+  // TDD 6.6: nach dem ersten gespeicherten Set einmal anfragen; danach zeigt die Bibliothek das Ergebnis.
+  const askOnceAfterSave = async () => {
+    const asked = await getMeta(db, "persistRequested").catch(() => true);
+    if (!asked) await askForPersistence();
+  };
   const library = () =>
     libraryView({
       persistence,
-      requestPersistence: async () => {
-        persistence = await requestPersistence();
-        await setMeta(db, "persistRequested", true).catch((error: unknown) => {
-          console.warn("Anfrage nach dauerhaftem Speicher nicht vermerkt", error);
-        });
-        return persistence;
-      },
+      requestPersistence: askForPersistence,
+      loadSets: () => listSets(db),
     });
-  stopRouter = startRouter(root!, { "/": library }, notFoundView);
+  const importPage = () =>
+    importView({
+      importText: (text) => importText(db, text),
+      onSaved: () => void askOnceAfterSave(),
+    });
+  stopRouter = startRouter(root!, { "/": library, "/import": importPage }, notFoundView);
 }
 
 void start();

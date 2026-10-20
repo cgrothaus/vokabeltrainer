@@ -68,6 +68,82 @@ button:disabled {
   cursor: default;
 }
 
+/* Link, der wie eine Schaltfläche aussieht, z. B. „Vokabelset importieren“. */
+a.action {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+label {
+  display: block;
+  font-weight: 600;
+}
+
+textarea {
+  display: block;
+  width: 100%;
+  margin: 0.25rem 0 0.75rem;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--surface);
+  color: var(--fg);
+  /* 16px verhindert das automatische Zoomen von iOS beim Fokussieren. */
+  font:
+    1rem / 1.4 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  resize: vertical;
+}
+
+input[type="file"] {
+  display: block;
+  max-width: 100%;
+  min-height: 44px;
+  font: inherit;
+}
+
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Fehlermeldungen: Rahmen und Überschrift statt nur Farbe (TDD 13.4). */
+[role="alert"]:not(:empty) {
+  margin: 1rem 0;
+  padding: 0.25rem 1rem;
+  border-left: 4px solid var(--accent);
+  background: var(--surface);
+  overflow-wrap: anywhere;
+}
+
+.sets {
+  padding: 0;
+  list-style: none;
+}
+
+.sets li {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.sets .title {
+  font-weight: 600;
+}
+
+.sets .count {
+  color: var(--fg);
+  opacity: 0.75;
+}
+
 /* Hinweisleiste am unteren Rand, z. B. „Neue Version verfügbar“ (TDD 5.3). */
 .notice {
   position: fixed;

@@ -1,6 +1,6 @@
 # TDD: Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.6 – Datenbank, Migrationen und Speicherschutz  
+**Version:** 2.7 – Minimaler Import  
 **Stand:** 20. Oktober 2026  
 **Bezug:** PRD 2.4 (`PRD_Vokabeltrainer_Allgemein_v2.md`), Formatspezifikation Version 1 (`Formatspezifikation_Vokabelset_v1.md`), Review-Notizen (`20261019_TDD_v1_Review_Notizen.md`)  
 **Status:** Entwurf; Grundlage für M0 (Walking Skeleton)  
@@ -74,6 +74,7 @@ src/
 │   ├── extract.ts       JSON aus eingefügtem Text herauslösen
 │   ├── validate.ts      Validierung mit deutschen Meldungen
 │   ├── normalize.ts     Kurzformen auflösen, trimmen, NFC
+│   ├── importSet.ts     neues Set aus Text: herauslösen, prüfen, normalisieren, IDs ergänzen
 │   ├── diff.ts          Vergleich Datei ↔ Bestand, Konflikte
 │   ├── merge.ts         Anwenden von Aktualisieren/Ersetzen
 │   ├── duplicates.ts    Duplikaterkennung
@@ -282,7 +283,7 @@ interface Answer {
 
 - Alphabet: `23456789abcdefghjkmnpqrstuvwxyz` (ohne leicht verwechselbare Zeichen `0 1 i l o`).
 - Länge: Set 10 Zeichen, Sektion und Eintrag 6 Zeichen, Review-Events und Sitzungen 12 Zeichen.
-- Erzeugung mit `crypto.getRandomValues`; Sektions- und Eintrags-IDs werden bei der Erzeugung gegen alle IDs des Sets geprüft und bei Kollision neu gezogen.
+- Erzeugung mit `crypto.getRandomValues`, das die App an `domain/ids.ts` übergibt (`domain/` kennt kein `crypto`, TAK-04); Bytes ab 248 werden verworfen, damit alle 31 Zeichen gleich wahrscheinlich sind. Sektions- und Eintrags-IDs werden bei der Erzeugung gegen alle IDs des Sets geprüft und bei Kollision neu gezogen.
 - Beim Import werden fremde IDs akzeptiert, wenn sie `^[A-Za-z0-9_-]{1,64}$` entsprechen (z. B. ältere UUIDs).
 - Lernfortschritt wird über `setId + entryId` zugeordnet. Gleiche Eintrags-IDs in verschiedenen Sets vermischen sich deshalb nicht.
 - Eine bekannte `set.id` in einer Datei identifiziert ein lokales Set eindeutig. Gleiche Worttexte führen nie zu einer automatischen Zuordnung.
@@ -364,7 +365,7 @@ Das Format selbst ist in der **Formatspezifikation** festgelegt. Hier steht die 
 1. Byte-Order-Mark und Leerraum am Rand entfernen.
 2. Enthält der Text einen Markdown-Codeblock, wird der Inhalt des ersten Codeblocks verwendet, der mit `{` beginnt.
 3. Sonst wird der Bereich vom ersten `{` bis zum passenden letzten `}` verwendet.
-4. `JSON.parse`; bei Fehlern wird die Fundstelle (Zeile, Spalte) in eine verständliche Meldung übersetzt.
+4. `JSON.parse`; bei Fehlern ermittelt ein eigener, iterativer Syntaxprüfer die Fundstelle (D-23), weil Safari keine Position meldet. Zeile und Spalte zählen im eingefügten Text, nicht im herausgelösten Teil. Fehlende Kommas und Doppelpunkte werden direkt hinter dem vorigen Element gemeldet, ein überzähliges Komma an seiner Stelle; typografische und einfache Anführungszeichen sowie abgeschnittener Text bekommen eigene Hinweise.
 
 Die Extraktion meldet in der Vorschau, ob Text entfernt wurde. Weitere Reparaturen (z. B. abschließende Kommas) werden nicht versucht.
 
@@ -734,6 +735,7 @@ Projekte: `mobile-chromium` (Pixel-Emulation) und `mobile-webkit` (iPhone-Emulat
 | E2E-10 Datensatz mit `<img onerror>` im Text → wird als Text angezeigt | M1 | TAK-03, DF-08 |
 | E2E-11 Update: neue Version wird gefunden, bleibt auch nach Neuladen wartend, wird erst nach „Jetzt aktualisieren“ aktiv | M0 | NFR-05, TAK-12 (ohne Sitzung) |
 | E2E-12 Neuere Datenbankversion aus einem anderen Tab: App gibt die Verbindung frei und bittet ums Neuladen; nach dem Neuladen bleibt die neuere Datenbank unverändert | M0 | 3.4, 7.2, TAK-08 (Teil) |
+| E2E-13 Ungültiger Import (kein gültiges JSON, fehlende Pflichtfelder) und bekanntes Set werden mit Meldung abgelehnt; der Bestand bleibt unverändert | M0 | AK-07, 8.2, 9.8 |
 
 Playwright-WebKit entspricht nicht Safari auf iOS. Speicherlöschung, Installation, `persist()` und Teilen-Menü werden manuell geprüft (15.5).
 
@@ -805,6 +807,7 @@ Fixtures aus 15.3: Import von 3.000 Einträgen (Validierung, Diff, Commit) ohne 
 | D-20 | Browserziel `baseline-widely-available` (in M0 zu bestätigen) | 4.3 | – |
 | D-21 | Deployment nur vom Branch `production`, der ausschließlich per Fast-Forward aus `main` nachgezogen wird | 4.4, 4.5 | Nutzerentscheidung in S-04, 20. Oktober 2026 |
 | D-22 | App-Icons aus einer SVG-Vorlage; PNGs per Playwright-Skript erzeugt und eingecheckt; Cache-Version über alle vorab gespeicherten Dateien | 4.1, 4.2, 5.1 | Nutzerentscheidung in S-05, 20. Oktober 2026 |
+| D-23 | Fundstelle bei ungültigem JSON über einen eigenen Syntaxprüfer statt aus der Fehlermeldung des Browsers (Safari nennt keine Position) | 8.2 | Nutzerentscheidung in S-07, 20. Oktober 2026 |
 
 ---
 
@@ -819,6 +822,7 @@ Fixtures aus 15.3: Import von 3.000 Einträgen (Validierung, Diff, Commit) ohne 
 | O-05 | Bewertung inhaltlicher Änderungen für den Lernstand (R-04) | Daten über `entryRev` vorbereitet; Entscheidung mit späterer Didaktik |
 | O-06 | Wachstum der Review-Events über Jahre | Messung TAK-15; bei Bedarf Cache oder Archivierung mit Backup-Konzept |
 | O-07 | Schwellenwert der Duplikaterkennung (0,8) | Mit Beispielsets und echten Daten in M1 prüfen |
+| O-08 | iOS graut im Dateiwähler Dateien aus, deren Typ nicht zu `accept` passt; ob `.json` mit `accept=".json,application/json,text/plain"` wählbar ist, ist nicht belegt (Quellen 26, 27) | Prüfung in S-11; falls nötig `accept` weglassen |
 
 ---
 
@@ -850,6 +854,9 @@ Geprüft am 18. bis 20. Oktober 2026.
 22. `actions/upload-pages-artifact` (v5) und `actions/deploy-pages` (v5): https://github.com/actions/upload-pages-artifact/releases, https://github.com/actions/deploy-pages/releases
 23. GitHub – Rulesets und Deployment-Umgebungen: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets, https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments
 24. heise – iOS 26: geändertes Verhalten von Web-Apps auf dem Home-Bildschirm: https://heise.de/-10749652
+25. WebKit Bug 158033 (Fehlermeldung von `JSON.parse` in JavaScriptCore ohne Position) und MDN – JSON.parse: bad parsing (Meldungen mit Zeile und Spalte in Firefox): https://bugs.webkit.org/show_bug.cgi?id=158033, https://developer.mozilla.org/docs/Web/JavaScript/Reference/Errors/JSON_bad_parse
+26. WebKit Bug 229456 (ausgegraute Dateien im iOS-Dateiwähler): https://bugs.webkit.org/show_bug.cgi?id=229456
+27. Ionic Forum – `accept` unter iOS: https://forum.ionicframework.com/t/input-type-file-ignores-accept-attribute-ios/109392
 
 ---
 
@@ -865,6 +872,7 @@ Geprüft am 18. bis 20. Oktober 2026.
 | 2.4 | 20. Oktober 2026 | Deployment (S-04): Branch `production` nur per Fast-Forward aus `main` (D-21), Pages-Quelle „GitHub Actions“, Artefakt aus dem Prüfjob, konkrete Adresse in 4.4; 4.5 entsprechend; Quellen 21–23 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.5 | 20. Oktober 2026 | Installation, Offline-Betrieb und Updates (S-05): Icons aus SVG-Vorlage per Playwright-Skript und Cache-Version über alle vorab gespeicherten Dateien (D-22, 4.1, 4.2); Manifest- und iOS-Angaben konkretisiert (5.1); Service Worker mit `cache: "reload"`, ohne `clients.claim()`, ohne eigenen Eintrag für `index.html` (5.2); Neuladen nur im bestätigenden Tab, `setUpdateBlocked()` für TAK-12 (5.3); Build-Prüfung erweitert (4.2); E2E-11 (15.4); Quelle 24 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.6 | 20. Oktober 2026 | Datenbank-Grundgerüst (S-06): Blockierung durch ältere Tabs und Ende des Routings nach `versionchange` (3.4); Strukturschritte pro Version, lückenlose Kette, ein Cursor-Durchlauf pro Store, unveränderliche Schlüssel (7.1); ausdrücklicher Abbruch des Upgrades und kein Notfall-Backup bei gescheiterter Ersteinrichtung (7.2); E2E-12 (15.4) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.7 | 20. Oktober 2026 | Minimaler Import (S-07): `importSet.ts` (3.1); Zufallsquelle für IDs wird übergeben, Ablehnungsverfahren (6.3); Fundstelle bei ungültigem JSON über eigenen Syntaxprüfer, gezählt im eingefügten Text (8.2, D-23); E2E-13 (15.4); O-08 (`accept` im iOS-Dateiwähler); Quellen 25–27 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 
 ---
 
@@ -890,20 +898,23 @@ Ziel: Jeder riskante Teil läuft einmal von vorn bis hinten, in einfachster Form
 - ✅ **S-06** IndexedDB-Grundgerüst (inkl. `fake-indexeddb` für die Integrationstests): Öffnen, Upgrade, Migrationskette mit Test-Migration v1 → v2, `versionchange`/`VersionError`, Notfall-Backup, `persist()` mit Anzeige des Ergebnisses (6, 7) – FR-22, FR-33, TAK-05, TAK-08  
   Erledigt am 20. Oktober 2026 mit `fake-indexeddb` 6.2. Erstes Modul in `domain/` (Migrationskette, Backup-Hülle); `tsconfig.domain.json` ohne DOM- und Node-Typen, Gegenprobe: `document` in `domain/` lässt `npm run typecheck` scheitern (TAK-04). `openDatabase` liefert ein Ergebnis pro Lage (geöffnet, kein Speicher, neuere Version, Einrichtung gescheitert, Migration gescheitert mit Notfall-Backup); geschrieben wird nur über `runTransaction`, das erst nach `complete` erfüllt (TAK-05). Integrationstests decken Einrichtung, Migration v1 → v2, fehlschlagende Migration mit unverändertem Altstand (TAK-08), fehlende Kettenglieder, `VersionError`, `versionchange` und `blocked` ab. Gegenprobe: Ohne ausdrückliches `abort()` übernimmt `fake-indexeddb` die halbe Migration; deshalb bricht die App selbst ab (7.2). E2E-12 läuft in mobile-chromium und mobile-webkit. Die App-Version (`0.1.0+<Commit>`) wird per `define` eingebettet und steht im Notfall-Backup. Datei-Auslieferung vorerst nur als Download; das Teilen-Menü folgt mit S-09.  
   Provisorisch für M0: Die Bibliothek zeigt den Speicherschutz und eine Schaltfläche „Dauerhaften Speicher anfordern“ für die Messung in S-11; der automatische Aufruf nach dem ersten gespeicherten Set (6.6) kommt mit S-07, die Schaltfläche entfällt spätestens mit S-26. Der Dev-Schalter `?testmigration=ok|fail` (nur `npm run dev`, nicht im Build) führt die Test-Migration auf einer eigenen Datenbank `vokabeltrainer-testmigration` aus. Mit `playwright-cli` (mobiles Chromium) geprüft: `fail` zeigt „Daten nicht übernommen“, das heruntergeladene Notfall-Backup enthält den unveränderten Datensatz mit `dataVersion` 1; `ok` hebt die Testdatenbank auf Version 2 mit umbenanntem Feld und neuem Index; Chromium lehnt `persist()` für die frisch besuchte Seite ab, die Anfrage wird in `meta` vermerkt; Konsole ohne Fehler. Offen für S-10: E2E-04 braucht gegen das gebaute Artefakt einen Weg zu einer älteren Datenbank, solange `DB_VERSION` 1 ist.
-- 🔲 **S-07** Minimaler Import: Textfeld und Datei, `extract.ts`, Grundvalidierung, Speichern als neues Set ohne Vorschau – FR-13 (Teil)
+- ✅ **S-07** Minimaler Import: Textfeld und Datei, `extract.ts`, Grundvalidierung, Speichern als neues Set ohne Vorschau – FR-13 (Teil)  
+  Erledigt am 20. Oktober 2026. Domain testgetrieben: `extract.ts` vollständig nach 8.2 mit eigenem Syntaxprüfer für die Fundstelle (D-23); `validate.ts` prüft Format und Formatversion (fehlend → Warnung, neuer → Ablehnung, Backup erkannt), Pflichtfelder, Antworten in Kurz- und Langform samt Varianten, `meaning` (Einzahl, Warnung), Sprachcodes, IDs (Muster, doppelte), Teil-Export (abgelehnt) und Mengengrenzen; `normalize.ts` baut die Langform, trimmt, NFC, kanonisiert Sprachcodes; `ids.ts` mit übergebener Zufallsquelle; `importSet.ts` verbindet alles. `storage/sets.ts` speichert mit `add()`, ein Set mit bekannter ID wird abgelehnt statt überschrieben (Nutzerentscheidung). Nach dem ersten gespeicherten Set fragt die App einmal nach dauerhaftem Speicher (6.6). Die Bibliothek zeigt die Sets als einfache Liste mit Zahl der Einträge und einen Link zum Import. Bewusst noch nicht enthalten: optionale Felder (Nutzerentscheidung, siehe S-12), Vorschau und Duplikate (S-13), Zwischenablage (S-13). Gegenproben: `put()` statt `add()`, Fundstelle ohne Versatz der Extraktion, NFC und Kollisionsprüfung entfernt – jeweils scheitert der passende Test. Import per Text (mit Begleittext und Codeblock) und Datei sowie E2E-13 laufen in mobile-chromium und mobile-webkit; dort stammt die Fundstelle aus dem eigenen Prüfer. Mit `playwright-cli` (mobiles Chromium, 320 px) geprüft: kein horizontales Scrollen auch bei langem Titel ohne Umbruch, hell und dunkel lesbar, Fehlerbox mit Rahmen statt nur Farbe, Erfolgsmeldung samt Warnung im Live-Bereich, `persistRequested` nach dem Speichern in `meta`, Konsole leer.
 - 🔲 **S-08** Minimale Lernsitzung: ganzes Set, nur Karteikarten, Review-Events und Sitzung werden gespeichert – FR-11 (Teil)
 - 🔲 **S-09** Backup-Export (Teilen-Menü bzw. Download, Spike D-17) und Wiederherstellung (ersetzt alles) inkl. `lastBackupAt` – FR-19 (Teil), TAK-09
 - 🔲 **S-10** E2E-01 bis E2E-04 in der CI (E2E-03 besteht seit S-05)
-- 🔶 **S-11** Manuelle Prüfung auf echtem iPhone und Android (15.5); Ergebnisse zu O-02, O-03, O-04 hier festhalten  
+- 🔶 **S-11** Manuelle Prüfung auf echtem iPhone und Android (15.5); Ergebnisse zu O-02, O-03, O-04, O-08 hier festhalten  
   Erste Prüfung am 20. Oktober 2026 mit dem Stand von S-06 unter https://cgrothaus.github.io/vokabeltrainer/:
   - Android (Chrome): Hinzufügen zum Startbildschirm funktioniert; `persist()` wird schon im Browser gewährt.
   - iPhone (Safari): Hinzufügen zum Home-Bildschirm funktioniert. Im Safari-Tab gewährt `persist()` nichts, die Schaltfläche wirkt wirkungslos, weil der Hinweis unverändert bleibt. Als Home-Bildschirm-App wird `persist()` gewährt (O-02, R-01). Die Empfehlung „Teilen → Zum Home-Bildschirm“ aus 6.6 ist damit auf iOS der entscheidende Schutz; für S-26: Eine abgelehnte Anfrage braucht eine sichtbare Rückmeldung mit dieser Empfehlung.
-  - Offen: Offline-Start vom Home-Bildschirm im Flugmodus (AK-21), Update-Hinweis auf dem Gerät, 7-Tage-Regel in Safari (O-02), Geräte- und Systemversionen (O-04), Dateiauslieferung (O-03, nach S-09).
+  - Offen: Offline-Start vom Home-Bildschirm im Flugmodus (AK-21), Update-Hinweis auf dem Gerät, 7-Tage-Regel in Safari (O-02), Geräte- und Systemversionen (O-04), Dateiauslieferung (O-03, nach S-09), Import per Dateiauswahl und Einfügen aus einer LLM-App (O-08, seit S-07).
 
 ### M1 – Lernen mit eigenen Sets
 
-- 🔲 **S-12** Vollständige Validierung und Normalisierung nach Formatspezifikation, testgetrieben, mit Fixtures; JSON Schema `vokabeltrainer-set.schema.json` und Schemaabgleich – DF-01–DF-08, TAK-10
-- 🔲 **S-13** Importvorschau für neue Sets mit Warnungen; Duplikaterkennung – FR-16, FR-30, AK-19
+- 🔲 **S-12** Vollständige Validierung und Normalisierung nach Formatspezifikation, testgetrieben, mit Fixtures; JSON Schema `vokabeltrainer-set.schema.json` und Schemaabgleich – DF-01–DF-08, TAK-10  
+  Baut auf der Grundvalidierung aus S-07 auf. Ergänzen: optionale Felder (`level`, `textbook`, `edition`, `source`, `license`, `notes`, `examples`, `grammar`, `reviewStatus`) prüfen und übernehmen – S-07 lässt sie noch weg –, Textlängen, Warnungen für unbekannte Felder.
+- 🔲 **S-13** Importvorschau für neue Sets mit Warnungen; Duplikaterkennung – FR-16, FR-30, AK-19  
+  Dazu die Schaltfläche „Aus Zwischenablage einfügen“ (8.1), in S-07 bewusst weggelassen.
 - 🔲 **S-14** Bibliothek gruppiert nach Sprache, Set-Ansicht mit Sektionen, Set löschen – FR-01–FR-03
 - 🔲 **S-15** Empty State, Hilfe mit Formatbeispiel und Prompt-Vorlagen – FR-20, FR-28, AK-14
 - 🔲 **S-16** Beispielset erstellen (13.2) – FR-32, AK-23
