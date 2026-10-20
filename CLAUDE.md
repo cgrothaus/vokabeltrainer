@@ -42,7 +42,7 @@ Diese Regeln gelten als Auftrag zum Committen und Mergen; gepusht wird nur auf a
    git branch -D s-07-import-validierung    # -D nötig: Squash markiert den Branch nicht als gemergt
    ```
 
-   Message wie bei `8bd94ea`: Betreff `S-07: <Zusammenfassung> (TDD 2.3)` (Dokumentversion nur, wenn sie erhöht wurde), darunter eine knappe Stichpunktliste der wesentlichen Änderungen.
+   Message wie bei `4c3494b`: Betreff `S-07: <Zusammenfassung> (TDD 2.3)` (Dokumentversion nur, wenn sie erhöht wurde), darunter eine knappe Stichpunktliste der wesentlichen Änderungen.
 
 ## Befehle
 
