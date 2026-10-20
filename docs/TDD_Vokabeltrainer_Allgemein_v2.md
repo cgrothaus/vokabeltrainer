@@ -1,6 +1,6 @@
 # TDD: Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.8 – Minimale Lernsitzung  
+**Version:** 2.9 – LLM-Test der Formatspezifikation  
 **Stand:** 20. Oktober 2026  
 **Bezug:** PRD 2.4 (`PRD_Vokabeltrainer_Allgemein_v2.md`), Formatspezifikation Version 1 (`Formatspezifikation_Vokabelset_v1.md`), Review-Notizen (`20261019_TDD_v1_Review_Notizen.md`)  
 **Status:** Entwurf; Grundlage für M0 (Walking Skeleton)  
@@ -758,6 +758,17 @@ Ergebnisse werden im Umsetzungsplan beim jeweiligen Arbeitspaket kurz festgehalt
 
 Fixtures aus 15.3: Import von 3.000 Einträgen (Validierung, Diff, Commit) ohne spürbares Einfrieren (unter 1 s auf einem Mittelklasse-Smartphone); Lernüberblick über 50.000 Events unter 200 ms (TAK-15). Gemessen erstmals in M1 auf echtem Gerät.
 
+### 15.7 LLM-Tauglichkeit der Formatspezifikation (AK-13, DF-02)
+
+Ziel: Ein LLM soll allein aus der Formatspezifikation und dem Lernmaterial erkennen, was zu tun ist – ohne die Prompt-Vorlagen aus Kapitel 11 der Spezifikation. Geprüft wird manuell mit aktuellen LLM-Apps (z. B. Claude, ChatGPT, Gemini), nicht in der CI (externe Dienste, nicht deterministisch).
+
+- **Neues Set:** Das LLM erhält nur die Formatspezifikation (als Datei oder Link auf das öffentliche Repository), ein oder mehrere Fotos einer **selbst geschriebenen** Vokabelliste und höchstens einen knappen Satz wie „Mach daraus ein Set für meinen Vokabeltrainer.“ Keine Lehrwerksseiten: Das Repository ist öffentlich, und Befunde werden hier zitiert.
+- **Korrektur:** Das LLM erhält die Formatspezifikation und ein exportiertes Set mit eingebauten Fehlern, dazu nur „Korrigiere die Fehler.“
+- **Bestanden**, wenn die Antwort per Einfügen ohne Fehler importiert wird; das neue Set keine IDs, `rev`, `scope` oder `exportedAt` enthält bzw. die Korrektur sie unverändert lässt; Varianten und Bedeutungen richtig unterschieden sind (Spezifikation 5.3); Unleserliches mit `"reviewStatus": "unchecked"` und Grund in `notes` aufgenommen ist.
+- **Folgerung:** Besteht der Test, kann die Hilfe (13.1) statt der langen Vorlagen auf die Spezifikation verweisen, etwa mit einer kurzen Vorlage „Lies diese Spezifikation und …“. Scheitert er, wird die Spezifikation gezielt ergänzt – z. B. um einen Abschnitt „Für LLMs: Was du tun sollst“ ganz am Anfang – und der Test wiederholt.
+
+Ergebnisse (LLM-App, Modell, Datum, Befund) werden im Umsetzungsplan bei S-15 festgehalten.
+
 ---
 
 ## 16. Technische Akzeptanzkriterien
@@ -825,6 +836,7 @@ Fixtures aus 15.3: Import von 3.000 Einträgen (Validierung, Diff, Commit) ohne 
 | O-06 | Wachstum der Review-Events über Jahre | Messung TAK-15; bei Bedarf Cache oder Archivierung mit Backup-Konzept |
 | O-07 | Schwellenwert der Duplikaterkennung (0,8) | Mit Beispielsets und echten Daten in M1 prüfen |
 | O-08 | iOS graut im Dateiwähler Dateien aus, deren Typ nicht zu `accept` passt; ob `.json` mit `accept=".json,application/json,text/plain"` wählbar ist, ist nicht belegt (Quellen 26, 27) | Prüfung in S-11; falls nötig `accept` weglassen |
+| O-09 | Reicht die Formatspezifikation allein, damit ein LLM aus Fotos oder einer Wortliste ein gültiges Set erzeugt oder ein exportiertes Set korrigiert (AK-13)? | Test nach 15.7 in S-15; je nach Ergebnis Spezifikation ergänzen oder Prompt-Vorlagen verkürzen |
 
 ---
 
@@ -876,6 +888,7 @@ Geprüft am 18. bis 20. Oktober 2026.
 | 2.6 | 20. Oktober 2026 | Datenbank-Grundgerüst (S-06): Blockierung durch ältere Tabs und Ende des Routings nach `versionchange` (3.4); Strukturschritte pro Version, lückenlose Kette, ein Cursor-Durchlauf pro Store, unveränderliche Schlüssel (7.1); ausdrücklicher Abbruch des Upgrades und kein Notfall-Backup bei gescheiterter Ersteinrichtung (7.2); E2E-12 (15.4) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.7 | 20. Oktober 2026 | Minimaler Import (S-07): `importSet.ts` (3.1); Zufallsquelle für IDs wird übergeben, Ablehnungsverfahren (6.3); Fundstelle bei ungültigem JSON über eigenen Syntaxprüfer, gezählt im eingefügten Text (8.2, D-23); E2E-13 (15.4); O-08 (`accept` im iOS-Dateiwähler); Quellen 25–27 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.8 | 20. Oktober 2026 | Minimale Lernsitzung (S-08): Router meldet das Verlassen einer Ansicht (3.3); Kodierung von `rev` präzisiert – Basis 31 statt „Base32“, niederwertigste Stellen, leere Objekte, rund 39,6 Bit (6.4); Ende einer Sitzung beim Verlassen, `interrupted` ohne `endedAt` (12.5); E2E-14 (15.4, 16) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.9 | 20. Oktober 2026 | LLM-Tauglichkeit der Formatspezifikation ohne Prompt-Vorlage als manueller Test (15.7) und offener Punkt O-09, Anschluss an S-15 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 
 ---
 
@@ -920,7 +933,8 @@ Ziel: Jeder riskante Teil läuft einmal von vorn bis hinten, in einfachster Form
 - 🔲 **S-13** Importvorschau für neue Sets mit Warnungen; Duplikaterkennung – FR-16, FR-30, AK-19  
   Dazu die Schaltfläche „Aus Zwischenablage einfügen“ (8.1), in S-07 bewusst weggelassen.
 - 🔲 **S-14** Bibliothek gruppiert nach Sprache, Set-Ansicht mit Sektionen, Set löschen – FR-01–FR-03
-- 🔲 **S-15** Empty State, Hilfe mit Formatbeispiel und Prompt-Vorlagen – FR-20, FR-28, AK-14
+- 🔲 **S-15** Empty State, Hilfe mit Formatbeispiel und Prompt-Vorlagen – FR-20, FR-28, AK-14  
+  Vorab der LLM-Test nach 15.7 (O-09, AK-13), sobald die Spezifikation mit S-12 vollständig umgesetzt ist; sein Ergebnis bestimmt, wie ausführlich die Prompt-Vorlagen sein müssen.
 - 🔲 **S-16** Beispielset erstellen (13.2) – FR-32, AK-23
 - 🔲 **S-17** Sitzung einrichten: Auswahl Sektionen, Richtung, Anzahl, Multiple-Choice-Anteil; gemerkte Einstellungen – FR-07, FR-08, FR-21
 - 🔲 **S-18** Multiple Choice mit Kandidatenregeln (testgetrieben), Bedienwege Karteikarte – FR-09, AK-22
