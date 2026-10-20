@@ -1,6 +1,7 @@
 // Notfall-Backup (TDD 7.2): Nach einer gescheiterten Migration liegt die Datenbank unverändert im alten
 // Stand vor. Sie wird ohne Versionsangabe geöffnet und vollständig roh ausgelesen.
 import { type BackupFile, createBackup } from "../domain/backup";
+import { readStores } from "./backup";
 
 export function readEmergencyBackup(name: string, appVersion: string): Promise<BackupFile> {
   return new Promise((resolve, reject) => {
@@ -11,24 +12,17 @@ export function readEmergencyBackup(name: string, appVersion: string): Promise<B
     request.onsuccess = () => {
       const db = request.result;
       const stores = Array.from(db.objectStoreNames).filter((store) => store !== "meta");
-      const data: Record<string, unknown[]> = {};
-      const done = () => {
-        db.close();
-        const exportedAt = new Date().toISOString();
-        resolve(createBackup({ dataVersion: db.version, appVersion, exportedAt, data }));
-      };
-      if (stores.length === 0) return done();
-      // Eine Transaktion für alle Stores: ein in sich stimmiger Stand (TDD 11.3).
-      const transaction = db.transaction(stores, "readonly");
-      for (const store of stores) {
-        const read = transaction.objectStore(store).getAll();
-        read.onsuccess = () => (data[store] = read.result);
-      }
-      transaction.oncomplete = done;
-      transaction.onabort = () => {
-        db.close();
-        reject(transaction.error ?? new Error("Lesen abgebrochen"));
-      };
+      readStores(db, stores).then(
+        (data) => {
+          db.close();
+          const exportedAt = new Date().toISOString();
+          resolve(createBackup({ dataVersion: db.version, appVersion, exportedAt, data }));
+        },
+        (error: unknown) => {
+          db.close();
+          reject(error);
+        },
+      );
     };
   });
 }

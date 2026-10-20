@@ -18,7 +18,10 @@ export async function getMeta(db: IDBDatabase, key: MetaKey): Promise<unknown> {
 }
 
 export function setMeta(db: IDBDatabase, key: MetaKey, value: unknown): Promise<void> {
-  return runTransaction(db, "meta", "readwrite", (transaction) => {
-    transaction.objectStore("meta").put({ key, value } satisfies MetaRecord);
-  });
+  return runTransaction(db, "meta", "readwrite", (transaction) => putMeta(transaction, key, value));
+}
+
+/** Innerhalb einer größeren Transaktion, die `meta` einschließt. */
+export function putMeta(transaction: IDBTransaction, key: MetaKey, value: unknown): void {
+  transaction.objectStore("meta").put({ key, value } satisfies MetaRecord);
 }
