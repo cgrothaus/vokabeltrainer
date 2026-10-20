@@ -1,6 +1,7 @@
 // Ablauf des Imports eines neuen Sets ohne Vorschau (TDD 9.1, 9.2): Die Fachlogik liegt in
 // domain/importSet.ts, das Speichern in storage/sets.ts. Hier werden beide verbunden.
 import { prepareNewSet } from "../domain/importSet";
+import { randomBytes } from "../platform/random";
 import { addSet } from "../storage/sets";
 
 export type ImportOutcome =
@@ -15,8 +16,6 @@ const SAVE_ERRORS = {
   failed:
     "Das Set konnte nicht gespeichert werden. Lade die Seite neu und versuche es noch einmal.",
 } as const;
-
-const randomBytes = (count: number) => crypto.getRandomValues(new Uint8Array(count));
 
 /** Gespeichert ist das Set erst, wenn die Transaktion abgeschlossen ist (TDD 6.5). */
 export async function importText(db: IDBDatabase, text: string): Promise<ImportOutcome> {

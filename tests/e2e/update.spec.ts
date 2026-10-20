@@ -1,11 +1,13 @@
-// Updates ohne Unterbrechung (TDD 5.3, NFR-05): Eine neue Version wartet, bis man sie bestätigt.
+// Updates ohne Unterbrechung (TDD 5.3, NFR-05): Eine neue Version wartet, bis man sie bestätigt, und
+// erscheint nie während einer Lernsitzung (TAK-12).
 import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { expect, test } from "@playwright/test";
+import { expect, type Page, type TestInfo, test } from "@playwright/test";
 import { preview } from "vite";
 import { precache } from "../../scripts/precache";
+import { importSet } from "./support";
 
 const dist = fileURLToPath(new URL("../../dist/", import.meta.url));
 
@@ -16,9 +18,14 @@ function replaceIn(file: string, search: string, replacement: string): void {
   writeFileSync(file, content.replaceAll(search, replacement));
 }
 
-test("Neue Version wird erst nach Bestätigung aktiv", async ({ page }, testInfo) => {
-  // Eigener Server auf einer Kopie von dist/, damit der Test eine neue Version ausliefern kann, ohne das
-  // gemeinsame Artefakt zu ändern. page.route hilft nicht: Chromium leitet die Update-Prüfung nicht darüber.
+/**
+ * Eigener Server auf einer Kopie von dist/, damit der Test eine neue Version ausliefern kann, ohne das
+ * gemeinsame Artefakt zu ändern. page.route hilft nicht: Chromium leitet die Update-Prüfung nicht darüber.
+ */
+async function withCopiedApp(
+  testInfo: TestInfo,
+  run: (url: string, dir: string) => Promise<void>,
+): Promise<void> {
   const dir = mkdtempSync(join(tmpdir(), "vokabeltrainer-update-"));
   cpSync(dist, dir, { recursive: true });
   const server = await preview({
@@ -30,21 +37,35 @@ test("Neue Version wird erst nach Bestätigung aktiv", async ({ page }, testInfo
     preview: { port: 4280 + testInfo.parallelIndex, strictPort: true },
   });
   try {
-    const url = server.resolvedUrls!.local[0]!;
+    await run(server.resolvedUrls!.local[0]!, dir);
+  } finally {
+    await server.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+/** Neue Version ausliefern: andere Cache-Version, also ein anderer `sw.js`. */
+const publishNewVersion = (dir: string) =>
+  replaceIn(join(dir, "sw.js"), precache(dist).version, "neueversion");
+
+const serviceWorkerReady = (page: Page) =>
+  page.evaluate(async () => {
+    await navigator.serviceWorker.ready;
+  });
+
+test("Neue Version wird erst nach Bestätigung aktiv", async ({ page }, testInfo) => {
+  await withCopiedApp(testInfo, async (url, dir) => {
     const oldText = "Noch keine Vokabelsets vorhanden.";
     const newText = "Die neue Version ist aktiv.";
     const notice = page.getByRole("status");
 
     await page.goto(url);
     await expect(page.getByText(oldText)).toBeVisible();
-    await page.evaluate(async () => {
-      await navigator.serviceWorker.ready;
-    });
+    await serviceWorkerReady(page);
     await expect(notice).toBeEmpty();
 
-    // Neue Version ausliefern: anderer Inhalt, andere Cache-Version.
     replaceIn(join(dir, "index.html"), oldText, newText);
-    replaceIn(join(dir, "sw.js"), precache(dist).version, "neueversion");
+    publishNewVersion(dir);
 
     // Die neue Version wird beim Neuladen gefunden und wartet; auch weiteres Neuladen aktiviert sie nicht.
     await page.reload();
@@ -56,8 +77,42 @@ test("Neue Version wird erst nach Bestätigung aktiv", async ({ page }, testInfo
     await notice.getByRole("button", { name: "Jetzt aktualisieren" }).click();
     await expect(page.getByText(newText)).toBeVisible();
     await expect(notice).toBeEmpty();
-  } finally {
-    await server.close();
-    rmSync(dir, { recursive: true, force: true });
-  }
+  });
+});
+
+test("E2E-14 Während einer Lernsitzung erscheint der Hinweis erst danach", async ({
+  page,
+}, testInfo) => {
+  await withCopiedApp(testInfo, async (url, dir) => {
+    const notice = page.getByRole("status");
+    await importSet(page, "Englisch – Update", url);
+    await serviceWorkerReady(page);
+    // Erst nach dem Neuladen steuert der Service Worker die Seite; vorher gilt nichts als Update.
+    await page.goto(url);
+    await page.getByRole("button", { name: "Englisch – Update lernen" }).click();
+    await expect(page.getByText("0 von 3 geschafft")).toBeVisible();
+
+    // Die Prüfung beim Zurückkehren in den Vordergrund findet die neue Version mitten in der Sitzung.
+    publishNewVersion(dir);
+    await page.evaluate(async () => {
+      await (await navigator.serviceWorker.getRegistration())!.update();
+    });
+    await expect
+      .poll(() =>
+        page.evaluate(async () => !!(await navigator.serviceWorker.getRegistration())?.waiting),
+      )
+      .toBe(true);
+
+    for (const done of ["1 von 3", "2 von 3"]) {
+      await expect(notice).toBeEmpty();
+      await page.getByRole("button", { name: /Tippen zum Aufdecken/ }).click();
+      await page.getByRole("button", { name: "Gewusst" }).click();
+      await expect(page.getByText(`${done} geschafft`)).toBeVisible();
+    }
+    await expect(notice).toBeEmpty();
+    await page.getByRole("button", { name: /Tippen zum Aufdecken/ }).click();
+    await page.getByRole("button", { name: "Gewusst" }).click();
+    await expect(page.getByRole("heading", { name: "Geschafft" })).toBeVisible();
+    await expect(notice).toContainText("Neue Version verfügbar");
+  });
 });
