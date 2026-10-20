@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Projektstand
 
-Mobiler, offlinefähiger Vokabeltrainer als installierbare Web-App (PWA), ohne Backend. Meilenstein M0 (Walking Skeleton) läuft; S-01 (Projekt-Setup) ist erledigt, aktueller Stand siehe TDD Kap. 21.
+Mobiler, offlinefähiger Vokabeltrainer als installierbare Web-App (PWA), ohne Backend. Meilenstein M0 (Walking Skeleton) läuft; aktueller Stand siehe TDD Kap. 21.
 
 Maßgebliche Dokumente in `docs/`:
 
@@ -32,7 +32,7 @@ Vor einer Umsetzung das betreffende Arbeitspaket (S-xx) in TDD Kap. 21 und die d
 Diese Regeln gelten als Auftrag zum Committen und Mergen; gepusht wird nur auf ausdrückliche Anweisung.
 
 1. **Branch anlegen:** Für jedes nicht-triviale Arbeitspaket (jedes S-xx, jede Änderung mit Code oder Tests, jede neue Dokumentversion) vor der ersten Änderung vom aktuellen `main` abzweigen: `git switch -c s-07-import-validierung` (mit S-Nummer `s-<nr>-<stichwort>`, sonst nur `<stichwort>`; klein, mit Bindestrichen). Direkt auf `main` nur Triviales, das in einen einzigen Commit passt und weder Code, Tests noch PRD/TDD berührt, z. B. Tippfehler, README, CLAUDE.md, `.gitignore`.
-2. **Klein committen:** Auf dem Branch nach jedem in sich stimmigen Schritt committen, z. B. Test und Implementierung einer Funktion, ein Konfigurationsschritt, eine Dokumentanpassung. Message: eine Zeile, Deutsch, Infinitivstil wie „Kurzform beim Import auflösen“, ohne S-Präfix. `npm run typecheck` und `npm test` sind vor jedem Commit grün (testgetrieben: Test und Implementierung zusammen committen).
+2. **Klein committen:** Auf dem Branch nach jedem in sich stimmigen Schritt committen, z. B. Test und Implementierung einer Funktion, ein Konfigurationsschritt, eine Dokumentanpassung. Message: eine Zeile, Deutsch, Infinitivstil wie „Kurzform beim Import auflösen“, ohne S-Präfix. `npm run typecheck` und `npm test` sind vor jedem Commit grün (testgetrieben: Test und Implementierung zusammen committen). Dateien gezielt stagen (`git add <pfad>`), kein `git commit -a` und kein `git add -A`, solange noch andere Änderungen offen sind; vor dem Commit `git diff --cached --stat` prüfen. Sonst landen unfertige Änderungen im falschen Commit, und nach einem Push hilft kein Amend mehr.
 3. **Abschließen mit Squash-Merge:** Wenn das Paket fertig ist – Akzeptanzkriterien erfüllt, `typecheck`, `test`, `build` und bei UI-Änderungen `test:e2e` grün, Status in TDD Kap. 21 noch auf dem Branch auf ✅, CLAUDE.md geprüft:
 
    ```bash
