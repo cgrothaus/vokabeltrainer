@@ -44,6 +44,10 @@ Diese Regeln gelten als Auftrag zum Committen und Mergen; gepusht wird nur auf a
 
    Message wie bei `4c3494b`: Betreff `S-07: <Zusammenfassung> (TDD 2.3)` (Dokumentversion nur, wenn sie erhöht wurde), darunter eine knappe Stichpunktliste der wesentlichen Änderungen.
 
+4. **Deployen (D-21):** Online geht nur, was auf `production` liegt; `production` entsteht ausschließlich per Fast-Forward aus `main`. Nur auf ausdrückliche Anweisung und erst, wenn die CI für `main` grün ist: `git push origin main:production` (lokales `main` vorher auf `origin/main`). Nie direkt auf `production` committen, nie force-pushen.
+
+Die Historie wurde am 20. Oktober 2026 vor dem Öffentlichschalten umgeschrieben (Lehrwerksreste entfernt, TDD Kap. 21 bei S-04); ältere Commit-Hashes in Notizen oder Chats sind ungültig.
+
 ## Befehle
 
 Eingerichtet (S-01, S-02):
@@ -69,13 +73,13 @@ Geplant mit S-05: `npm run build` baut zusätzlich den Service Worker; die Build
 
 Nach UI-Änderungen das Verhalten mit `playwright-cli` gegen Dev-Server oder `vite preview` prüfen und die E2E-Smoke-Tests laufen lassen.
 
-## CI (S-03, TDD 4.5)
+## CI und Deployment (S-03, S-04, TDD 4.4, 4.5)
 
-`.github/workflows/ci.yml` läuft bei jedem Push (jeder Branch) und Pull Request: `npm ci` → `format:check` → `typecheck` → `test` → `build` → Browserinstallation → `test:e2e`. Lokal nachstellen mit denselben Befehlen und `CI=1` vor `npm run test:e2e` (ein Worker, `github`-Reporter). Läufe verfolgen mit `gh run watch`; bei Fehlern liegt der Playwright-Report als Artefakt `playwright-report` am Lauf (`gh run download <id> -n playwright-report`). Die Playwright-Version steht nur in `package.json` (kein Container-Image, kein Browser-Cache).
+`.github/workflows/ci.yml` läuft bei jedem Push (jeder Branch) und Pull Request: `npm ci` → `format:check` → `typecheck` → `test` → `build` → Browserinstallation → `test:e2e`. Nur bei Push auf `production` folgen Upload von `dist/` und Job `deploy` (prüft, dass der Commit in `main` liegt) nach https://cgrothaus.github.io/vokabeltrainer/. Die Umgebung `github-pages` lässt nur `production` zu; ein Ruleset verbietet dort Force-Push und Löschen. Lokal nachstellen mit denselben Befehlen und `CI=1` vor `npm run test:e2e` (ein Worker, `github`-Reporter). Läufe verfolgen mit `gh run watch`; bei Fehlern liegt der Playwright-Report als Artefakt `playwright-report` am Lauf (`gh run download <id> -n playwright-report`). Die Playwright-Version steht nur in `package.json` (kein Container-Image, kein Browser-Cache).
 
 ## Architektur (Soll, TDD Kap. 3–7)
 
-**Auslieferung:** eine `index.html` mit eingebettetem JS und CSS (`vite-plugin-singlefile`) plus `sw.js`, `manifest.webmanifest` und Icons. Alle Verweise relativ (läuft unter GitHub-Pages-Unterpfad und eigener Domain). Build zweistufig: `vite build` → Hash von `dist/index.html` → `vite build -c vite.sw.config.ts` mit dem Hash als Cache-Version, damit sich `sw.js` genau dann ändert, wenn sich die App ändert. Deployment auf GitHub Pages nur nach grüner CI.
+**Auslieferung:** eine `index.html` mit eingebettetem JS und CSS (`vite-plugin-singlefile`) plus `sw.js`, `manifest.webmanifest` und Icons. Alle Verweise relativ (läuft unter GitHub-Pages-Unterpfad und eigener Domain). Build zweistufig: `vite build` → Hash von `dist/index.html` → `vite build -c vite.sw.config.ts` mit dem Hash als Cache-Version, damit sich `sw.js` genau dann ändert, wenn sich die App ändert. Deployment auf GitHub Pages nur vom Branch `production` nach grüner CI.
 
 **TypeScript 7** (native `tsc`), Konfiguration über Projektreferenzen: `tsconfig.app.json` (`src/`, DOM), `tsconfig.node.json` (Vite-Konfiguration). Mit dem ersten Modul in `domain/` kommt `tsconfig.domain.json` ohne DOM-Typen dazu (TAK-04) und wird in `tsconfig.json` referenziert. Verzeichnisse aus TDD 3.1 entstehen erst mit ihrer ersten Datei.
 

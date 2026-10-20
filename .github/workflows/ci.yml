@@ -1,5 +1,5 @@
 # CI (TDD 4.5): dieselben Prüfungen wie lokal vor jedem Commit, plus E2E gegen das gebaute Artefakt.
-# S-04 ergänzt einen Job `deploy` mit `needs: check`, der nur bei Push auf `main` läuft (TAK-14).
+# Ein Push auf `production` deployt zusätzlich nach GitHub Pages, aber nur nach grünem `check` (TAK-14, D-21).
 name: CI
 
 on:
@@ -12,8 +12,8 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  # Auf `main` nicht abbrechen, damit ein laufendes Deployment (ab S-04) nicht unterbrochen wird.
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  # Auf `main` und `production` nicht abbrechen, damit kein Deployment unterbrochen wird.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/production' }}
 
 jobs:
   check:
@@ -56,3 +56,34 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 14
+
+      # Nach den E2E-Tests: Playwright baut selbst neu, ausgeliefert wird genau das getestete dist/.
+      - name: Build für GitHub Pages bereitstellen
+        if: github.event_name == 'push' && github.ref == 'refs/heads/production'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist/
+
+  deploy:
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/production'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # `production` entsteht nur per Fast-Forward aus `main` (D-21): Der Commit muss in `main` enthalten sein.
+      - name: Stand von production in main prüfen
+        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
+      - id: deployment
+        uses: actions/deploy-pages@v5

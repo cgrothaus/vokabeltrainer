@@ -1,6 +1,6 @@
 # TDD: Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.3 – CI-Ablauf präzisiert  
+**Version:** 2.4 – Deployment über den Branch `production`  
 **Stand:** 20. Oktober 2026  
 **Bezug:** PRD 2.4 (`PRD_Vokabeltrainer_Allgemein_v2.md`), Formatspezifikation Version 1 (`Formatspezifikation_Vokabelset_v1.md`), Review-Notizen (`20261019_TDD_v1_Review_Notizen.md`)  
 **Status:** Entwurf; Grundlage für M0 (Walking Skeleton)  
@@ -150,8 +150,9 @@ Vite-Standardziel `baseline-widely-available`; das entspricht etwa Safari/iOS 16
 
 ### 4.4 Bereitstellung (D-19)
 
-- **Entscheidung:** GitHub Pages, deployt per GitHub Actions nach erfolgreicher CI auf `main`. Voraussetzung: öffentliches Repository (zulässig, da keine Lehrwerksinhalte versioniert sind).
-- **M0:** provisorische Adresse `<benutzer>.github.io/vokabeltrainer`. Diese Adresse teilt sich den Browser-Speicher mit allen anderen Pages-Projekten des Accounts; für Testdaten ist das unkritisch.
+- **Entscheidung:** GitHub Pages, deployt per GitHub Actions nach erfolgreicher CI auf dem Branch `production` (4.5). Voraussetzung: öffentliches Repository (zulässig, da keine Lehrwerksinhalte versioniert sind). Pages-Quelle ist „GitHub Actions“ (`build_type: workflow`), nicht ein Branch mit fertigen Dateien.
+- **Branch `production` (D-21):** zeigt immer auf einen Stand von `main` und wird nur per Fast-Forward nachgezogen, mit `git push origin main:production`. Git lehnt den Push ab, wenn er kein Fast-Forward ist. Abgesichert durch ein Ruleset (kein Force-Push, kein Löschen), eine Prüfung im Deploy-Job (Commit muss in `main` enthalten sein) und die Umgebung `github-pages`, die nur `production` zulässt. So entscheidet ein bewusster Schritt, wann eine neue Version online geht; `main` bleibt Arbeitsstand.
+- **M0:** provisorische Adresse `https://cgrothaus.github.io/vokabeltrainer/`. Diese Adresse teilt sich den Browser-Speicher mit allen anderen Pages-Projekten des Accounts; für Testdaten ist das unkritisch.
 - **Vor der ersten Auslieferung an Nutzende** (Arbeitspaket S-29): eigene Domain einrichten. Ab dann ist die Adresse fest, weil lokale Daten an sie gebunden sind (T-23). Ein späterer Adresswechsel ist nur per Backup möglich.
 - GitHub Pages erlaubt keine eigenen HTTP-Header. Das ist unkritisch: Der Browser prüft `sw.js` auf Updates unter Umgehung des HTTP-Caches, und `index.html` wird vom Service Worker ausgeliefert.
 - Alternative bei Bedarf: Vercel (Hobby) mit eigener Adresse pro Projekt und Preview-Deploys pro Branch. Netlify scheidet wegen des Credit-Modells aus.
@@ -165,8 +166,9 @@ Workflow `.github/workflows/ci.yml`, ausgelöst bei jedem Push, Pull Request und
 - Die Browser werden in jedem Lauf per `npx playwright install --with-deps chromium webkit` installiert, weder gecacht (laut Playwright so schnell wie das Wiederherstellen, Systempakete sind nicht cachebar) noch über das Playwright-Container-Image. So steht die Playwright-Version nur in `package.json`.
 - npm-Abhängigkeiten cacht `actions/setup-node` (`cache: npm`); ein `packageManager`-Feld ist dafür nicht nötig.
 - Bei Fehlern wird der Playwright-Report (mit Traces) als Artefakt `playwright-report` für 14 Tage hochgeladen; Fehler erscheinen zusätzlich als Annotationen am Lauf.
-- Ein neuerer Lauf derselben Ref bricht den älteren ab, außer auf `main`.
-- Der Deploy-Job (S-04) hängt mit `needs: check` vom Prüfjob ab und läuft nur bei Push auf `main`: Nur wenn alles grün ist, wird deployt (TAK-14).
+- Ein neuerer Lauf derselben Ref bricht den älteren ab, außer auf `main` und `production`.
+- Nur bei Push auf `production` lädt `check` nach den E2E-Tests `dist/` mit `actions/upload-pages-artifact` hoch. Ausgeliefert wird damit genau der getestete Build (Playwright baut vor den Tests selbst neu).
+- Der Job `deploy` hängt mit `needs: check` vom Prüfjob ab und läuft nur bei Push auf `production`: Nur wenn alles grün ist, wird deployt (TAK-14). Er prüft mit `git merge-base --is-ancestor`, dass der Commit in `main` enthalten ist (D-21), und veröffentlicht mit `actions/deploy-pages`. `actions/configure-pages` ist nicht nötig, weil alle Verweise relativ sind.
 
 ### 4.6 Arbeitsweise mit dem Coding-Agent
 
@@ -788,6 +790,7 @@ Fixtures aus 15.3: Import von 3.000 Einträgen (Validierung, Diff, Commit) ohne 
 | D-18 | Multiple-Choice-Kandidaten aus demselben Set und derselben Sprachseite, ohne Überschneidung mit akzeptierten Antworten | 12.3 | FR-09 |
 | D-19 | Hosting auf GitHub Pages per Actions, eigene Domain vor erster Auslieferung | 4.4 | F-02, bestätigt am 19. Oktober 2026 |
 | D-20 | Browserziel `baseline-widely-available` (in M0 zu bestätigen) | 4.3 | – |
+| D-21 | Deployment nur vom Branch `production`, der ausschließlich per Fast-Forward aus `main` nachgezogen wird | 4.4, 4.5 | Nutzerentscheidung in S-04, 20. Oktober 2026 |
 
 ---
 
@@ -829,6 +832,9 @@ Geprüft am 18. bis 20. Oktober 2026.
 18. Playwright – Continuous Integration: https://playwright.dev/docs/ci
 19. `actions/setup-node` – Caching und Node-Versionen: https://github.com/actions/setup-node
 20. GitHub Actions – Abrechnung, Kontingente im Free-Plan: https://docs.github.com/en/billing/concepts/product-billing/github-actions
+21. GitHub Pages – Custom Workflows: https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages
+22. `actions/upload-pages-artifact` (v5) und `actions/deploy-pages` (v5): https://github.com/actions/upload-pages-artifact/releases, https://github.com/actions/deploy-pages/releases
+23. GitHub – Rulesets und Deployment-Umgebungen: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets, https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments
 
 ---
 
@@ -841,6 +847,7 @@ Geprüft am 18. bis 20. Oktober 2026.
 | 2.1 | 19. Oktober 2026 | Vitest 5 statt Vitest 4 (4.1, Quelle 12) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.2 | 20. Oktober 2026 | Test-Setup (S-02): `@types/node` und globale Installation von `playwright-cli` in 4.1; `fake-indexeddb` wird mit S-06 eingerichtet | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.3 | 20. Oktober 2026 | CI (S-03): 4.5 präzisiert – Typprüfung über `npm run typecheck` statt `tsc --noEmit`, Formatprüfung, Browserinstallation ohne Cache und Container-Image, Report-Artefakt, Abhängigkeit des Deploy-Jobs; Quellen 18–20 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.4 | 20. Oktober 2026 | Deployment (S-04): Branch `production` nur per Fast-Forward aus `main` (D-21), Pages-Quelle „GitHub Actions“, Artefakt aus dem Prüfjob, konkrete Adresse in 4.4; 4.5 entsprechend; Quellen 21–23 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 
 ---
 
@@ -858,7 +865,8 @@ Ziel: Jeder riskante Teil läuft einmal von vorn bis hinten, in einfachster Form
   Erledigt am 20. Oktober 2026 mit Vitest 5.0, Playwright 1.64, `playwright-cli` 0.1.22 (global). Vitest-Projekte `unit` (`src/**/*.test.ts`) und `build` (Build-Prüfung, läuft in `npm run build`); E2E-Smoke-Test prüft Start, Routing, fremde Anfragen (TAK-02) und Konsolenfehler. `fake-indexeddb` folgt mit dem ersten Storage-Test in S-06. Offen für S-05: Chrome fordert `favicon.ico` an (404), bis Icons vorhanden sind.
 - ✅ **S-03** CI in GitHub Actions (4.5) – TAK-14  
   Erledigt am 20. Oktober 2026 mit `actions/checkout@v7`, `actions/setup-node@v7` (Node.js `lts/*`, im ersten Lauf 24.22), `actions/upload-artifact@v7`. Ein Lauf dauert etwa 1,5 Minuten, davon rund 1 Minute für die Browserinstallation; ein Container-Image lohnt sich daher nicht. Fehlerfall einmal absichtlich ausgelöst: Annotationen am Test und Artefakt `playwright-report` mit Traces vorhanden. TAK-14 ist vollständig erfüllt, sobald S-04 den Deploy-Job mit `needs: check` ergänzt. Die Läufe nutzten noch Ubuntu 24.04; `ubuntu-latest` wechselt ab 19. Oktober 2026 schrittweise auf Ubuntu 26, das Playwright 1.64 unterstützt.
-- 🔲 **S-04** Provisorisches Deployment auf GitHub Pages (Repository öffentlich schalten) – NFR-01, D-19
+- 🔶 **S-04** Provisorisches Deployment auf GitHub Pages (Repository öffentlich schalten) – NFR-01, D-19, D-21  
+  Vor dem Öffentlichschalten am 20. Oktober 2026 die Git-Historie mit `git filter-repo --replace-text` bereinigt: Das frühere TDD v1 enthielt ein Beispiel mit Lehrwerkstitel, Sektionsnamen und zwei Vokabelpaaren aus dem Prototyp, die Review-Notizen zitierten den Titel unter T-10. Alle Commit-Hashes vor diesem Datum haben sich dadurch geändert; die alten Actions-Läufe wurden gelöscht. Lizenztext für den eingecheckten Skill `playwright-cli` (Apache-2.0) beigelegt. Eine Lizenz für das Projekt wird vorerst nicht vergeben.
 - 🔲 **S-05** Manifest, Icons, Service Worker, Offline-Start, Update-Hinweis (5) – NFR-03, NFR-05, AK-21, TAK-11, TAK-12
 - 🔲 **S-06** IndexedDB-Grundgerüst (inkl. `fake-indexeddb` für die Integrationstests): Öffnen, Upgrade, Migrationskette mit Test-Migration v1 → v2, `versionchange`/`VersionError`, Notfall-Backup, `persist()` mit Anzeige des Ergebnisses (6, 7) – FR-22, FR-33, TAK-05, TAK-08
 - 🔲 **S-07** Minimaler Import: Textfeld und Datei, `extract.ts`, Grundvalidierung, Speichern als neues Set ohne Vorschau – FR-13 (Teil)

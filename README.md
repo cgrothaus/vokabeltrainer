@@ -2,7 +2,7 @@
 
 Ein mobiler Vokabeltrainer, der offline funktioniert. Man installiert ihn als Web-App (PWA) auf dem Home-Bildschirm. Es gibt kein Backend und kein Konto: Alle Daten bleiben auf dem Gerät.
 
-> **Status:** frühe Entwicklung. Meilenstein M0 (Walking Skeleton) läuft, eine nutzbare App gibt es noch nicht. Den aktuellen Stand zeigt der [Umsetzungsplan](docs/TDD_Vokabeltrainer_Allgemein_v2.md) (TDD Kap. 21).
+> **Status:** frühe Entwicklung. Meilenstein M0 (Walking Skeleton) läuft, eine nutzbare App gibt es noch nicht. Den aktuellen Stand zeigt der [Umsetzungsplan](docs/TDD_Vokabeltrainer_Allgemein_v2.md) (TDD Kap. 21). Ein provisorischer Testaufbau läuft unter https://cgrothaus.github.io/vokabeltrainer/; dort gespeicherte Daten können jederzeit verloren gehen.
 
 ## Funktionen (geplant)
 
@@ -46,4 +46,6 @@ Hinweise für Coding-Agents stehen in [CLAUDE.md](CLAUDE.md).
 
 ## Lizenz
 
-Noch nicht festgelegt.
+Vorerst keine Lizenz: Alle Rechte vorbehalten. Eine Lizenz folgt vor der ersten Auslieferung.
+
+Ausgenommen ist der Skill unter `.claude/skills/playwright-cli/` aus [microsoft/playwright-cli](https://github.com/microsoft/playwright-cli); er steht unter der Apache-2.0-Lizenz (siehe `LICENSE` dort).
