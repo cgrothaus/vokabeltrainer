@@ -1,0 +1,76 @@
+# Betatest Meilenstein 0: Anleitung
+
+**Stand:** 21. Oktober 2026  
+**App:** https://cgrothaus.github.io/vokabeltrainer/
+
+Danke, dass du mittestest! Die App ist noch ein Gerüst: Sie kann Vokabeln importieren, als Karteikarten abfragen und ein Backup speichern. Wir wollen herausfinden, ob dieser Weg auf deinem Handy von vorn bis hinten funktioniert – besonders der Schritt mit dem KI-Chat.
+
+## Überblick
+
+```
+Vokabelliste ──Foto──┐
+                     ├──► KI-Chat (z. B. ChatGPT, Claude, Gemini) ──► Antwort als Text oder Datei ──► App
+Formatbeschreibung ──┘
+```
+
+## 1. App einrichten
+
+1. Link oben auf dem Handy öffnen.
+2. Zum Home-Bildschirm hinzufügen:
+   - **iPhone (Safari):** Teilen-Symbol → „Zum Home-Bildschirm“.
+   - **Android (Chrome):** Menü ⋮ → „Zum Startbildschirm hinzufügen“ bzw. „App installieren“.
+3. Ab jetzt die App **über das Symbol „Vokabeln“** starten, nicht mehr im Browser.  
+   Wichtig auf dem iPhone: Nur so bleiben deine Daten dauerhaft gespeichert. Im Safari-Tab kann iOS sie nach einigen Tagen ohne Nutzung löschen.
+
+## 2. Vokabeln mit dem KI-Chat umwandeln
+
+1. **Foto machen** von einer Vokabelliste, am besten einer selbst geschriebenen. Mehrere Fotos gehen auch.
+2. **Formatbeschreibung bereitstellen** – eine der beiden Möglichkeiten:
+   - **Link** in den Chat einfügen:  
+     https://raw.githubusercontent.com/cgrothaus/vokabeltrainer/production/docs/Formatspezifikation_Vokabelset_v1.md
+   - **Datei** `Formatspezifikation_Vokabelset_v1.md` an den Chat anhängen (über den Link herunterladen oder von mir bekommen).  
+     Nimm die Datei, wenn der Chat den Link nicht öffnen kann.
+3. **Fotos dazu und einen kurzen Satz schreiben**, z. B.:  
+   > Mach daraus ein Set für meinen Vokabeltrainer.
+
+   Mehr bitte nicht vorgeben: Wir testen, ob die Formatbeschreibung allein reicht. Fragt der Chat nach, beantworte die Frage und notiere sie für die Rückmeldung.
+4. **Antwort kurz prüfen:** Stimmen Wörter und Übersetzungen? Unsichere Stellen markiert der Chat meist selbst; die App zeigt solche Hinweise noch nicht an.
+
+## 3. Ergebnis in die App übernehmen
+
+In der App „**Vokabelset importieren**“ öffnen, dann eine der beiden Möglichkeiten:
+
+- **Als Text:** Im Chat die Antwort (oder den Codeblock) kopieren → in der App lange ins Feld „Text einfügen“ tippen → „Einfügen“ → „**Importieren**“. Begleittext vor oder nach dem Codeblock stört nicht.
+- **Als Datei:** Den Chat bitten „Gib mir das als JSON-Datei“, Datei speichern (z. B. in „Dateien“ bzw. „Downloads“) → in der App „**Oder eine Datei auswählen**“.
+
+Klappt es, steht dort „… gespeichert.“ Bei einer Fehlermeldung: Screenshot machen und die Meldung ruhig an den Chat zurückgeben („Der Import meldet: …“). Wie oft das nötig war, ist eine wichtige Rückmeldung.
+
+## 4. Lernen und sichern
+
+1. **Lernen:** In der Bibliothek beim Set auf „Lernen“ tippen. Karte antippen zum Aufdecken, dann „Gewusst“ oder „Nochmal“. „Nochmal“-Karten kommen später wieder.
+2. **Backup:** „Backup und Wiederherstellung“ → „Backup speichern“ → im Teilen-Menü z. B. „In Dateien sichern“. Notiere, wo die Datei gelandet ist.
+3. **Offline:** Flugmodus an, App vom Home-Bildschirm starten – sie sollte normal laufen.
+4. Erscheint unten „Neue Version verfügbar.“, auf „**Jetzt aktualisieren**“ tippen.
+
+## Was die App noch nicht kann
+
+Bitte nicht als Fehler melden – das kommt in späteren Meilensteinen:
+
+- Nur Karteikarten, nur von der Fremdsprache ins Deutsche, immer das ganze Set.
+- Keine Vorschau vor dem Speichern; Sets lassen sich weder bearbeiten noch löschen. Dasselbe Set zweimal importieren ergibt zwei Sets.
+- Notizen, Beispielsätze und Grammatik aus der Datei werden noch nicht angezeigt.
+- Die Schaltfläche „Dauerhaften Speicher anfordern“ ist nur für unsere Messung da.
+
+## Rückmeldung
+
+Bitte schick mir nach dem Test kurz:
+
+1. **Gerät und System**, z. B. „iPhone 15, iOS 26“ oder „Pixel 8, Android 16, Chrome“.
+2. **KI-Chat:** App und Modell (z. B. „ChatGPT, GPT-5“), Formatbeschreibung als Link oder Datei, hat der Chat nachgefragt?
+3. **Import:** auf Anhieb geklappt? Als Text oder Datei? Fehlermeldungen als Screenshot.
+4. **Inhalt:** falsche Übersetzungen, fehlende Wörter, unsinnig zusammengefasste oder getrennte Bedeutungen.
+5. **Backup:** Wo ist die Datei gelandet? Hat Abbrechen im Teilen-Menü etwas gespeichert?
+6. **Offline-Start** und **Aktualisieren:** hat beides funktioniert?
+7. Alles, was unklar, umständlich oder überraschend war.
+
+Fotos von Schulbuchseiten bitte nicht mitschicken – Testergebnisse werden im öffentlichen Projekt dokumentiert. Screenshots der App und der Chat-Antwort genügen.

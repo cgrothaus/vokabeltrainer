@@ -13,6 +13,7 @@ Maßgebliche Dokumente in `docs/`:
 | `PRD_Vokabeltrainer_Allgemein_v2.md` | Was und warum: Anforderungen (FR, NFR, DF), Akzeptanzkriterien (AK), Risiken (R), Meilensteine |
 | `TDD_Vokabeltrainer_Allgemein_v2.md` | Wie: Architektur, Datenmodell, Abläufe, Tests, Entscheidungen (D-xx, Kap. 17), technische Akzeptanzkriterien (TAK-xx, Kap. 16), **Umsetzungsplan (Kap. 21)** |
 | `Formatspezifikation_Vokabelset_v1.md` | Austauschformat `vokabeltrainer-set` für Menschen, LLMs und Validator; gilt bei Widerspruch zum JSON Schema |
+| `Betatest_M0_Anleitung.md` | Anleitung für Betatester von M0 (Foto + Formatspezifikation → LLM → App); bei Änderungen an Abläufen, UI-Texten oder Links mitpflegen |
 | `20261019_TDD_v1_Review_Notizen.md` | Abgeschlossenes Protokoll (F-xx, T-xx); wird nicht fortgeschrieben |
 
 Vor einer Umsetzung das betreffende Arbeitspaket (S-xx) in TDD Kap. 21 und die dort verlinkten Kapitel lesen.
