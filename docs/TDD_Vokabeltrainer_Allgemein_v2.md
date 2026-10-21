@@ -1,7 +1,7 @@
 # TDD: Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.10 – Backup und Wiederherstellung  
-**Stand:** 20. Oktober 2026  
+**Version:** 2.11 – E2E-Tests in der CI  
+**Stand:** 21. Oktober 2026  
 **Bezug:** PRD 2.4 (`PRD_Vokabeltrainer_Allgemein_v2.md`), Formatspezifikation Version 1 (`Formatspezifikation_Vokabelset_v1.md`), Review-Notizen (`20261019_TDD_v1_Review_Notizen.md`)  
 **Status:** Entwurf; Grundlage für M0 (Walking Skeleton)  
 **Entstehung und Autorenschaft:** siehe Kapitel 20 (Änderungshistorie)
@@ -347,8 +347,8 @@ Vor einem Upgrade mit Datenumwandlung legt die App eine Kopie aller Stores in ei
 
 ### 7.4 Regeln
 
-- Bis zur ersten Auslieferung an Nutzende bleibt `DB_VERSION` = 1, und das Schema darf sich ohne Migration ändern (Testdaten werden verworfen). Der Migrationsmechanismus wird trotzdem in M0 mit einer Test-Migration v1 → v2 geprüft.
-- Ab der ersten Auslieferung gilt: Jede Änderung am gespeicherten Datenmodell erhöht `DB_VERSION` und bringt eine Migration und ein Fixture des Vorgängerstands mit (TAK-08).
+- Bis zur ersten Auslieferung an Nutzende bleibt `DB_VERSION` = 1, und das Schema darf sich ohne Migration ändern (Testdaten werden verworfen). Der Migrationsmechanismus wird trotzdem in M0 mit einer Test-Migration v1 → v2 geprüft, und zwar in den Integrationstests und per Dev-Schalter. Gegen das gebaute Artefakt gibt es dann noch keine ältere Datenbank, die migriert werden könnte.
+- Ab der ersten Auslieferung gilt: Jede Änderung am gespeicherten Datenmodell erhöht `DB_VERSION` und bringt eine Migration und ein Fixture des Vorgängerstands mit (TAK-08). Mit der ersten Erhöhung auf `DB_VERSION` 2 entsteht außerdem E2E-04 (15.4): Der Test legt die alte Datenbank aus dem Fixture v1 an.
 - Fixtures früherer Stände (`tests/fixtures/db/vN.json`, `tests/fixtures/backup/vN.json`, `tests/fixtures/setfile/vN/…`) werden nie gelöscht.
 
 ---
@@ -732,7 +732,7 @@ Projekte: `mobile-chromium` (Pixel-Emulation) und `mobile-webkit` (iPhone-Emulat
 | E2E-01 Import (Text) → Lernen → Neuladen → Daten da | M0 | AK-01, AK-09 |
 | E2E-02 Backup → Daten löschen → Wiederherstellen | M0 | AK-10 |
 | E2E-03 Offline-Start nach erstem Laden | M0 | AK-21 |
-| E2E-04 Migration: alte DB per Init-Skript anlegen → App öffnen → Daten nutzbar | M0 (Test-Migration), ab Auslieferung mit echten Ständen | AK-24 |
+| E2E-04 Migration: alte DB per Init-Skript anlegen → App öffnen → Daten nutzbar | mit der ersten Erhöhung von `DB_VERSION` nach S-29 (7.4); bis dahin Integrationstests | AK-24 |
 | E2E-05 Empty State → Beispielset → Sitzung mit Multiple Choice → Ergebnis | M1 | AK-08, AK-14, AK-22 |
 | E2E-06 Import mit Begleittext und Zusatzfeld (Datei) → Warnung sichtbar | M1 | AK-01 |
 | E2E-07 Bearbeiten → Neuladen → Änderung da | M3 | AK-03, AK-25 |
@@ -787,7 +787,7 @@ Ergebnisse (LLM-App, Modell, Datum, Befund) werden im Umsetzungsplan bei S-15 fe
 | TAK-05 | Änderungen über mehrere Stores sind atomar; ein erzwungener Fehler hinterlässt den vorherigen Stand. | Integrationstest |
 | TAK-06 | Die Importvorschau schreibt nichts. | Integrationstest |
 | TAK-07 | Eine veraltete Vorschau (geänderter `editCount`) wird nicht angewandt. | Integrationstest |
-| TAK-08 | Jeder frühere DB- und Backup-Stand wird auf den aktuellen migriert; eine fehlschlagende Migration lässt den alten Stand unverändert und bietet das Notfall-Backup an. | Integrationstest, E2E-04 |
+| TAK-08 | Jeder frühere DB- und Backup-Stand wird auf den aktuellen migriert; eine fehlschlagende Migration lässt den alten Stand unverändert und bietet das Notfall-Backup an. | Integrationstest, E2E-04 (ab `DB_VERSION` 2) |
 | TAK-09 | Backup → Wiederherstellen ergibt denselben Bestand (tiefer Vergleich aller Stores außer `meta`). | Integrationstest, E2E-02 |
 | TAK-10 | Validator und JSON Schema urteilen bei allen Fixtures gleich. | Schemaabgleich |
 | TAK-11 | Die App startet nach dem ersten Laden offline vollständig. | E2E-03 |
@@ -895,6 +895,7 @@ Geprüft am 18. bis 20. Oktober 2026.
 | 2.8 | 20. Oktober 2026 | Minimale Lernsitzung (S-08): Router meldet das Verlassen einer Ansicht (3.3); Kodierung von `rev` präzisiert – Basis 31 statt „Base32“, niederwertigste Stellen, leere Objekte, rund 39,6 Bit (6.4); Ende einer Sitzung beim Verlassen, `interrupted` ohne `endedAt` (12.5); E2E-14 (15.4, 16) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.9 | 20. Oktober 2026 | LLM-Tauglichkeit der Formatspezifikation ohne Prompt-Vorlage als manueller Test (15.7) und offener Punkt O-09, Anschluss an S-15 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.10 | 20. Oktober 2026 | Backup und Wiederherstellung (S-09): `backup.ts` und `validateRecords.ts` (3.1); Rückgabewert von `deliverFile`, Rückfall auf Download, Inhalt vor der Geste fertig (11.2); Backup beim Öffnen der Ansicht lesen, `lastBackupAt` = `exportedAt` (11.3); Prüfregeln, Größengrenze, M0-Bestätigung, `lastBackupAt` in derselben Transaktion (11.4) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.11 | 21. Oktober 2026 | E2E-Tests in der CI (S-10): E2E-04 auf die erste Erhöhung von `DB_VERSION` verschoben, weil es vorher gegen das gebaute Artefakt keine ältere Datenbank gibt; bis dahin prüfen die Integrationstests den Migrationsmechanismus (7.4, 15.4, 16) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 
 ---
 
@@ -926,7 +927,8 @@ Ziel: Jeder riskante Teil läuft einmal von vorn bis hinten, in einfachster Form
   Erledigt am 20. Oktober 2026. Domain testgetrieben: `hash.ts` (cyrb53 gegen die Referenzwerte, kanonische Darstellung, `entryRev` mit eingefrorenem Referenzwert; Kurz- und Langform ergeben denselben Wert) und `practice.ts` (Mischen mit übergebenem Zufall, Wiedereinfügen an Position 4 bzw. am Ende, Erstversuch pro Eintrag, Anzeige mehrerer Bedeutungen; `mixed` schon enthalten). TDD 6.4 sprach von Base32, das Alphabet aus 6.3 hat aber 31 Zeichen; `rev` nutzt jetzt die Basis 31 (6.4 präzisiert). `storage/sessions.ts` mit Integrationstests: Sitzung anlegen und abschließen, jede Antwort in eigener Transaktion, aktive Sitzungen beim Start auf `interrupted`. Die Bibliothek bietet pro Set „Lernen“; die Sitzung umfasst alle Einträge in Richtung `termToMeaning`, Aufdecken per Tippen auf die Karte, Bewerten mit „Nochmal“/„Gewusst“; die nächste Karte erscheint erst nach dem Speichern, ein Speicherfehler zeigt einen Hinweis, die Sitzung läuft weiter. Abschluss mit Erstversuchsquote. „Beenden“, Zurück-Taste und jedes Verlassen beenden die Sitzung als `ended` (Router-Signal, 3.3); während der Sitzung ist der Update-Hinweis zurückgehalten (TAK-12). E2E-01 (Import → Lernen → Neuladen, Events mit `entryRev`), Beenden, Neuladen (`interrupted`) und E2E-14 laufen in mobile-chromium und mobile-webkit. Gegenproben: Wiedereinfügen am Ende, vertauschte Stellenreihenfolge in `rev`, fehlendes `setUpdateBlocked(true)` und fehlendes Unterbrechen beim Start lassen jeweils den passenden Test scheitern. Mit `playwright-cli` (mobiles Chromium, 320 px) geprüft: kein horizontales Scrollen auch bei langem Titel, hell und dunkel lesbar, `lang` an Frage und Antwort, Fokus nach dem Start auf der Karte, nach dem Aufdecken auf der Antwort (nicht auf einer Schaltfläche, damit ein gehaltenes Enter nicht gleich bewertet), danach auf der nächsten Karte und am Ende auf „Geschafft“; gescheiterter Start und gescheiterte Antwort zeigen ihren Hinweis; Konsole sonst leer. Tastatur (Pfeile) und Wischen folgen mit S-18, Zwischenstand und „Nur Fehler üben“ mit S-19.
 - ✅ **S-09** Backup-Export (Teilen-Menü bzw. Download, Spike D-17) und Wiederherstellung (ersetzt alles) inkl. `lastBackupAt` – FR-19 (Teil), TAK-09  
   Erledigt am 20. Oktober 2026. Domain testgetrieben: `validateRecords.ts` (Pflichtangaben und Typen pro Store, eindeutige Schlüssel, eindeutige Sektions- und Eintrags-IDs pro Set, Verweise von Sitzungen und Events, `entryId` bewusst ungeprüft, Meldungen ohne Inhalte) und `parseBackup` in `backup.ts` (Hülle, Vokabelset erkannt, neuere Version abgelehnt, Migration über die Kette, scheiternde Migration als Meldung). `storage/backup.ts` mit Integrationstests: Lesen in einer Transaktion (auch für das Notfall-Backup), Ersetzen samt `lastBackupAt` in einer Transaktion; Hin und zurück ergibt denselben Bestand (TAK-09), ein doppelter Schlüssel lässt alles unverändert (TAK-05). `deliverFile` mit Teilen-Menü (11.2). Ansicht `#/backup` mit Link in der Bibliothek; Wiederherstellen nur per Datei mit knapper Bestätigung (Nutzerentscheidung, 11.4). E2E-02 (frischer Browserkontext als neues Gerät), Teilen-Menü, Abbrechen im Teilen-Menü und Ablehnung eines Vokabelsets laufen in mobile-chromium und mobile-webkit; das Teilen-Menü wird dort per Init-Skript ersetzt oder entfernt. Gegenproben: ohne `clear()`, `lastBackupAt` vor der Transaktion, `AbortError` als Erfolg – jeweils scheitert der passende Test. Mit `playwright-cli` (mobiles Chromium, 320 px) geprüft: kein horizontales Scrollen, hell und dunkel lesbar, Fokus auf dem Umfang und danach auf „Backup wiederhergestellt.“, Dateiname `Vokabeltrainer-Backup_2026-10-20.json`. Dort meldet `canShare` Erfolg, `share()` scheitert aber mit `NotAllowedError`; der Rückfall auf den Download greift. Der Gerätecheck (Teilen-Menü auf iPhone im Tab und als Home-Bildschirm-App, Android, Wiederherstellen aus „Dateien“) folgt mit S-11 und bestätigt oder ändert D-17.
-- 🔲 **S-10** E2E-01 bis E2E-04 in der CI (E2E-03 besteht seit S-05, E2E-01 seit S-08)
+- ✅ **S-10** E2E-01 bis E2E-04 in der CI (E2E-03 besteht seit S-05, E2E-01 seit S-08)  
+  Erledigt am 21. Oktober 2026. E2E-01 (`practice.spec.ts`), E2E-02 (`backup.spec.ts`) und E2E-03 (`offline.spec.ts`) laufen in der CI in mobile-chromium und mobile-webkit; im Lauf 39652042870 auf `main` (Stand S-09) waren alle 32 E2E-Tests in rund 1,5 Minuten grün. `ci.yml` blieb unverändert. E2E-04 ist auf Nutzerentscheidung bis zur ersten Erhöhung von `DB_VERSION` verschoben (7.4, 15.4): Solange `DB_VERSION` 1 ist, gibt es gegen das gebaute Artefakt keine ältere Datenbank. Ein eigener Testbuild mit Version 2 wurde erwogen und verworfen, weil er nur nachbildet, was die Integrationstests schon zeigen (Migration v1 → v2, scheiternde Migration mit unverändertem Altstand und Notfall-Backup, Backup über die Kette). S-29 friert Version 1 erst ein; E2E-04 entsteht mit der ersten echten Migration danach.
 - 🔶 **S-11** Manuelle Prüfung auf echtem iPhone und Android (15.5); Ergebnisse zu O-02, O-03, O-04, O-08 hier festhalten  
   Erste Prüfung am 20. Oktober 2026 mit dem Stand von S-06 unter https://cgrothaus.github.io/vokabeltrainer/:
   - Android (Chrome): Hinzufügen zum Startbildschirm funktioniert; `persist()` wird schon im Browser gewährt.
@@ -959,7 +961,8 @@ Ziel: Jeder riskante Teil läuft einmal von vorn bis hinten, in einfachster Form
 - 🔲 **S-26** Speicherschutz-Hinweise und iOS-Installationsanleitung – FR-31, AK-20
 - 🔲 **S-27** Backup-Erinnerung mit Zurückstellen – FR-31, AK-20
 - 🔲 **S-28** Sicherungskopie vor Migrationen (7.3) – FR-33, D-14
-- 🔲 **S-29** Erste Auslieferung vorbereiten: eigene Domain, `DB_VERSION` und Formate einfrieren, Fixtures v1 anlegen – FR-33, T-23
+- 🔲 **S-29** Erste Auslieferung vorbereiten: eigene Domain, `DB_VERSION` und Formate einfrieren, Fixtures v1 anlegen – FR-33, T-23  
+  Das Fixture `tests/fixtures/db/v1.json` ist die Grundlage für E2E-04 bei der ersten Erhöhung von `DB_VERSION` (7.4, S-10).
 
 ### M3 – Inhalte pflegen und teilen
 
