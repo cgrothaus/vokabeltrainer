@@ -1,9 +1,13 @@
 import "fake-indexeddb/auto";
 import { IDBFactory } from "fake-indexeddb";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { StoredSet } from "../domain/model";
+import { BACKUP_STORES } from "../domain/backup";
+import type { ReviewEvent, Session, StoredSet } from "../domain/model";
+import { type StoreRecords, validateRecords } from "../domain/validateRecords";
+import { readBackup } from "./backup";
 import { openDatabase } from "./database";
-import { addSet, getSet, listSets } from "./sets";
+import { recordAnswer, startSession } from "./sessions";
+import { addSet, countSetActivity, deleteSet, getSet, listSets } from "./sets";
 
 let db: IDBDatabase;
 
@@ -84,5 +88,88 @@ describe("getSet und listSets", () => {
   it("liefert nichts für unbekannte IDs und eine leere Liste ohne Sets", async () => {
     expect(await getSet(db, "unbekannt")).toBeUndefined();
     expect(await listSets(db)).toEqual([]);
+  });
+});
+
+/** Eine Sitzung mit `answers` Antworten zu `setId`; IDs werden aus `prefix` gebildet. */
+async function practise(setId: string, prefix: string, answers: number): Promise<void> {
+  const session: Session = {
+    id: `${prefix}`.padEnd(12, "s"),
+    setId,
+    sectionIds: ["q7h3kd"],
+    startedAt: "2026-10-21T18:00:00.000Z",
+    status: "completed",
+    config: { direction: "termToMeaning", count: answers, mcShare: 0 },
+  };
+  await startSession(db, session);
+  for (let index = 0; index < answers; index++) {
+    const event: ReviewEvent = {
+      id: `${prefix}${index}`.padEnd(12, "e"),
+      sessionId: session.id,
+      setId,
+      entryId: "a8f2kc",
+      entryRev: "xq6g2dsd",
+      occurredAt: "2026-10-21T18:01:00.000Z",
+      direction: "termToMeaning",
+      mode: "flashcard",
+      result: "correct",
+      firstAttempt: index === 0,
+    };
+    await recordAnswer(db, event);
+  }
+}
+
+describe("countSetActivity", () => {
+  it("zählt Sitzungen und Antworten nur des genannten Sets", async () => {
+    await addSet(db, storedSet("m4x8c2r9tw"));
+    await addSet(db, storedSet("k2n7w4b8qp", "Anderes"));
+    await practise("m4x8c2r9tw", "a", 2);
+    await practise("m4x8c2r9tw", "b", 3);
+    await practise("k2n7w4b8qp", "c", 1);
+    expect(await countSetActivity(db, "m4x8c2r9tw")).toEqual({ sessions: 2, events: 5 });
+    expect(await countSetActivity(db, "unbekannt")).toEqual({ sessions: 0, events: 0 });
+  });
+});
+
+describe("deleteSet", () => {
+  it("löscht das Set samt Sitzungen und Antworten; andere Sets und ihr Lernstand bleiben", async () => {
+    const other = storedSet("k2n7w4b8qp", "Anderes");
+    await addSet(db, storedSet("m4x8c2r9tw"));
+    await addSet(db, other);
+    await practise("m4x8c2r9tw", "a", 2);
+    await practise("k2n7w4b8qp", "c", 1);
+
+    expect(await deleteSet(db, "m4x8c2r9tw")).toEqual({ ok: true });
+
+    expect(await listSets(db)).toEqual([other]);
+    expect(await countSetActivity(db, "m4x8c2r9tw")).toEqual({ sessions: 0, events: 0 });
+    expect(await countSetActivity(db, "k2n7w4b8qp")).toEqual({ sessions: 1, events: 1 });
+  });
+
+  it("hinterlässt einen Bestand, den ein Backup ohne Fehler enthält", async () => {
+    await addSet(db, storedSet("m4x8c2r9tw"));
+    await addSet(db, storedSet("k2n7w4b8qp", "Anderes"));
+    await practise("m4x8c2r9tw", "a", 2);
+    await practise("k2n7w4b8qp", "c", 1);
+    await deleteSet(db, "m4x8c2r9tw");
+
+    const backup = await readBackup(db, "test", "2026-10-21T19:00:00.000Z");
+    const records = Object.fromEntries(BACKUP_STORES.map((store) => [store, backup.data[store]]));
+    expect(validateRecords(records as StoreRecords)).toEqual([]);
+  });
+
+  it("meldet ein unbekanntes Set und ändert nichts", async () => {
+    await addSet(db, storedSet("m4x8c2r9tw"));
+    await practise("m4x8c2r9tw", "a", 1);
+    expect(await deleteSet(db, "unbekannt")).toEqual({ ok: false, reason: "missing" });
+    expect(await listSets(db)).toHaveLength(1);
+    expect(await countSetActivity(db, "m4x8c2r9tw")).toEqual({ sessions: 1, events: 1 });
+  });
+
+  it("meldet andere Fehler", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    db.close();
+    expect(await deleteSet(db, "m4x8c2r9tw")).toEqual({ ok: false, reason: "failed" });
+    expect(error).toHaveBeenCalled();
   });
 });

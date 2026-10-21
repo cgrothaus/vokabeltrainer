@@ -219,6 +219,122 @@ input[type="file"] {
   opacity: 0.75;
 }
 
+/* Bibliothek nach Lernsprache (TDD 13.1) */
+.group {
+  margin: 1.5rem 0 0;
+  font-size: 1.125rem;
+}
+
+.sets .title {
+  overflow-wrap: anywhere;
+}
+
+/* Set-Ansicht (TDD 13.1): Titel, Notizen und Wörter stammen aus Dateien und können sehr lang sein. */
+.set {
+  overflow-wrap: anywhere;
+}
+
+.set-title {
+  margin-bottom: 0.25rem;
+}
+
+.languages {
+  margin-top: 0;
+  opacity: 0.75;
+}
+
+.details {
+  display: grid;
+  gap: 0.25rem;
+  margin: 1rem 0;
+}
+
+.details div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.5rem;
+}
+
+.details dt {
+  font-weight: 600;
+}
+
+.details dt::after {
+  content: ":";
+}
+
+.details dd {
+  margin: 0;
+}
+
+.set h2 {
+  margin-top: 2rem;
+  font-size: 1.25rem;
+}
+
+.section {
+  border-bottom: 1px solid var(--border);
+}
+
+/* Ohne `display: flex`, sonst verschwindet das Dreieck zum Aufklappen; Höhe über den Innenabstand. */
+.section summary {
+  padding: 0.6rem 0;
+  cursor: pointer;
+}
+
+.section summary .title {
+  font-weight: 600;
+}
+
+.section summary .count,
+.variants,
+.extra {
+  opacity: 0.75;
+}
+
+.entries {
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.entries > li {
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.entries p {
+  margin: 0;
+}
+
+.pair .term {
+  font-weight: 600;
+}
+
+.extra,
+.examples {
+  font-size: 0.875rem;
+}
+
+.examples {
+  margin: 0.25rem 0 0;
+  padding-left: 1.25rem;
+}
+
+/* Kennzeichen als Text mit Rahmen, nicht nur als Farbe (TDD 13.4). */
+.badge {
+  display: inline-block;
+  padding: 0 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  vertical-align: middle;
+}
+
+.delete {
+  margin-top: 2rem;
+}
+
 /* Backup (TDD 11.3, 11.4) */
 .backup h2 {
   margin-top: 2rem;

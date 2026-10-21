@@ -1,6 +1,9 @@
 import type { StoredSet } from "../../domain/model";
+import { groupSets, setSize } from "../../domain/library";
 import type { PersistenceState } from "../../platform/persistence";
+import { learnButton } from "../components/learnButton";
 import { h } from "../dom";
+import { languageName } from "../languages";
 
 export interface LibraryContext {
   persistence: PersistenceState;
@@ -9,12 +12,9 @@ export interface LibraryContext {
   loadSets: () => Promise<StoredSet[]>;
   /** Legt die Sitzung an und wechselt zu ihr; lehnt ab, wenn das Speichern scheitert. */
   startPractice: (set: StoredSet) => Promise<void>;
-  /** Meldung aus dem vorigen Schritt, z. B. nach dem Import; wird beim Abholen geleert. */
+  /** Meldung aus dem vorigen Schritt, z. B. nach Import oder Löschen; wird beim Abholen geleert. */
   takeMessage: () => string | null;
 }
-
-const NOT_STARTED =
-  "Die Lernsitzung konnte nicht gestartet werden. Lade die Seite neu und versuche es noch einmal.";
 
 const persistenceText: Record<PersistenceState, string> = {
   granted: "Deine Daten sind auf diesem Gerät dauerhaft geschützt.",
@@ -57,7 +57,6 @@ export function libraryView(context: LibraryContext): Node {
   );
 }
 
-/** Minimal für M0; Gruppierung nach Sprache, Set-Ansicht und Löschen folgen mit S-14. */
 async function showSets(container: HTMLElement, context: LibraryContext): Promise<void> {
   let sets: StoredSet[];
   try {
@@ -67,52 +66,38 @@ async function showSets(container: HTMLElement, context: LibraryContext): Promis
     container.replaceChildren(h("p", null, "Die Vokabelsets konnten nicht geladen werden."));
     return;
   }
+  // Empty State mit Hilfe und Beispielset folgt mit S-15; er erscheint auch nach dem Löschen.
   if (sets.length === 0) {
     container.replaceChildren(h("p", null, "Noch keine Vokabelsets vorhanden."));
     return;
   }
-  const sorted = [...sets].sort((a, b) => a.title.localeCompare(b.title, "de"));
   const problem = h("div", { role: "alert" });
   container.replaceChildren(
-    h(
-      "ul",
-      { class: "sets" },
-      sorted.map((set) => {
-        const count = set.sections.reduce((sum, section) => sum + section.entries.length, 0);
-        const learn = h(
-          "button",
-          {
-            type: "button",
-            // Der sichtbare Text steckt im Namen, damit auch Sprachsteuerung „Lernen“ findet.
-            "aria-label": `${set.title} lernen`,
-            onclick: async () => {
-              learn.disabled = true;
-              problem.textContent = "";
-              try {
-                await context.startPractice(set);
-              } catch (error) {
-                console.error("Sitzung nicht gestartet", error);
-                problem.textContent = NOT_STARTED;
-                learn.disabled = false;
-              }
-            },
-          },
-          "Lernen",
-        );
-        return h(
-          "li",
-          null,
-          h(
-            "div",
-            null,
-            h("span", { class: "title" }, set.title),
-            " ",
-            h("span", { class: "count" }, count === 1 ? "1 Eintrag" : `${count} Einträge`),
-          ),
-          count > 0 && learn,
-        );
-      }),
-    ),
+    ...groupSets(sets, languageName)
+      .map((group) => [
+        h("h2", { class: "group" }, group.name),
+        h(
+          "ul",
+          { class: "sets" },
+          group.sets.map((set) => {
+            const { entries } = setSize(set);
+            const count = entries === 1 ? "1 Eintrag" : `${entries} Einträge`;
+            return h(
+              "li",
+              null,
+              h(
+                "div",
+                null,
+                h("a", { href: `#/set/${encodeURIComponent(set.id)}`, class: "title" }, set.title),
+                " ",
+                h("span", { class: "count" }, set.level ? `${set.level} · ${count}` : count),
+              ),
+              entries > 0 && learnButton(set, context.startPractice, problem),
+            );
+          }),
+        ),
+      ])
+      .flat(),
     problem,
   );
 }
