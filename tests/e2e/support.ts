@@ -41,13 +41,17 @@ export function collectErrors(page: Page): string[] {
   return errors;
 }
 
-/** Importiert ein Set über das Textfeld; die Seite steht danach auf dem Import. */
+/** Importiert ein Set über das Textfeld und die Vorschau; die Seite steht danach in der Bibliothek. */
 export async function importSet(page: Page, title: string, base = "./"): Promise<void> {
   await page.goto(`${base}#/import`);
   await page.getByLabel("Text einfügen").fill(setFile(title));
+  await page.getByRole("button", { name: "Prüfen" }).click();
   await page.getByRole("button", { name: "Importieren" }).click();
-  await expect(page.getByText(`„${title}“ mit 3 Einträgen gespeichert.`)).toBeVisible();
+  await expect(libraryMessage(page)).toHaveText(`„${title}“ mit 3 Einträgen gespeichert.`);
 }
+
+/** Meldung oben in der Bibliothek, z. B. nach dem Import; die Hinweisleiste für Updates zählt nicht. */
+export const libraryMessage = (page: Page) => page.getByRole("main").getByRole("status");
 
 /** Liest alle Datensätze eines Stores direkt aus der Datenbank der App. */
 export function readStore<T>(page: Page, store: string): Promise<T[]> {

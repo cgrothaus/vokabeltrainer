@@ -1,6 +1,6 @@
 # TDD: Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.12 – Vollständige Validierung und JSON Schema  
+**Version:** 2.13 – Importvorschau und Duplikaterkennung  
 **Stand:** 21. Oktober 2026  
 **Bezug:** PRD 2.4 (`PRD_Vokabeltrainer_Allgemein_v2.md`), Formatspezifikation Version 1 (`Formatspezifikation_Vokabelset_v1.md`), Review-Notizen (`20261019_TDD_v1_Review_Notizen.md`)  
 **Status:** Entwurf; Grundlage für M0 (Walking Skeleton)  
@@ -360,7 +360,7 @@ Das Format selbst ist in der **Formatspezifikation** festgelegt. Hier steht die 
 ### 8.1 Eingangswege (FR-13, R-10)
 
 - **Datei:** `<input type="file" accept=".json,application/json,text/plain">`, gelesen mit `File.text()`.
-- **Text:** ein Textfeld zum Einfügen; zusätzlich eine Schaltfläche „Aus Zwischenablage einfügen“ über `navigator.clipboard.readText()`, sofern verfügbar.
+- **Text:** ein Textfeld zum Einfügen; zusätzlich eine Schaltfläche „Aus Zwischenablage einfügen“ über `navigator.clipboard.readText()`, sofern verfügbar. Sie trägt den Text ins Feld ein und zeigt sofort die Vorschau (gespeichert wird ohnehin erst nach Bestätigung). Abgelehnter Zugriff oder eine leere Zwischenablage ergeben einen Hinweis; der Weg über das Textfeld bleibt.
 - Beide Wege liefern einen String an dieselbe Verarbeitung.
 
 ### 8.2 JSON herauslösen (`extract.ts`)
@@ -418,8 +418,10 @@ editCount prüfen → in einer Transaktion schreiben → Erfolgsmeldung → Set 
 ### 9.2 Neues Set
 
 - IDs aus der Datei bleiben erhalten (z. B. bei einem geteilten Set); fehlende IDs werden erzeugt.
-- **Duplikatprüfung (FR-30, R-09, D-16):** Für jedes lokale Set mit gleichem Sprachpaar wird die Überschneidung der Eintragsschlüssel berechnet (`term.text` + erste Bedeutung, kleingeschrieben, NFC). Liegt `|A ∩ B| / min(|A|, |B|)` bei mindestens 0,8 oder ist der Titel gleich, zeigt die Vorschau „Dieses Set sieht aus wie „…“, das du schon hast.“ mit „Trotzdem als neues Set importieren“ und „Abbrechen“. Unterscheidet sich `edition`, wird die Ausgabe in der Meldung genannt.
-- Die Vorschau zeigt Titel, Sprachen, Zahl der Sektionen und Einträge sowie Warnungen.
+- Eine Set-ID aus der Datei, die lokal schon vergeben ist, wird bis M4 schon vor der Vorschau abgelehnt („Dieses Set ist schon vorhanden …“); `addSet` mit `add()` bleibt als Absicherung.
+- **Duplikatprüfung (FR-30, R-09, D-16):** Für jedes lokale Set mit gleichem Sprachpaar (gleiche `termLanguage` und gleiche `meaningLanguage`; ein vertauschtes Paar zählt nicht) wird die Überschneidung der Eintragsschlüssel berechnet (`term.text` + erste Bedeutung, kleingeschrieben, NFC; als Mengen, doppelte Einträge zählen einmal). Liegt `|A ∩ B| / min(|A|, |B|)` bei mindestens 0,8 oder ist der Titel gleich (getrimmt, NFC, ohne Groß-/Kleinschreibung), zeigt die Vorschau oben „Dieses Set sieht aus wie „…“, das du schon hast.“ mit „Trotzdem als neues Set importieren“ und „Abbrechen“. Ein leeres Set zählt nur über den Titel. Unterscheidet sich `edition`, nennt die Meldung beide Ausgaben. Die Prüfung gilt für jedes neue Set, auch wenn die Datei eine lokal unbekannte Set-ID mitbringt.
+- Die Vorschau zeigt Titel, Sprachen (als Namen über `Intl.DisplayNames`), Zahl der Sektionen und Einträge, die Sektionen mit ihrer Eintragszahl (aufklappbar, bis 10 Sektionen aufgeklappt), einen Hinweis, wenn Begleittext entfernt wurde (8.2), sowie Warnungen. „Abbrechen“ führt zur Eingabe zurück, der Text bleibt stehen.
+- Nach dem Speichern wechselt die App zur Bibliothek und meldet dort „„…“ mit n Einträgen gespeichert.“; mit der Set-Ansicht (S-14) öffnet sie stattdessen das Set (9.1).
 
 ### 9.3 Bekanntes Set: Aktualisieren (D-10, F-03)
 
@@ -748,6 +750,7 @@ Projekte: `mobile-chromium` (Pixel-Emulation) und `mobile-webkit` (iPhone-Emulat
 | E2E-12 Neuere Datenbankversion aus einem anderen Tab: App gibt die Verbindung frei und bittet ums Neuladen; nach dem Neuladen bleibt die neuere Datenbank unverändert | M0 | 3.4, 7.2, TAK-08 (Teil) |
 | E2E-13 Ungültiger Import (kein gültiges JSON, fehlende Pflichtfelder) und bekanntes Set werden mit Meldung abgelehnt; der Bestand bleibt unverändert | M0 | AK-07, 8.2, 9.8 |
 | E2E-14 Update während einer Lernsitzung: neue Version wird gefunden, der Hinweis erscheint erst nach dem Ende der Sitzung | M0 | TAK-12 |
+| E2E-15 Dieselbe Datei ohne IDs zweimal importieren → Hinweis auf das vorhandene Set; „Abbrechen“ ändert nichts, „Trotzdem …“ legt ein zweites Set an | M1 | AK-19 |
 
 Playwright-WebKit entspricht nicht Safari auf iOS. Speicherlöschung, Installation, `persist()` und Teilen-Menü werden manuell geprüft (15.5).
 
@@ -903,6 +906,7 @@ Geprüft am 18. bis 20. Oktober 2026.
 | 2.10 | 20. Oktober 2026 | Backup und Wiederherstellung (S-09): `backup.ts` und `validateRecords.ts` (3.1); Rückgabewert von `deliverFile`, Rückfall auf Download, Inhalt vor der Geste fertig (11.2); Backup beim Öffnen der Ansicht lesen, `lastBackupAt` = `exportedAt` (11.3); Prüfregeln, Größengrenze, M0-Bestätigung, `lastBackupAt` in derselben Transaktion (11.4) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.11 | 21. Oktober 2026 | E2E-Tests in der CI (S-10): E2E-04 auf die erste Erhöhung von `DB_VERSION` verschoben, weil es vorher gegen das gebaute Artefakt keine ältere Datenbank gibt; bis dahin prüfen die Integrationstests den Migrationsmechanismus (7.4, 15.4, 16) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.12 | 21. Oktober 2026 | Vollständige Validierung (S-12): Feldtabellen pro Ebene, gebündelte Warnungen für unbekannte Felder, Zählweise der Textlängen, `null` nur bei optionalen Inhaltsfeldern, Teil-Export-Prüfung im Importablauf statt im Validator, Grenzen des JSON Schemas (8.3); leere optionale Felder ohne Warnung entfernen (8.4, D-24); Ajv 8 (4.1); Fixture-Verzeichnis `invalid-validator-only/` und Schemaabgleich (15.3, TAK-10) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.13 | 21. Oktober 2026 | Importvorschau und Duplikaterkennung (S-13): Zwischenablage prüft sofort (8.1); bekannte Set-ID vor der Vorschau abgelehnt, Sprachpaar in gleicher Richtung, Titelvergleich ohne Groß-/Kleinschreibung, Inhalt der Vorschau, Ziel nach dem Speichern (9.2); E2E-15 (15.4) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 
 ---
 
@@ -946,8 +950,9 @@ Ziel: Jeder riskante Teil läuft einmal von vorn bis hinten, in einfachster Form
 
 - ✅ **S-12** Vollständige Validierung und Normalisierung nach Formatspezifikation, testgetrieben, mit Fixtures; JSON Schema `vokabeltrainer-set.schema.json` und Schemaabgleich – DF-01–DF-08, TAK-10  
   Erledigt am 21. Oktober 2026 mit Ajv 8.20. `validate.ts` prüft alle optionalen Felder (Set: `level`, `textbook`, `edition`, `source`, `license`, `notes`, `reviewStatus`; Eintrag: `notes`, `examples`, `grammar`, `reviewStatus`), Textlängen in Codepoints nach Trimmen und NFC, `null` nur bei optionalen Feldern, `rev` und `exportedAt`, die Form von `scope`. Bekannte Felder stehen pro Ebene in `KNOWN_FIELDS`; unbekannte werden gebündelt gemeldet („… und 11 weitere Stellen“). `normalize.ts` übernimmt die optionalen Felder, Beispiele in Langform, und entfernt leere optionale Felder ohne Warnung (Nutzerentscheidung, D-24); leere Listenelemente bleiben Fehler, weil z. B. eine leere Wortform die Stellung der übrigen verschieben würde. Die Ablehnung eines Teil-Exports als neues Set liegt jetzt in `prepareNewSet`, damit das gültige Fixture „Teil-Export“ bei Validator und Schema gleich ausfällt. Spezifikation präzisiert (5.5, 6, 7, 8.1, 8.2, 8.4 mit Grenzen für alle Texte), Formatversion bleibt 1. Schema unter `docs/vokabeltrainer-set.schema.json` (Draft 2020-12, ohne `$id` bis S-29); 53 Fixtures (9 gültig, 6 LLM-Ausgaben als Text, 35 ungültig mit genau einer Meldung, 3 nur für den Validator) in `tests/format/setfile.test.ts` abgeglichen, dazu ein Test, dass Schema und `KNOWN_FIELDS` dieselben Felder kennen. Ajv läuft mit `strict`, nur `strictRequired` ist aus (es meldet `required` in `anyOf`/`if` fälschlich). Gegenproben: Titelgrenze im Schema auf 300, `level` aus der Validator-Tabelle entfernt, leere Notiz nicht entfernt, Teil-Export-Prüfung entfernt – jeweils scheitern die passenden Tests. E2E-06 (Datei mit Begleittext und Zusatzfeld → Warnung sichtbar, optionale Felder im Store) läuft in mobile-chromium und mobile-webkit. Mit `playwright-cli` (mobiles Chromium, 320 px, hell und dunkel) geprüft: Lange Wörter in Warnungen ließen die Seite horizontal scrollen (420 px); Live-Bereiche brechen jetzt wie die Fehlerbox um (`overflow-wrap: anywhere`), danach 320 px, Konsole leer. Angezeigt werden die optionalen Felder noch nicht (Nutzerentscheidung, siehe S-14 und S-18).
-- 🔲 **S-13** Importvorschau für neue Sets mit Warnungen; Duplikaterkennung – FR-16, FR-30, AK-19  
-  Dazu die Schaltfläche „Aus Zwischenablage einfügen“ (8.1), in S-07 bewusst weggelassen.
+- ✅ **S-13** Importvorschau für neue Sets mit Warnungen; Duplikaterkennung – FR-16, FR-30, AK-19  
+  Dazu die Schaltfläche „Aus Zwischenablage einfügen“ (8.1), in S-07 bewusst weggelassen.  
+  Erledigt am 21. Oktober 2026. Domain testgetrieben: `duplicates.ts` (Schwelle 0,8 ganzzahlig verglichen, Bezug auf das kleinere Set, Sprachpaar in gleicher Richtung, Titel und Einträge ohne Groß-/Kleinschreibung und in NFC, nur erste Bedeutung, Mengen statt Einträgen, leeres Set nur über den Titel, Ausgabe in der Meldung, Sortierung). Der Import läuft in zwei Schritten (`previewImport`, `saveImport` in `app/importText.ts`): „Prüfen“ zeigt die Vorschau und schreibt nichts, „Importieren“ bzw. „Trotzdem als neues Set importieren“ speichert und wechselt zur Bibliothek mit Meldung. Nutzerentscheidungen: Zwischenablage prüft sofort, Vorschau mit Sektionsliste, Titelvergleich ohne Groß-/Kleinschreibung, nach dem Speichern zur Bibliothek. Eine bekannte Set-ID wird schon beim Prüfen abgelehnt. `platform/clipboard.ts`; die Schaltfläche fehlt, wenn der Browser die Zwischenablage nicht lesen kann. E2E: Vorschau mit Begleittext, Abbrechen ohne Schreiben, Datei, Zwischenablage (Erfolg, Ablehnung, nicht vorhanden; per Init-Skript ersetzt), E2E-06, E2E-13 und neu E2E-15 (AK-19) in mobile-chromium und mobile-webkit. Gegenproben: `max` statt `min` im Nenner und eine Vorschau ohne Duplikatprüfung lassen jeweils den passenden Test scheitern. Mit `playwright-cli` (mobiles Chromium, 320 px, hell und dunkel) geprüft: kein horizontales Scrollen bei langem Titel und Sektionsnamen ohne Trennstelle, Fokus auf „Vorschau“ und nach dem Speichern auf der Meldung in der Bibliothek, Konsole leer. Dabei aufgefallen: `display: flex` an `summary` entfernt das Dreieck zum Aufklappen; der Duplikathinweis steht jetzt oben in der Vorschau. Offen für S-11: „Aus Zwischenablage einfügen“ auf iPhone (Einfügen-Bestätigung von iOS, auch als Home-Bildschirm-App) und Android.
 - 🔲 **S-14** Bibliothek gruppiert nach Sprache, Set-Ansicht mit Sektionen, Set löschen – FR-01–FR-03  
   Dazu die optionalen Angaben anzeigen, die seit S-12 gespeichert werden: Set (Lernstufe, Lehrwerk, Herkunft, Lizenz, Notiz, Prüfstatus) und Einträge (Notiz, Beispiele, Grammatik, „ungeprüft“).
 - 🔲 **S-15** Empty State, Hilfe mit Formatbeispiel und Prompt-Vorlagen – FR-20, FR-28, AK-14  

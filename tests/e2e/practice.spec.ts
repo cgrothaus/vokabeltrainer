@@ -15,7 +15,6 @@ async function rate(page: Page, button: "Nochmal" | "Gewusst"): Promise<void> {
 
 async function startPractice(page: Page, title: string): Promise<void> {
   await importSet(page, title);
-  await page.getByRole("link", { name: "Zurück zur Bibliothek" }).click();
   await page.getByRole("button", { name: `${title} lernen` }).click();
   await expect(page.getByText("0 von 3 geschafft")).toBeVisible();
 }
