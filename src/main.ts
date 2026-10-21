@@ -2,17 +2,19 @@ import "./styles/main.css";
 import { checkBackup, lastBackupAt, prepareBackup, restore, saveBackup } from "./app/backup";
 import { mountUpdateNotice, showUpdateNotice } from "./app/components/updateNotice";
 import { deletionScope, removeSet } from "./app/deleteSet";
+import { loadSpec, newSetPrompt, shareSpec } from "./app/help";
 import { previewImport, saveImport } from "./app/importText";
 import { beginPractice, currentPractice } from "./app/practice";
 import { startRouter } from "./app/router";
 import { backupView } from "./app/views/backup";
+import { helpView } from "./app/views/help";
 import { importView } from "./app/views/import";
 import { libraryView } from "./app/views/library";
 import { notFoundView } from "./app/views/notFound";
 import { practiceView } from "./app/views/practice";
 import { setView } from "./app/views/set";
 import { storageErrorView } from "./app/views/storageError";
-import { canReadClipboard, readClipboard } from "./platform/clipboard";
+import { canReadClipboard, copyText, readClipboard } from "./platform/clipboard";
 import { persistenceState, requestPersistence } from "./platform/persistence";
 import type { StoredSet } from "./domain/model";
 import { registerServiceWorker } from "./platform/serviceWorker";
@@ -125,12 +127,14 @@ async function start(): Promise<void> {
       checkBackup,
       restore: (backup) => restore(db, backup),
     });
+  const helpPage = () => helpView({ prompt: newSetPrompt(), copyText, loadSpec, shareSpec });
   stopRouter = startRouter(
     root!,
     {
       "/": library,
       "/set/": setPage,
       "/import": importPage,
+      "/help": helpPage,
       "/practice": practicePage,
       "/backup": backupPage,
     },

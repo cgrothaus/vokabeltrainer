@@ -11,7 +11,7 @@ Dieses Dokument beschreibt, wie eine Datei aufgebaut sein muss, damit der Vokabe
 - **LLMs**, die ein Set aus einem Foto, einer Buchseite oder einer Wortliste erzeugen oder ein exportiertes Set korrigieren (Kapitel 10 und 11),
 - **Entwicklung und Tests** als verbindliche Referenz für Validator, JSON Schema und Testfixtures.
 
-Ein maschinenlesbares JSON Schema (Draft 2020-12) liegt als `vokabeltrainer-set.schema.json` neben diesem Dokument. Es prüft Aufbau, Typen und Längen; einige Regeln lassen sich darin nicht ausdrücken, etwa doppelte IDs oder das Entfernen von Leerzeichen am Rand. Bei Widersprüchen gilt dieses Dokument.
+Ein maschinenlesbares JSON Schema (Draft 2020-12) liegt als `vokabeltrainer-set.schema.json` neben diesem Dokument; die App veröffentlicht beide neben sich selbst (Kapitel 11). Es prüft Aufbau, Typen und Längen; einige Regeln lassen sich darin nicht ausdrücken, etwa doppelte IDs oder das Entfernen von Leerzeichen am Rand. Bei Widersprüchen gilt dieses Dokument.
 
 ---
 
@@ -321,7 +321,7 @@ Eine Datei kann ein ganzes Set oder nur ausgewählte Sektionen enthalten.
 
 ## 10. Regeln für LLMs
 
-Diese Regeln sind auch in den Prompt-Vorlagen (Kapitel 11) enthalten.
+Die Prompt-Vorlagen (Kapitel 11) verweisen auf dieses Dokument; die Regeln gelten auch ohne Vorlage.
 
 1. Antworte mit **genau einem JSON-Codeblock** und sonst nichts.
 2. Verwende **nur die Feldnamen dieser Spezifikation**, genau so geschrieben. Erfinde keine zusätzlichen Felder.
@@ -339,63 +339,27 @@ Diese Regeln sind auch in den Prompt-Vorlagen (Kapitel 11) enthalten.
 
 ## 11. Prompt-Vorlagen
 
-Die App bietet diese Vorlagen zum Kopieren an (FR-20). Der Text in eckigen Klammern wird ersetzt.
+Die App bietet diese Vorlagen zum Kopieren an (FR-20). Sie wiederholen die Regeln nicht, sondern verweisen auf dieses Dokument: Ein Test mit mehreren LLMs (TDD 15.7) hat gezeigt, dass die Spezifikation allein reicht, um aus einer Vokabelliste ein gültiges Set zu erzeugen oder ein exportiertes Set unter Erhalt der IDs zu korrigieren.
+
+Die App veröffentlicht dieses Dokument als `formatspezifikation.md` neben sich selbst, z. B. unter https://cgrothaus.github.io/vokabeltrainer/formatspezifikation.md, und setzt diese Adresse für `[Link zur Formatbeschreibung]` ein. Kann der Chat keine Links öffnen, hängt man das Dokument als Datei an; die App bietet dafür „Formatbeschreibung teilen“ an.
 
 ### 11.1 Neues Set erstellen
 
-````text
-Erstelle aus den Vokabeln [auf dem angehängten Foto / in der Liste unten] eine Datei für meinen Vokabeltrainer.
+Dazu ein oder mehrere Fotos der Vokabelliste anhängen.
 
-Lernsprache: [Englisch, Code "en"]
-Bedeutungssprache: [Deutsch, Code "de"]
-Titel des Sets: [z. B. Englisch Unit 3]
-Lernstufe (optional): [z. B. Klasse 6]
-Sektionen: [z. B. "eine Sektion pro Überschrift" oder "alles in eine Sektion"]
-
-Antworte nur mit einem JSON-Codeblock in genau diesem Aufbau:
-
-```json
-{
-  "format": "vokabeltrainer-set",
-  "formatVersion": 1,
-  "set": { "title": "…", "termLanguage": "en", "meaningLanguage": "de", "level": "…" },
-  "sections": [
-    { "title": "…", "entries": [
-      { "term": "apple", "meanings": ["Apfel"] },
-      { "term": "to miss", "meanings": ["vermissen", "verpassen"] },
-      { "term": "car", "meanings": [{ "text": "Auto", "acceptedVariants": ["Wagen"] }] },
-      { "term": "to go", "meanings": ["gehen"], "grammar": { "forms": ["go", "went", "gone"] } }
-    ] }
-  ]
-}
+```text
+Hier ist die Formatbeschreibung für meinen Vokabeltrainer: [Link zur Formatbeschreibung]
+Mach aus den Vokabeln auf den angehängten Fotos ein Vokabelset in diesem Format.
 ```
-
-Regeln:
-- "term" ist das Wort in der Lernsprache, "meanings" die Liste der Bedeutungen.
-- Verschiedene Bedeutungen sind getrennte Elemente in "meanings". Gleichwertige Wörter für dieselbe Bedeutung gehören in "acceptedVariants".
-- Keine IDs, keine zusätzlichen Felder, kein HTML. Optional erlaubt: "notes", "examples", "grammar" (mit "partOfSpeech", "gender", "plural", "forms").
-- Wenn du etwas nicht sicher lesen kannst: Eintrag trotzdem aufnehmen, "reviewStatus": "unchecked" setzen und den Grund in "notes" schreiben.
-- Behalte die Reihenfolge der Vorlage bei.
-
-[Liste hier einfügen, falls kein Foto]
-````
 
 ### 11.2 Exportiertes Set prüfen und korrigieren
 
-````text
-Prüfe die folgende Vokabeldatei meines Vokabeltrainers auf Rechtschreibfehler, falsche oder fehlende Bedeutungen und korrigiere sie. [Optional: Ergänze außerdem …]
+Dazu die exportierte Datei anhängen oder ihren Inhalt unter den Text einfügen.
 
-Wichtige Regeln:
-- Antworte nur mit einem JSON-Codeblock, der die vollständige Datei enthält.
-- Lass "id", "rev", "scope" und "exportedAt" exakt unverändert, auch bei Einträgen, die du korrigierst.
-- Neue Einträge bekommen kein "id" und kein "rev".
-- Lösche keine Einträge; wenn ein Eintrag falsch ist, korrigiere ihn.
-- Verwende nur die Feldnamen, die schon in der Datei vorkommen, sowie "notes", "examples", "grammar", "acceptedVariants" und "reviewStatus".
-- Verschiedene Bedeutungen sind getrennte Elemente in "meanings"; gleichwertige Wörter für dieselbe Bedeutung gehören in "acceptedVariants".
-- Behalte die Reihenfolge bei.
-
-[Datei hier einfügen]
-````
+```text
+Hier ist die Formatbeschreibung für meinen Vokabeltrainer: [Link zur Formatbeschreibung]
+Prüfe das angehängte Vokabelset und korrigiere die Fehler.
+```
 
 ---
 
@@ -414,3 +378,4 @@ Wichtige Regeln:
 |---|---|
 | 19. Oktober 2026 | Erster Entwurf für Formatversion 1 (Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer), auf Basis der Review-Entscheidungen vom 19. Oktober 2026 (`20261019_TDD_v1_Review_Notizen.md`, F-03 bis F-07). |
 | 21. Oktober 2026 | Präzisiert mit der vollständigen Validierung (S-12, TDD 2.12), Formatversion bleibt 1: JSON Schema liegt bei; leere optionale Felder werden entfernt statt abgelehnt (5.5, D-24); Form von `rev` und `sectionIds` (6, 7); `null` bei neuen Sets, Teil-Export nicht als neues Set (8.1); `null` nur bei optionalen Feldern (8.2); `meaning` neben `meanings`, vollständige Fehlerliste, Grenzen für alle Texte (8.4). Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer. |
+| 21. Oktober 2026 | Kurze Prompt-Vorlagen mit Link auf dieses Dokument statt der langen Vorlagen (11), nach bestandenem LLM-Test (S-15, TDD 15.7); die App veröffentlicht Spezifikation und Schema neben sich selbst. Formatversion bleibt 1. Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer. |

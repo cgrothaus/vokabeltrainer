@@ -1,6 +1,6 @@
 # TDD: Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.15 – Bibliothek, Set-Ansicht und Löschen  
+**Version:** 2.16 – Empty State, Hilfe und veröffentlichte Formatspezifikation  
 **Stand:** 21. Oktober 2026  
 **Bezug:** PRD 2.4 (`PRD_Vokabeltrainer_Allgemein_v2.md`), Formatspezifikation Version 1 (`Formatspezifikation_Vokabelset_v1.md`), Review-Notizen (`20261019_TDD_v1_Review_Notizen.md`)  
 **Status:** Entwurf; Grundlage für M0 (Walking Skeleton)  
@@ -63,7 +63,7 @@ Der Umsetzungsstand wird **ausschließlich** im Umsetzungsplan (Kapitel 21) mit 
 src/
 ├── main.ts              Start: Speicher öffnen, Service Worker registrieren, erste Ansicht
 ├── app/                 UI: Ansichten, Routing, Zustand
-│   ├── views/           Bibliothek, Set, Import, Lernen, Ergebnis, Editor, Backup, Einstellungen
+│   ├── views/           Bibliothek, Set, Import, Hilfe, Lernen, Ergebnis, Editor, Backup, Einstellungen
 │   ├── components/      wiederverwendbare UI-Bausteine (Dialog, Hinweis, Karte …)
 │   ├── dom.ts           kleiner DOM-Helfer (D-05)
 │   ├── router.ts        Hash-Routing
@@ -87,6 +87,7 @@ src/
 │   └── migrations/      Migrationen von Datensätzen und Dateiformaten
 ├── storage/             IndexedDB: Öffnen, Upgrade, Repositories, Backup
 ├── platform/            Browserfunktionen: Service Worker, persist(), Datei liefern, Zwischenablage
+├── content/             mitgelieferte Inhalte: Hilfetexte mit Formatbeispiel und Vorlage, Beispielset
 ├── styles/              CSS
 └── sw/sw.ts             Service Worker (eigener Build)
 ```
@@ -143,15 +144,18 @@ dist/
 ├── index.html              App mit eingebettetem JS und CSS
 ├── sw.js                   Service Worker
 ├── manifest.webmanifest    Web-App-Manifest
+├── formatspezifikation.md  Formatspezifikation, unverändert aus docs/ (D-26)
+├── vokabeltrainer-set.schema.json  JSON Schema, unverändert aus docs/ (D-26)
 └── icons/                  icon.svg (Vorlage, Favicon), icon-180.png (apple-touch-icon), icon-192.png, icon-512.png
 ```
 
 - Alle Verweise sind **relativ**, damit die App unter einem Unterpfad (z. B. GitHub Pages ohne eigene Domain) und unter einer eigenen Domain gleichermaßen läuft.
 - Manifest und Icons liegen in `public/` und werden unverändert kopiert. In `index.html` stehen die Verweise mit Wurzelpfad (`/manifest.webmanifest`); Vite schreibt sie mit `base: "./"` relativ um.
-- Build-Schritte: `vite build` (App) → `vite build -c vite.sw.config.ts` (Service Worker als IIFE nach `dist/sw.js`). Die zweite Konfiguration ermittelt mit `scripts/precache.ts` die vorab zu speichernden Dateien (`index.html`, Manifest, Icons) und einen Hash über deren Pfade und Inhalte; Dateiliste und Hash (Cache-Version) gehen per `define` in `sw.js` ein. So ändert sich `sw.js` genau dann, wenn sich eine dieser Dateien ändert, auch bei einem neuen Icon.
+- Formatspezifikation und Schema (D-26) gibt ein kleines Plugin in `vite.config.ts` beim Build aus `docs/` aus; die Liste steht als `PUBLISHED_DOCS` in `scripts/precache.ts`. Dev-Server und `vite preview` liefern beide mit `charset=utf-8` aus wie GitHub Pages; ohne Zeichensatz zeigt der Browser Umlaute in der geöffneten Datei falsch an.
+- Build-Schritte: `vite build` (App) → `vite build -c vite.sw.config.ts` (Service Worker als IIFE nach `dist/sw.js`). Die zweite Konfiguration ermittelt mit `scripts/precache.ts` die vorab zu speichernden Dateien (`index.html`, Manifest, veröffentlichte Dokumente, Icons) und einen Hash über deren Pfade und Inhalte; Dateiliste und Hash (Cache-Version) gehen per `define` in `sw.js` ein. So ändert sich `sw.js` genau dann, wenn sich eine dieser Dateien ändert, auch bei einem neuen Icon.
 - `src/sw/` wird mit eigener TS-Konfiguration (`tsconfig.sw.json`, Typen `WebWorker` statt `DOM`) geprüft.
 - Die App-Version (`package.json`-Version plus kurzer Git-Commit) wird per `define` eingebettet und in den Einstellungen angezeigt.
-- Ein Test prüft die Build-Ausgabe (TAK-01): keine externen URLs in `index.html`, kein `<script src>`, kein `<link rel="stylesheet">`; Kopfzeilen verweisen relativ auf vorhandene Dateien; Manifest mit Pflichtangaben und vorhandenen Icons; `sw.js` ist ein klassisches Skript ohne externe URLs und lädt beim Installieren – in einer Attrappe ausgeführt – genau die Dateien aus `scripts/precache.ts` in den Cache der aktuellen Version.
+- Ein Test prüft die Build-Ausgabe (TAK-01): keine externen URLs in `index.html`, kein `<script src>`, kein `<link rel="stylesheet">`; Kopfzeilen verweisen relativ auf vorhandene Dateien; Manifest mit Pflichtangaben und vorhandenen Icons; `sw.js` ist ein klassisches Skript ohne externe URLs und lädt beim Installieren – in einer Attrappe ausgeführt – genau die Dateien aus `scripts/precache.ts` in den Cache der aktuellen Version; die veröffentlichten Dokumente sind bytegleich mit `docs/`.
 
 ### 4.3 Browserziel (D-20)
 
@@ -201,9 +205,9 @@ Workflow `.github/workflows/ci.yml`, ausgelöst bei jedem Push, Pull Request und
 
 Handgeschrieben, ohne Workbox.
 
-- **install:** lädt `./` (die App), `./manifest.webmanifest` und die Icons in einen Cache `vokabeltrainer-<hash>`, jeweils mit `cache: "reload"`. GitHub Pages liefert mit `max-age=600` aus; ohne `reload` könnte ein alter Stand aus dem HTTP-Cache unter dem neuen Cache-Namen landen. `./index.html` wird nicht eigens gespeichert, weil jede Navigation `./` bekommt.
+- **install:** lädt `./` (die App), `./manifest.webmanifest`, die veröffentlichten Dokumente (D-26) und die Icons in einen Cache `vokabeltrainer-<hash>`, jeweils mit `cache: "reload"`. GitHub Pages liefert mit `max-age=600` aus; ohne `reload` könnte ein alter Stand aus dem HTTP-Cache unter dem neuen Cache-Namen landen. `./index.html` wird nicht eigens gespeichert, weil jede Navigation `./` bekommt.
 - **activate:** löscht ältere Caches mit dem Präfix `vokabeltrainer-`. Kein `clients.claim()`: Beim allerersten Laden bleibt die Seite ungesteuert, ab dem nächsten Start läuft sie offline.
-- **fetch:** GET-Anfragen an die eigene Adresse werden **cache-first** aus dem aktuellen Cache beantwortet; jede Navigation (auch mit Parametern) liefert `./`. Fehlt eine Datei im Cache, geht die Anfrage ans Netz. Andere Anfragen gibt es nicht (TAK-02).
+- **fetch:** GET-Anfragen an die eigene Adresse werden **cache-first** aus dem aktuellen Cache beantwortet. Eine Navigation zu einer vorab gespeicherten Datei liefert diese (z. B. die Formatspezifikation per Link), jede andere Navigation (auch mit Parametern) liefert `./`. Fehlt eine Datei im Cache, geht die Anfrage ans Netz. Andere Anfragen gibt es nicht (TAK-02).
 - **message:** `SKIP_WAITING` aktiviert eine wartende Version (5.3).
 - Registriert wird relativ (`./sw.js`), der Gültigkeitsbereich ist also das Verzeichnis der App. Im Dev-Server ist der Service Worker deaktiviert (`import.meta.env.PROD`).
 
@@ -647,9 +651,16 @@ Kein Algorithmus für verteiltes Wiederholen in dieser Version. Die Events entha
 - **Leere Bibliothek:**
   - kurzer Satz, was die App kann,
   - primäre Aktion „Erstes Vokabelset importieren“,
-  - sekundär „Beispielset ausprobieren“ und „Leeres Set anlegen“,
-  - Link „Wie bekomme ich ein Vokabelset?“ mit Formatbeispiel und den kopierbaren Prompt-Vorlagen (Formatspezifikation, Kapitel 11).
+  - sekundär „Beispielset ausprobieren“ (ab S-16) und „Leeres Set anlegen“ (ab S-31),
+  - Link „Wie bekomme ich ein Vokabelset?“ zur Hilfe.
+  Die Aktionen unter der Liste („Vokabelset importieren“, Hilfe) entfallen dann, weil der Empty State sie schon anbietet.
 - Der Empty State ergibt sich aus dem Datenbestand, erscheint also auch nach dem Löschen des letzten Sets.
+- **Hilfe „Wie bekomme ich ein Vokabelset?“** (`#/help`, FR-20, D-26), erreichbar aus dem Empty State, unter der Liste und aus dem Import:
+  - drei Schritte: Vokabelliste fotografieren, Vorlage mit den Fotos in einen KI-Chat geben, Antwort unter „Vokabelset importieren“ einfügen;
+  - die Vorlage aus Formatspezifikation 11.1 mit eingesetzter Adresse der veröffentlichten Spezifikation (`formatspezifikation.md` relativ zur App) und „Vorlage kopieren“; scheitert das Kopieren, ist die Vorlage markiert und ein Hinweis erklärt, sie selbst zu kopieren;
+  - „Formatbeschreibung teilen“ für Chats, die den Link nicht öffnen: Die Spezifikation wird beim Öffnen der Ansicht geladen (offline aus dem Cache) und über das Teilen-Menü bzw. als Download übergeben, als `Formatbeschreibung-Vokabeltrainer.txt` (Chromium teilt keine `.md`-Dateien);
+  - aufklappbar das Formatbeispiel aus Kapitel 1 der Spezifikation.
+  Beispiel und Vorlage stehen in `src/content/help.ts`; ein Test hält sie gleich mit der Spezifikation. Die Korrekturvorlage (11.2) erscheint mit dem Set-Export (S-32).
 - Hinweise zu Speicherschutz, Backup und neuer Version erscheinen als ruhige Hinweise oberhalb der Liste, nie als blockierender Dialog.
 
 ### 13.2 Beispielset (FR-32)
@@ -755,6 +766,7 @@ Projekte: `mobile-chromium` (Pixel-Emulation) und `mobile-webkit` (iPhone-Emulat
 | E2E-13 Ungültiger Import (kein gültiges JSON, fehlende Pflichtfelder) und bekanntes Set werden mit Meldung abgelehnt; der Bestand bleibt unverändert | M0 | AK-07, 8.2, 9.8 |
 | E2E-14 Update während einer Lernsitzung: neue Version wird gefunden, der Hinweis erscheint erst nach dem Ende der Sitzung | M0 | TAK-12 |
 | E2E-15 Dieselbe Datei ohne IDs zweimal importieren → Hinweis auf das vorhandene Set; „Abbrechen“ ändert nichts, „Trotzdem …“ legt ein zweites Set an | M1 | AK-19 |
+| E2E-16 Empty State → Hilfe → Vorlage mit Link kopieren, Formatbeschreibung teilen; die veröffentlichte Spezifikation ist auch offline und im Browser mit installierter App als Datei erreichbar | M1 | AK-14, FR-20, D-26 |
 
 Playwright-WebKit entspricht nicht Safari auf iOS. Speicherlöschung, Installation, `persist()` und Teilen-Menü werden manuell geprüft (15.5).
 
@@ -783,8 +795,9 @@ Ziel: Ein LLM soll allein aus der Formatspezifikation und dem Lernmaterial erken
 - **Korrektur:** Das LLM erhält die Formatspezifikation und ein exportiertes Set mit eingebauten Fehlern, dazu nur „Korrigiere die Fehler.“
 - **Bestanden**, wenn die Antwort per Einfügen ohne Fehler importiert wird; das neue Set keine IDs, `rev`, `scope` oder `exportedAt` enthält bzw. die Korrektur sie unverändert lässt; Varianten und Bedeutungen richtig unterschieden sind (Spezifikation 5.3); Unleserliches mit `"reviewStatus": "unchecked"` und Grund in `notes` aufgenommen ist.
 - **Folgerung:** Besteht der Test, kann die Hilfe (13.1) statt der langen Vorlagen auf die Spezifikation verweisen, etwa mit einer kurzen Vorlage „Lies diese Spezifikation und …“. Scheitert er, wird die Spezifikation gezielt ergänzt – z. B. um einen Abschnitt „Für LLMs: Was du tun sollst“ ganz am Anfang – und der Test wiederholt.
+- **Wiederholen** nach inhaltlichen Änderungen an der Spezifikation; ein Vortest mit Unteragenten des Coding-Agents (Spezifikation per Link oder Anhang, abgetippte Liste statt Foto) ist schnell und billig, ersetzt aber den Test mit LLM-Apps und Fotos nicht. Gelungene Antworten werden LLM-Fixtures (15.3).
 
-Ergebnisse (LLM-App, Modell, Datum, Befund) werden im Umsetzungsplan bei S-15 festgehalten.
+Ergebnisse (LLM-App, Modell, Datum, Befund) werden im Umsetzungsplan bei S-15 festgehalten. Bestanden am 21. Oktober 2026; die Hilfe verweist seitdem mit einer Kurzvorlage auf die Spezifikation.
 
 ---
 
@@ -840,6 +853,7 @@ Ergebnisse (LLM-App, Modell, Datum, Befund) werden im Umsetzungsplan bei S-15 fe
 | D-23 | Fundstelle bei ungültigem JSON über einen eigenen Syntaxprüfer statt aus der Fehlermeldung des Browsers (Safari nennt keine Position) | 8.2 | Nutzerentscheidung in S-07, 20. Oktober 2026 |
 | D-24 | Leere optionale Felder einer Set-Datei werden beim Import stillschweigend entfernt; leere Pflichttexte und leere Listenelemente bleiben Fehler | 8.4, Formatspez. 5.5 | Nutzerentscheidung in S-12, 21. Oktober 2026 |
 | D-25 | Ein Set wird samt seinen Sitzungen und Review-Events in einer Transaktion gelöscht; die Ankündigung nennt Inhalt und Lernstand | 10, 11.4 | Nutzerentscheidung in S-14, 21. Oktober 2026 |
+| D-26 | Formatspezifikation und Schema werden unverändert neben der App veröffentlicht und vorab gespeichert; die Hilfe gibt KI-Chats eine Kurzvorlage mit Link darauf, das Teilen als Datei ist der Ausweichweg | 4.2, 5.2, 13.1, Formatspez. 11 | Nutzerentscheidung in S-15, 21. Oktober 2026 |
 
 ---
 
@@ -855,7 +869,7 @@ Ergebnisse (LLM-App, Modell, Datum, Befund) werden im Umsetzungsplan bei S-15 fe
 | O-06 | Wachstum der Review-Events über Jahre | Messung TAK-15; bei Bedarf Cache oder Archivierung mit Backup-Konzept |
 | O-07 | Schwellenwert der Duplikaterkennung (0,8) | Mit Beispielsets und echten Daten in M1 prüfen |
 | O-08 | iOS graut im Dateiwähler Dateien aus, deren Typ nicht zu `accept` passt; ob `.json` mit `accept=".json,application/json,text/plain"` wählbar ist, ist nicht belegt (Quellen 26, 27) | Geprüft am 21. Oktober 2026 (S-11): auf iPhone und iPad wählbar, `accept` bleibt |
-| O-09 | Reicht die Formatspezifikation allein, damit ein LLM aus Fotos oder einer Wortliste ein gültiges Set erzeugt oder ein exportiertes Set korrigiert (AK-13)? | Test nach 15.7 in S-15; je nach Ergebnis Spezifikation ergänzen oder Prompt-Vorlagen verkürzen |
+| O-09 | Reicht die Formatspezifikation allein, damit ein LLM aus Fotos oder einer Wortliste ein gültiges Set erzeugt oder ein exportiertes Set korrigiert (AK-13)? | Geklärt am 21. Oktober 2026 (S-15): ja für neue Sets (Nutzertest mit Foto und Link, Vortest mit drei Modellen) und für die Korrektur im Vortest; Vorlagen auf einen Link verkürzt. Korrektur mit LLM-Apps und echtem Export prüfen, sobald es den Set-Export gibt (S-32) |
 
 ---
 
@@ -914,6 +928,7 @@ Geprüft am 18. bis 20. Oktober 2026.
 | 2.13 | 21. Oktober 2026 | Importvorschau und Duplikaterkennung (S-13): Zwischenablage prüft sofort (8.1); bekannte Set-ID vor der Vorschau abgelehnt, Sprachpaar in gleicher Richtung, Titelvergleich ohne Groß-/Kleinschreibung, Inhalt der Vorschau, Ziel nach dem Speichern (9.2); E2E-15 (15.4) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.14 | 21. Oktober 2026 | Ergebnisse der Gerätechecks (S-11): `persist()` in Safari und Chrome (6.6), Teilen-Menü auf iOS und iPadOS, Download auf Android (11.2), geprüfte Versionen (4.3); D-17 und D-20 bestätigt; O-02, O-03, O-04 und O-08 abgeschlossen | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.15 | 21. Oktober 2026 | Bibliothek, Set-Ansicht und Löschen (S-14): Routen mit Parameter (3.2), Set löschen samt Sitzungen und Events (10, D-25), Sortierung und Set-Ansicht (13.1), `library.ts` (3.1, 15.2), E2E-10 vorgezogen (15.4) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.16 | 21. Oktober 2026 | Empty State und Hilfe (S-15): Formatspezifikation und Schema neben der App veröffentlicht und vorab gespeichert (4.2, 5.2, D-26), Navigation zu vorab gespeicherten Dateien liefert die Datei (5.2), Hilfe mit Kurzvorlage, Teilen der Spezifikation und Formatbeispiel (13.1), `content/` (3.1), E2E-16 (15.4), LLM-Test bestanden und Vortest mit Unteragenten (15.7, O-09) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 
 ---
 
@@ -967,8 +982,15 @@ Ziel: Jeder riskante Teil läuft einmal von vorn bis hinten, in einfachster Form
 - ✅ **S-14** Bibliothek gruppiert nach Sprache, Set-Ansicht mit Sektionen, Set löschen – FR-01–FR-03  
   Dazu die optionalen Angaben anzeigen, die seit S-12 gespeichert werden: Set (Lernstufe, Lehrwerk, Herkunft, Lizenz, Notiz, Prüfstatus) und Einträge (Notiz, Beispiele, Grammatik, „ungeprüft“).  
   Erledigt am 21. Oktober 2026. Domain testgetrieben: `library.ts` (Gruppierung nach kanonischem Code der Lernsprache, Gruppen nach deutschem Namen, Lernstufe numerisch und ohne Lernstufe zuletzt, dann Titel; `setSize`). `storage/sets.ts`: `countSetActivity` über die Indizes `setId` und `deleteSet`, das Set, Sitzungen und Events in einer Transaktion löscht; ein unbekanntes Set ändert nichts, danach besteht ein Backup die Prüfung aus 11.4. Nutzerentscheidungen: Lernstand wird mitgelöscht (D-25), Sektionen anfangs zugeklappt, „Lernen“ in Bibliothek und Set-Ansicht (`components/learnButton.ts`). Der Router nimmt einen Pfadparameter an (`/set/`); `#/set/` ohne ID traf zunächst die Präfix-Route als feste Route und öffnete eine leere Set-Ansicht – der E2E-Test fand es, behoben. Die Meldung nach dem Löschen läuft wie beim Import über `takeMessage`. E2E: Gruppierung, Set-Ansicht mit allen Angaben und Aufklappen, Lernen aus der Set-Ansicht, Löschen mit Ankündigung (mit und ohne Lernstand), Abbrechen mit Fokus zurück, leere Bibliothek nach dem letzten Set, unbekannte Set-Adresse und E2E-10 (aus S-23 vorgezogen) in mobile-chromium und mobile-webkit. Gegenproben: Events nicht mitlöschen, Sortierung ohne `numeric`, Strings in `h()` als HTML – jeweils scheitern die passenden Tests. Mit `playwright-cli` (mobiles Chromium, 320 px, hell und dunkel) geprüft: kein horizontales Scrollen in Bibliothek, Set-Ansicht (auf- und zugeklappt) und Ankündigung bei Wörtern ohne Trennstelle, Aufklappen per Tastatur, Fokus auf der Ankündigung, Konsole leer. Nicht umgesetzt: Der Duplikathinweis der Importvorschau verlinkt nicht auf das vorhandene Set, weil der Wechsel die Vorschau verwürfe; nach dem Import bleibt es bei der Bibliothek (Nutzerentscheidung in S-13).
-- 🔲 **S-15** Empty State, Hilfe mit Formatbeispiel und Prompt-Vorlagen – FR-20, FR-28, AK-14  
-  Vorab der LLM-Test nach 15.7 (O-09, AK-13); seit S-12 ist die Spezifikation vollständig umgesetzt, der Test ist also möglich. Sein Ergebnis bestimmt, wie ausführlich die Prompt-Vorlagen sein müssen.
+- ✅ **S-15** Empty State, Hilfe mit Formatbeispiel und Prompt-Vorlagen – FR-20, FR-28, AK-14  
+  Vorab der LLM-Test nach 15.7 (O-09, AK-13); seit S-12 ist die Spezifikation vollständig umgesetzt, der Test ist also möglich. Sein Ergebnis bestimmt, wie ausführlich die Prompt-Vorlagen sein müssen.  
+  Erledigt am 21. Oktober 2026. LLM-Test (15.7):
+  - Nutzer: Erste Tests mit Foto und Link auf die Spezifikation positiv, das LLM erkennt ohne weitere Anweisung, was zu tun ist (App und Modell nicht festgehalten).
+  - Vortest mit Unteragenten von Claude Code (Modelle Haiku, Sonnet und Opus, jeweils drei Fälle): neues Set mit Spezifikation per Link bzw. als Anhang aus einer abgetippten, selbst erfundenen Liste (16 Einträge mit Varianten, Doppelbedeutungen, Verbformen, Plural und zwei unleserlichen Stellen) sowie Korrektur eines Exports mit eingebauten Fehlern (Tippfehler, falsche Bedeutung, falsche Verbform und Plural, Varianten als zwei Bedeutungen). Alle 9 Antworten importieren ohne Fehler und Warnung. Neue Sets enthalten keine IDs, `rev`, `scope` oder `exportedAt`; Korrekturen lassen sie unverändert und beheben die Fehler. Unleserliches steht immer mit `unchecked` und Grund in `notes`. Schwächen: Sonnet ließ „Mülleimer/Abfalleimer“ als zwei Bedeutungen stehen; drei Antworten schreiben für ein ganz unleserliches Wort Platzhalter wie „???“ als Bedeutung (gültig, auf der Karte unschön). Alle Antworten haben trotz Regel 10.1 Begleittext, den der Import entfernt. Die Läufe per Link lasen die Spezifikation über ein Abrufwerkzeug, das Inhalte zusammenfassen kann. Zwei Antworten sind als LLM-Fixtures übernommen.
+  - Folgerung: bestanden. Spez. 11 hat jetzt Kurzvorlagen mit Link statt der langen Vorlagen (D-26).
+
+  Umsetzung: Ein Plugin in `vite.config.ts` gibt Spezifikation und Schema aus `docs/` neben `index.html` aus; der Service Worker speichert sie vorab. Gefunden durch E2E-16: Der Service Worker beantwortete jede Navigation mit der App, ein geöffneter Link auf die Spezifikation zeigte also die App (jetzt die Datei), und `vite preview` liefert `.md` ohne Zeichensatz, sodass Umlaute falsch erschienen (Plugin setzt `charset=utf-8`). Empty State mit Satz zur App, „Erstes Vokabelset importieren“ und Hilfe-Link; die Aktionen unter der Liste erscheinen erst nach dem Laden und nur bei vorhandenen Sets. Hilfe (`#/help`) wie in 13.1; „Formatbeschreibung teilen“ als `.txt`, weil Chromium `.md` nicht teilt. Nutzerentscheidungen: Link bevorzugt, Teilen als Ausweichweg, Veröffentlichung neben der App statt Verweis auf das Repository, Vortest durch Unteragenten. Bewusst noch nicht: „Beispielset ausprobieren“ (S-16), „Leeres Set anlegen“ (S-31), Korrekturvorlage in der App (S-32). E2E-16 und drei weitere Tests (Kopieren scheitert, Datei offline und per Link, Hilfe aus Bibliothek und Import) in mobile-chromium und mobile-webkit. Gegenproben: Build ohne Plugin bricht ab, geänderte Vorlage in der Spezifikation lässt `tests/format/help.test.ts` scheitern, der alte Service Worker lässt den Link-Test scheitern. Mit `playwright-cli` (mobiles Chromium, 320 px, hell und dunkel) geprüft: kein horizontales Scrollen in Empty State, Hilfe (Beispiel aufgeklappt) und Import, Vorlage und Beispiel brechen um, Tab-Reihenfolge in der Hilfe logisch, Konsole leer.  
+  Offen für den Gerätecheck: „Vorlage kopieren“ und „Formatbeschreibung teilen“ in eine Chat-App auf iPhone und Android; nach dem Deploy `Content-Type` der Live-Datei (`charset=utf-8`) prüfen.
 - 🔲 **S-16** Beispielset erstellen (13.2) – FR-32, AK-23
 - 🔲 **S-17** Sitzung einrichten: Auswahl Sektionen, Richtung, Anzahl, Multiple-Choice-Anteil; gemerkte Einstellungen – FR-07, FR-08, FR-21
 - 🔲 **S-18** Multiple Choice mit Kandidatenregeln (testgetrieben), Bedienwege Karteikarte – FR-09, AK-22  

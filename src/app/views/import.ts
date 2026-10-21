@@ -273,6 +273,7 @@ export function importView(context: ImportContext): Node {
       null,
       "Füge die Antwort deines KI-Chats mit dem Vokabelset ein oder wähle eine Datei aus. Du siehst vor dem Speichern, was übernommen wird.",
     ),
+    h("p", null, h("a", { href: "#/help" }, "Wie bekomme ich ein Vokabelset?")),
     form,
     h("p", null, h("label", { for: "import-file" }, "Oder eine Datei auswählen")),
     file,

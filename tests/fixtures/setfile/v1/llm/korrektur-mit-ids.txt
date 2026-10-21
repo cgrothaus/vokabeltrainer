@@ -1,0 +1,54 @@
+```json
+{
+  "format": "vokabeltrainer-set",
+  "formatVersion": 1,
+  "exportedAt": "2026-10-21T18:30:00Z",
+  "set": {
+    "id": "t7k2m9xq4w",
+    "rev": "b3n8r2kd",
+    "title": "Englisch – Draußen unterwegs",
+    "termLanguage": "en",
+    "meaningLanguage": "de",
+    "level": "Klasse 7"
+  },
+  "sections": [
+    {
+      "id": "h4p9zc",
+      "rev": "w2c7m4ta",
+      "title": "Am Strand",
+      "entries": [
+        { "id": "a3k8dm", "rev": "q9x2n4hb", "term": "shell", "meanings": ["Muschel"] },
+        { "id": "r7w2fe", "rev": "m4t8c3xz", "term": "towel", "meanings": ["Handtuch"] },
+        { "id": "n2c6vj", "rev": "k8d3p7wq", "term": "light", "meanings": ["hell"] },
+        { "id": "x5m3tb", "rev": "f2h9r6ce", "term": "bin", "meanings": [{ "text": "Mülleimer", "acceptedVariants": ["Abfalleimer"] }] }
+      ]
+    },
+    {
+      "id": "d8q3kn",
+      "rev": "z6b4x2mp",
+      "title": "Im Wald",
+      "entries": [
+        { "id": "c9t4wh", "rev": "p3m7k2ra", "term": "mushroom", "meanings": ["Pilz"] },
+        {
+          "id": "e6r2zx",
+          "rev": "t4w9d3nc",
+          "term": "to hide",
+          "meanings": ["verstecken"],
+          "grammar": { "forms": ["hide", "hid", "hidden"] }
+        },
+        { "id": "v3n7ap", "rev": "h8c2m5kq", "term": "fox", "meanings": ["Fuchs"], "grammar": { "plural": "foxes" } }
+      ]
+    }
+  ]
+}
+```
+
+Korrigiert habe ich:
+
+- **shell:** „Muskel“ → „Muschel“
+- **bin:** „Mülleimer“ und „Abfalleimer“ sind gleichwertige Wörter für dieselbe Sache, also Varianten (`acceptedVariants`) statt zwei verschiedener Bedeutungen
+- **mushrom** → „mushroom“
+- **to hide:** Vergangenheitsform „hided“ → „hid“
+- **fox:** Plural „foxs“ → „foxes“
+
+Alle `id`- und `rev`-Werte sowie `exportedAt` sind unverändert geblieben, damit dein Lernfortschritt erhalten bleibt. „light“ → „hell“ ist nicht falsch. Falls ihr das Wort im Unterricht auch als „leicht“ (nicht schwer) oder „Licht“ gelernt habt, kann ich diese Bedeutungen noch ergänzen.

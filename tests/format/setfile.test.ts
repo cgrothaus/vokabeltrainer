@@ -52,6 +52,9 @@ const VALID: Record<string, string[]> = {
 const LLM: Record<string, string[]> = {
   "begleittext-ohne-codeblock.txt": [],
   "codeblock-mit-begleittext.txt": [],
+  // Vortest zu S-15 (TDD 15.7): Antworten eines LLM auf Spezifikation und abgetippte Liste bzw. Export.
+  "foto-mit-unsicheren-stellen.txt": [],
+  "korrektur-mit-ids.txt": [],
   "meaning-einzahl.txt": [
     "Bei 2 Einträgen steht „meaning“ statt „meanings“; das wurde als eine Bedeutung übernommen.",
   ],
