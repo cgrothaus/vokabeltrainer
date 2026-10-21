@@ -1,6 +1,6 @@
 # TDD: Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.14 – Ergebnisse der Gerätechecks  
+**Version:** 2.15 – Bibliothek, Set-Ansicht und Löschen  
 **Stand:** 21. Oktober 2026  
 **Bezug:** PRD 2.4 (`PRD_Vokabeltrainer_Allgemein_v2.md`), Formatspezifikation Version 1 (`Formatspezifikation_Vokabelset_v1.md`), Review-Notizen (`20261019_TDD_v1_Review_Notizen.md`)  
 **Status:** Entwurf; Grundlage für M0 (Walking Skeleton)  
@@ -78,6 +78,7 @@ src/
 │   ├── diff.ts          Vergleich Datei ↔ Bestand, Konflikte
 │   ├── merge.ts         Anwenden von Aktualisieren/Ersetzen
 │   ├── duplicates.ts    Duplikaterkennung
+│   ├── library.ts       Bibliothek: Gruppierung nach Lernsprache, Sortierung, Umfang eines Sets
 │   ├── practice.ts      Sitzungswarteschlange, Multiple-Choice-Auswahl
 │   ├── stats.ts         Lernstand und Überblick aus Events
 │   ├── exportFormat.ts  Set-Export
@@ -98,7 +99,7 @@ Regeln:
 
 ### 3.2 Routing
 
-Hash-basiertes Routing (`#/`, `#/set/<id>`, `#/import`, `#/practice`, `#/backup`, `#/settings`). Es funktioniert in einer einzelnen HTML-Datei, unter jedem Pfad des Hostings und unterstützt die Zurück-Taste unter Android.
+Hash-basiertes Routing (`#/`, `#/set/<id>`, `#/import`, `#/practice`, `#/backup`, `#/settings`). Es funktioniert in einer einzelnen HTML-Datei, unter jedem Pfad des Hostings und unterstützt die Zurück-Taste unter Android. Feste Routen haben einen Pfadteil; eine Route wie `/set/` nimmt genau einen weiteren, nicht leeren Pfadteil als Parameter (URL-kodiert). `#/set/` ohne ID und eine kaputte Kodierung führen zu „Seite nicht gefunden“, eine unbekannte ID zu „Set nicht gefunden“, jeweils mit Weg zurück zur Bibliothek.
 
 ### 3.3 UI ohne Framework (D-05)
 
@@ -485,7 +486,7 @@ Ungültiges JSON, unbekannte Formatversion, Validierungsfehler, widersprüchlich
 
 ## 10. Bearbeitung in der App (FR-02–FR-04)
 
-- **Set:** Titel, Sprachen, optionale Angaben; neues leeres Set anlegen; Set löschen mit Angabe des Umfangs (Sektionen, Einträge, Zahl der Review-Events).
+- **Set:** Titel, Sprachen, optionale Angaben; neues leeres Set anlegen; Set löschen mit Angabe des Umfangs (Sektionen, Einträge, Zahl der Antworten und Lernsitzungen). Gelöscht werden in **einer** Transaktion das Set, seine Sitzungen und seine Review-Events (D-25); anders als beim Löschen einzelner Einträge bleibt keine Historie, weil Sitzungen und Events ohne Set jedes Backup ungültig machten (11.4). Die Ankündigung bietet vorher ein Backup an; die Schaltfläche nennt die Folge („Set mit 120 Einträgen löschen“). Löschen gibt es seit S-14 in der Set-Ansicht (13.1).
 - **Sektionen:** anlegen, umbenennen, verschieben (Auf/Ab-Schaltflächen; Ziehen optional), löschen mit Bestätigung, wenn Einträge enthalten sind.
 - **Einträge:** anlegen, bearbeiten, verschieben, in eine andere Sektion verschieben, löschen.
 - Ein Eintrag wird in einem kompakten Formular bearbeitet: `term` mit Varianten, beliebig viele Bedeutungen mit Varianten, Notizen, Beispiele, Grammatik, Prüfstatus. Kein horizontales Scrollen (AK-12).
@@ -640,7 +641,9 @@ Kein Algorithmus für verteiltes Wiederholen in dieser Version. Die Events entha
 
 ### 13.1 Bibliothek und Empty State (FR-02, FR-28, AK-14)
 
-- Die Bibliothek zeigt Sets gruppiert nach Lernsprache (Anzeige über `Intl.DisplayNames`), innerhalb der Gruppe nach Lernstufe und Titel sortiert.
+- Die Bibliothek zeigt Sets gruppiert nach Lernsprache (Anzeige über `Intl.DisplayNames`), innerhalb der Gruppe nach Lernstufe und Titel sortiert. Gruppiert wird nach dem kanonischen Code; Varianten wie `en-GB` bilden eine eigene Gruppe. Sortiert wird deutsch und mit Zahlen der Größe nach („Klasse 5“ vor „Klasse 10“); Sets ohne Lernstufe stehen am Ende der Gruppe.
+- Jede Zeile zeigt Titel (Link zur Set-Ansicht), Lernstufe und Zahl der Einträge sowie „Lernen“ als Abkürzung.
+- **Set-Ansicht** (`#/set/<id>`): Titel, Sprachpaar, Zahl der Einträge, vorhandene optionale Angaben (Lernstufe, Lehrwerk mit Ausgabe, Herkunft, Lizenz, Notiz, Prüfstatus), „Lernen“, darunter die Sektionen als aufklappbare Abschnitte (anfangs zugeklappt) mit Titel und Zahl der Einträge. Ein Eintrag zeigt Wort und Bedeutungen mit Varianten („auch: …“), „ungeprüft“ als umrandeten Text, Grammatik, Beispiele und Notiz. Am Ende „Set löschen“ (10).
 - **Leere Bibliothek:**
   - kurzer Satz, was die App kann,
   - primäre Aktion „Erstes Vokabelset importieren“,
@@ -709,6 +712,7 @@ Für diese Module werden Tests vor der Implementierung geschrieben:
 - `ids.ts` und `hash.ts`: Alphabet, Kollisionsprüfung, stabile kanonische Darstellung (Schlüsselreihenfolge, Kurz- vs. Langform ergeben denselben `rev`);
 - `diff.ts` und `merge.ts`: Tabelle 9.5 vollständig, Sonderfälle 9.6, Aktualisieren vs. Ersetzen, `null`-Löschung, Reihenfolgeregeln, Scope-Schutz;
 - `duplicates.ts`: Schwellenwert, Sprachpaar, Ausgabe;
+- `library.ts`: Gruppierung nach Lernsprache, Sortierung nach Lernstufe (numerisch, ohne Lernstufe zuletzt) und Titel, Umfang eines Sets;
 - `practice.ts`: Warteschlange, Wiedereinfügen, `firstAttempt`, Multiple-Choice-Auswahl und Rückfall auf Karteikarte;
 - `stats.ts`: Kennzahlen, gelöschte Einträge, verschobene Einträge;
 - `migrations/`: jede Migration mit Fixture vorher und nachher.
@@ -745,7 +749,7 @@ Projekte: `mobile-chromium` (Pixel-Emulation) und `mobile-webkit` (iPhone-Emulat
 | E2E-07 Bearbeiten → Neuladen → Änderung da | M3 | AK-03, AK-25 |
 | E2E-08 Teil-Export → Datei ändern → Aktualisieren; andere Sektionen unverändert | M4 | AK-04, AK-05 |
 | E2E-09 Konflikt: lokal und in Datei geändert → Vorschau zeigt Konflikt | M4 | AK-18 |
-| E2E-10 Datensatz mit `<img onerror>` im Text → wird als Text angezeigt | M1 | TAK-03, DF-08 |
+| E2E-10 Datensatz mit `<img onerror>` im Text → wird in Bibliothek und Set-Ansicht als Text angezeigt | M1 (seit S-14) | TAK-03, DF-08 |
 | E2E-11 Update: neue Version wird gefunden, bleibt auch nach Neuladen wartend, wird erst nach „Jetzt aktualisieren“ aktiv | M0 | NFR-05, TAK-12 (ohne Sitzung) |
 | E2E-12 Neuere Datenbankversion aus einem anderen Tab: App gibt die Verbindung frei und bittet ums Neuladen; nach dem Neuladen bleibt die neuere Datenbank unverändert | M0 | 3.4, 7.2, TAK-08 (Teil) |
 | E2E-13 Ungültiger Import (kein gültiges JSON, fehlende Pflichtfelder) und bekanntes Set werden mit Meldung abgelehnt; der Bestand bleibt unverändert | M0 | AK-07, 8.2, 9.8 |
@@ -835,6 +839,7 @@ Ergebnisse (LLM-App, Modell, Datum, Befund) werden im Umsetzungsplan bei S-15 fe
 | D-22 | App-Icons aus einer SVG-Vorlage; PNGs per Playwright-Skript erzeugt und eingecheckt; Cache-Version über alle vorab gespeicherten Dateien | 4.1, 4.2, 5.1 | Nutzerentscheidung in S-05, 20. Oktober 2026 |
 | D-23 | Fundstelle bei ungültigem JSON über einen eigenen Syntaxprüfer statt aus der Fehlermeldung des Browsers (Safari nennt keine Position) | 8.2 | Nutzerentscheidung in S-07, 20. Oktober 2026 |
 | D-24 | Leere optionale Felder einer Set-Datei werden beim Import stillschweigend entfernt; leere Pflichttexte und leere Listenelemente bleiben Fehler | 8.4, Formatspez. 5.5 | Nutzerentscheidung in S-12, 21. Oktober 2026 |
+| D-25 | Ein Set wird samt seinen Sitzungen und Review-Events in einer Transaktion gelöscht; die Ankündigung nennt Inhalt und Lernstand | 10, 11.4 | Nutzerentscheidung in S-14, 21. Oktober 2026 |
 
 ---
 
@@ -908,6 +913,7 @@ Geprüft am 18. bis 20. Oktober 2026.
 | 2.12 | 21. Oktober 2026 | Vollständige Validierung (S-12): Feldtabellen pro Ebene, gebündelte Warnungen für unbekannte Felder, Zählweise der Textlängen, `null` nur bei optionalen Inhaltsfeldern, Teil-Export-Prüfung im Importablauf statt im Validator, Grenzen des JSON Schemas (8.3); leere optionale Felder ohne Warnung entfernen (8.4, D-24); Ajv 8 (4.1); Fixture-Verzeichnis `invalid-validator-only/` und Schemaabgleich (15.3, TAK-10) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.13 | 21. Oktober 2026 | Importvorschau und Duplikaterkennung (S-13): Zwischenablage prüft sofort (8.1); bekannte Set-ID vor der Vorschau abgelehnt, Sprachpaar in gleicher Richtung, Titelvergleich ohne Groß-/Kleinschreibung, Inhalt der Vorschau, Ziel nach dem Speichern (9.2); E2E-15 (15.4) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.14 | 21. Oktober 2026 | Ergebnisse der Gerätechecks (S-11): `persist()` in Safari und Chrome (6.6), Teilen-Menü auf iOS und iPadOS, Download auf Android (11.2), geprüfte Versionen (4.3); D-17 und D-20 bestätigt; O-02, O-03, O-04 und O-08 abgeschlossen | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.15 | 21. Oktober 2026 | Bibliothek, Set-Ansicht und Löschen (S-14): Routen mit Parameter (3.2), Set löschen samt Sitzungen und Events (10, D-25), Sortierung und Set-Ansicht (13.1), `library.ts` (3.1, 15.2), E2E-10 vorgezogen (15.4) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 
 ---
 
@@ -958,8 +964,9 @@ Ziel: Jeder riskante Teil läuft einmal von vorn bis hinten, in einfachster Form
 - ✅ **S-13** Importvorschau für neue Sets mit Warnungen; Duplikaterkennung – FR-16, FR-30, AK-19  
   Dazu die Schaltfläche „Aus Zwischenablage einfügen“ (8.1), in S-07 bewusst weggelassen.  
   Erledigt am 21. Oktober 2026. Domain testgetrieben: `duplicates.ts` (Schwelle 0,8 ganzzahlig verglichen, Bezug auf das kleinere Set, Sprachpaar in gleicher Richtung, Titel und Einträge ohne Groß-/Kleinschreibung und in NFC, nur erste Bedeutung, Mengen statt Einträgen, leeres Set nur über den Titel, Ausgabe in der Meldung, Sortierung). Der Import läuft in zwei Schritten (`previewImport`, `saveImport` in `app/importText.ts`): „Prüfen“ zeigt die Vorschau und schreibt nichts, „Importieren“ bzw. „Trotzdem als neues Set importieren“ speichert und wechselt zur Bibliothek mit Meldung. Nutzerentscheidungen: Zwischenablage prüft sofort, Vorschau mit Sektionsliste, Titelvergleich ohne Groß-/Kleinschreibung, nach dem Speichern zur Bibliothek. Eine bekannte Set-ID wird schon beim Prüfen abgelehnt. `platform/clipboard.ts`; die Schaltfläche fehlt, wenn der Browser die Zwischenablage nicht lesen kann. E2E: Vorschau mit Begleittext, Abbrechen ohne Schreiben, Datei, Zwischenablage (Erfolg, Ablehnung, nicht vorhanden; per Init-Skript ersetzt), E2E-06, E2E-13 und neu E2E-15 (AK-19) in mobile-chromium und mobile-webkit. Gegenproben: `max` statt `min` im Nenner und eine Vorschau ohne Duplikatprüfung lassen jeweils den passenden Test scheitern. Mit `playwright-cli` (mobiles Chromium, 320 px, hell und dunkel) geprüft: kein horizontales Scrollen bei langem Titel und Sektionsnamen ohne Trennstelle, Fokus auf „Vorschau“ und nach dem Speichern auf der Meldung in der Bibliothek, Konsole leer. Dabei aufgefallen: `display: flex` an `summary` entfernt das Dreieck zum Aufklappen; der Duplikathinweis steht jetzt oben in der Vorschau. Offen für S-11: „Aus Zwischenablage einfügen“ auf iPhone (Einfügen-Bestätigung von iOS, auch als Home-Bildschirm-App) und Android.
-- 🔲 **S-14** Bibliothek gruppiert nach Sprache, Set-Ansicht mit Sektionen, Set löschen – FR-01–FR-03  
-  Dazu die optionalen Angaben anzeigen, die seit S-12 gespeichert werden: Set (Lernstufe, Lehrwerk, Herkunft, Lizenz, Notiz, Prüfstatus) und Einträge (Notiz, Beispiele, Grammatik, „ungeprüft“).
+- ✅ **S-14** Bibliothek gruppiert nach Sprache, Set-Ansicht mit Sektionen, Set löschen – FR-01–FR-03  
+  Dazu die optionalen Angaben anzeigen, die seit S-12 gespeichert werden: Set (Lernstufe, Lehrwerk, Herkunft, Lizenz, Notiz, Prüfstatus) und Einträge (Notiz, Beispiele, Grammatik, „ungeprüft“).  
+  Erledigt am 21. Oktober 2026. Domain testgetrieben: `library.ts` (Gruppierung nach kanonischem Code der Lernsprache, Gruppen nach deutschem Namen, Lernstufe numerisch und ohne Lernstufe zuletzt, dann Titel; `setSize`). `storage/sets.ts`: `countSetActivity` über die Indizes `setId` und `deleteSet`, das Set, Sitzungen und Events in einer Transaktion löscht; ein unbekanntes Set ändert nichts, danach besteht ein Backup die Prüfung aus 11.4. Nutzerentscheidungen: Lernstand wird mitgelöscht (D-25), Sektionen anfangs zugeklappt, „Lernen“ in Bibliothek und Set-Ansicht (`components/learnButton.ts`). Der Router nimmt einen Pfadparameter an (`/set/`); `#/set/` ohne ID traf zunächst die Präfix-Route als feste Route und öffnete eine leere Set-Ansicht – der E2E-Test fand es, behoben. Die Meldung nach dem Löschen läuft wie beim Import über `takeMessage`. E2E: Gruppierung, Set-Ansicht mit allen Angaben und Aufklappen, Lernen aus der Set-Ansicht, Löschen mit Ankündigung (mit und ohne Lernstand), Abbrechen mit Fokus zurück, leere Bibliothek nach dem letzten Set, unbekannte Set-Adresse und E2E-10 (aus S-23 vorgezogen) in mobile-chromium und mobile-webkit. Gegenproben: Events nicht mitlöschen, Sortierung ohne `numeric`, Strings in `h()` als HTML – jeweils scheitern die passenden Tests. Mit `playwright-cli` (mobiles Chromium, 320 px, hell und dunkel) geprüft: kein horizontales Scrollen in Bibliothek, Set-Ansicht (auf- und zugeklappt) und Ankündigung bei Wörtern ohne Trennstelle, Aufklappen per Tastatur, Fokus auf der Ankündigung, Konsole leer. Nicht umgesetzt: Der Duplikathinweis der Importvorschau verlinkt nicht auf das vorhandene Set, weil der Wechsel die Vorschau verwürfe; nach dem Import bleibt es bei der Bibliothek (Nutzerentscheidung in S-13).
 - 🔲 **S-15** Empty State, Hilfe mit Formatbeispiel und Prompt-Vorlagen – FR-20, FR-28, AK-14  
   Vorab der LLM-Test nach 15.7 (O-09, AK-13); seit S-12 ist die Spezifikation vollständig umgesetzt, der Test ist also möglich. Sein Ergebnis bestimmt, wie ausführlich die Prompt-Vorlagen sein müssen.
 - 🔲 **S-16** Beispielset erstellen (13.2) – FR-32, AK-23
@@ -970,7 +977,8 @@ Ziel: Jeder riskante Teil läuft einmal von vorn bis hinten, in einfachster Form
 - 🔲 **S-20** Lernüberblick aus Events (testgetrieben) – FR-11, AK-17
 - 🔲 **S-21** Einstellungen, Hell/Dunkel, App-Version – FR-21, FR-25
 - 🔲 **S-22** Speicherfehler und Statusanzeige – FR-23, AK-26
-- 🔲 **S-23** Mobile- und Barrierearmut-Durchsicht, E2E-05, E2E-06, E2E-10 – FR-24, FR-27, NFR-09–NFR-13
+- 🔲 **S-23** Mobile- und Barrierearmut-Durchsicht, E2E-05, E2E-06, E2E-10 – FR-24, FR-27, NFR-09–NFR-13  
+  E2E-06 besteht seit S-12, E2E-10 seit S-14.
 - 🔲 **S-24** Performance-Messung (15.6) – TAK-15
 
 ### M2 – Daten sichern

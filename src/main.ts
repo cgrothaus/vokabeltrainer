@@ -1,6 +1,7 @@
 import "./styles/main.css";
 import { checkBackup, lastBackupAt, prepareBackup, restore, saveBackup } from "./app/backup";
 import { mountUpdateNotice, showUpdateNotice } from "./app/components/updateNotice";
+import { deletionScope, removeSet } from "./app/deleteSet";
 import { previewImport, saveImport } from "./app/importText";
 import { beginPractice, currentPractice } from "./app/practice";
 import { startRouter } from "./app/router";
@@ -9,14 +10,16 @@ import { importView } from "./app/views/import";
 import { libraryView } from "./app/views/library";
 import { notFoundView } from "./app/views/notFound";
 import { practiceView } from "./app/views/practice";
+import { setView } from "./app/views/set";
 import { storageErrorView } from "./app/views/storageError";
 import { canReadClipboard, readClipboard } from "./platform/clipboard";
 import { persistenceState, requestPersistence } from "./platform/persistence";
+import type { StoredSet } from "./domain/model";
 import { registerServiceWorker } from "./platform/serviceWorker";
 import { type OpenOptions, type OpenResult, openDatabase } from "./storage/database";
 import { getMeta, setMeta } from "./storage/meta";
 import { interruptActiveSessions } from "./storage/sessions";
-import { listSets } from "./storage/sets";
+import { getSet, listSets } from "./storage/sets";
 
 declare const __APP_VERSION__: string;
 
@@ -73,17 +76,18 @@ async function start(): Promise<void> {
   await interruptActiveSessions(db).catch((error: unknown) => {
     console.warn("Unterbrochene Sitzungen nicht vermerkt", error);
   });
-  // Erfolgsmeldung des Imports für die Bibliothek; lebt nur bis zum nächsten Anzeigen.
+  // Meldung nach Import oder Löschen für die Bibliothek; lebt nur bis zum nächsten Anzeigen.
   let message: string | null = null;
+  const startPractice = async (set: StoredSet) => {
+    await beginPractice(db, set);
+    location.hash = "#/practice";
+  };
   const library = () =>
     libraryView({
       persistence,
       requestPersistence: askForPersistence,
       loadSets: () => listSets(db),
-      startPractice: async (set) => {
-        await beginPractice(db, set);
-        location.hash = "#/practice";
-      },
+      startPractice,
       takeMessage: () => {
         const taken = message;
         message = null;
@@ -101,6 +105,17 @@ async function start(): Promise<void> {
         location.hash = "#/";
       },
     });
+  const setPage = (_signal: AbortSignal, id: string) =>
+    setView({
+      loadSet: () => getSet(db, id),
+      startPractice,
+      deletionScope: (set) => deletionScope(db, set),
+      removeSet: (set) => removeSet(db, set),
+      onRemoved: (removed) => {
+        message = removed;
+        location.hash = "#/";
+      },
+    });
   const practicePage = (signal: AbortSignal) => practiceView(currentPractice(), signal);
   const backupPage = () =>
     backupView({
@@ -112,7 +127,13 @@ async function start(): Promise<void> {
     });
   stopRouter = startRouter(
     root!,
-    { "/": library, "/import": importPage, "/practice": practicePage, "/backup": backupPage },
+    {
+      "/": library,
+      "/set/": setPage,
+      "/import": importPage,
+      "/practice": practicePage,
+      "/backup": backupPage,
+    },
     notFoundView,
   );
 }

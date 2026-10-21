@@ -48,6 +48,7 @@ Klappt es, zeigt eine **Vorschau** Titel, Sprachen und Sektionen mit der Zahl de
 ## 4. Lernen und sichern
 
 1. **Lernen:** In der Bibliothek beim Set auf „Lernen“ tippen. Karte antippen zum Aufdecken, dann „Gewusst“ oder „Nochmal“. „Nochmal“-Karten kommen später wieder.
+   Ein Tipp auf den Titel öffnet das Set: Dort stehen alle Sektionen (antippen zum Aufklappen) mit den Angaben aus dem Chat – ein guter Ort, um zu prüfen, ob das Foto richtig gelesen wurde. Ganz unten lässt sich das Set löschen, samt dem Lernstand dazu.
 2. **Backup:** „Backup und Wiederherstellung“ → „Backup speichern“ → im Teilen-Menü z. B. „In Dateien sichern“. Notiere, wo die Datei gelandet ist.
 3. **Offline:** Flugmodus an, App vom Home-Bildschirm starten – sie sollte normal laufen.
 4. Erscheint unten „Neue Version verfügbar.“, auf „**Jetzt aktualisieren**“ tippen.
@@ -57,7 +58,7 @@ Klappt es, zeigt eine **Vorschau** Titel, Sprachen und Sektionen mit der Zahl de
 Bitte nicht als Fehler melden – das kommt in späteren Meilensteinen:
 
 - Nur Karteikarten, nur von der Fremdsprache ins Deutsche, immer das ganze Set.
-- Sets lassen sich weder bearbeiten noch löschen.
+- Sets lassen sich nicht bearbeiten, nur löschen und neu importieren.
 - Notizen, Beispielsätze und Grammatik aus der Datei werden noch nicht angezeigt.
 - Die Schaltfläche „Dauerhaften Speicher anfordern“ ist nur für unsere Messung da.
 
