@@ -1,6 +1,8 @@
-// Minimaler Import (S-07) und E2E-13 (AK-07). Import → Lernen → Neuladen prüft E2E-01 in practice.spec.ts.
+// Import (S-07, S-12), E2E-06 (AK-01) und E2E-13 (AK-07). Import → Lernen → Neuladen prüft E2E-01 in
+// practice.spec.ts.
 import { expect, test } from "@playwright/test";
-import { collectErrors, librarySets as library, setFile } from "./support";
+import type { StoredSet } from "../../src/domain/model";
+import { collectErrors, librarySets as library, readStore, setFile } from "./support";
 
 test("Import (Text) mit Begleittext → Bibliothek → Neuladen → Set ist noch da", async ({
   page,
@@ -33,6 +35,49 @@ test("Import (Datei) speichert das Set", async ({ page }) => {
   await expect(page.getByText("„Englisch – aus Datei“ mit 3 Einträgen gespeichert.")).toBeVisible();
   await page.goto("./");
   await expect(library(page)).toHaveText(["Englisch – aus Datei 3 Einträge"]);
+});
+
+test("E2E-06 Import (Datei) mit Begleittext und Zusatzfeld zeigt die Warnung", async ({ page }) => {
+  const errors = collectErrors(page);
+  const file = {
+    format: "vokabeltrainer-set",
+    formatVersion: 1,
+    set: { title: "Englisch – Zusatzfeld", termLanguage: "en", meaningLanguage: "de", level: "" },
+    sections: [
+      {
+        title: "Wetter",
+        entries: [
+          { term: "rain", meanings: ["Regen"], pronunciation: "reɪn", notes: "auch: regnen" },
+          { term: "storm", meanings: ["Sturm"], examples: ["A storm is coming."], grammar: {} },
+        ],
+      },
+    ],
+  };
+  await page.goto("./#/import");
+  await page.getByLabel("Oder eine Datei auswählen").setInputFiles({
+    name: "wetter.txt",
+    mimeType: "text/plain",
+    buffer: Buffer.from(`Hier ist dein Set:\n\n${JSON.stringify(file, null, 2)}\n\nViel Erfolg!`),
+  });
+  await expect(
+    page.getByText("„Englisch – Zusatzfeld“ mit 2 Einträgen gespeichert."),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      "Das Feld „pronunciation“ wird ignoriert (Sektion 1 „Wetter“, Eintrag 1 („rain“)).",
+      { exact: true },
+    ),
+  ).toBeVisible();
+
+  // Optionale Felder sind übernommen, leere und unbekannte nicht.
+  const [set] = await readStore<StoredSet>(page, "sets");
+  expect(set).not.toHaveProperty("level");
+  const [rain, storm] = set!.sections[0]!.entries;
+  expect(rain).toMatchObject({ notes: "auch: regnen" });
+  expect(rain).not.toHaveProperty("pronunciation");
+  expect(storm).toMatchObject({ examples: [{ text: "A storm is coming." }] });
+  expect(storm).not.toHaveProperty("grammar");
+  expect(errors, "Fehler in der Konsole").toEqual([]);
 });
 
 test("E2E-13 Ungültiger Import und bekanntes Set ändern nichts", async ({ page }) => {

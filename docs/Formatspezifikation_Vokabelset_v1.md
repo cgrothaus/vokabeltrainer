@@ -2,7 +2,7 @@
 
 **Formatkennung:** `vokabeltrainer-set`  
 **Formatversion:** 1  
-**Dokumentstand:** 19. Oktober 2026 – Entwurf  
+**Dokumentstand:** 21. Oktober 2026 – Entwurf  
 **Bezug:** PRD 2.4 (FR-13–FR-20, FR-29, FR-30, FR-32, DF-01–DF-11), TDD v2
 
 Dieses Dokument beschreibt, wie eine Datei aufgebaut sein muss, damit der Vokabeltrainer sie importieren kann. Es richtet sich an drei Gruppen:
@@ -11,7 +11,7 @@ Dieses Dokument beschreibt, wie eine Datei aufgebaut sein muss, damit der Vokabe
 - **LLMs**, die ein Set aus einem Foto, einer Buchseite oder einer Wortliste erzeugen oder ein exportiertes Set korrigieren (Kapitel 10 und 11),
 - **Entwicklung und Tests** als verbindliche Referenz für Validator, JSON Schema und Testfixtures.
 
-Ein maschinenlesbares JSON Schema (Draft 2020-12) folgt als `vokabeltrainer-set.schema.json`. Bei Widersprüchen gilt dieses Dokument.
+Ein maschinenlesbares JSON Schema (Draft 2020-12) liegt als `vokabeltrainer-set.schema.json` neben diesem Dokument. Es prüft Aufbau, Typen und Längen; einige Regeln lassen sich darin nicht ausdrücken, etwa doppelte IDs oder das Entfernen von Leerzeichen am Rand. Bei Widersprüchen gilt dieses Dokument.
 
 ---
 
@@ -167,7 +167,8 @@ Beispiel: `{ "term": "to go", "meanings": ["gehen", "fahren"], "grammar": { "par
 
 - Alle Texte sind **reiner Text**. HTML, Markdown oder Formatierungszeichen werden nicht interpretiert, sondern genau so angezeigt.
 - Führende und abschließende Leerzeichen entfernt die App beim Import.
-- Leere Texte sind nicht erlaubt; ein optionales Feld lässt man stattdessen weg.
+- Pflichttexte (Titel, `term`, Bedeutungen, `text` einer Antwort oder eines Beispiels) dürfen nicht leer sein, ebenso Elemente von Listen (Varianten, Beispiele, Wortformen). Ein Text nur aus Leerzeichen gilt als leer.
+- Ein leeres optionales Feld, z. B. `"notes": ""`, `"examples": []` oder `"grammar": {}`, entfernt die App beim Import ohne Rückmeldung. Besser lässt man es weg.
 
 ---
 
@@ -182,7 +183,7 @@ IDs verbinden einen Eintrag in der Datei mit demselben Eintrag in der App – un
 3. **Neue Einträge oder Sektionen in einer exportierten Datei:** ohne `id` und ohne `rev` ergänzen.
 4. Jede `id` darf innerhalb eines Sets nur **einmal** vorkommen.
 
-**Form:** IDs, die die App erzeugt, bestehen aus Kleinbuchstaben und Ziffern (Set: 10 Zeichen, Sektion und Eintrag: 6 Zeichen, z. B. `"a8f2kc"`); `rev`-Werte haben 8 Zeichen. Beim Import akzeptiert die App jede ID aus 1–64 Zeichen `A–Z a–z 0–9 _ -`.
+**Form:** IDs, die die App erzeugt, bestehen aus Kleinbuchstaben und Ziffern (Set: 10 Zeichen, Sektion und Eintrag: 6 Zeichen, z. B. `"a8f2kc"`); `rev`-Werte haben 8 Zeichen. Beim Import akzeptiert die App jede ID und jeden `rev` aus 1–64 Zeichen `A–Z a–z 0–9 _ -`.
 
 **Was passiert, wenn …**
 
@@ -207,7 +208,7 @@ Eine Datei kann ein ganzes Set oder nur ausgewählte Sektionen enthalten.
 ```
 
 - `type: "set"` (oder fehlender `scope`): Die Datei steht für das ganze Set.
-- `type: "sections"`: Die Datei steht nur für die in `sectionIds` genannten, bereits vorhandenen Sektionen. Andere Sektionen und die Set-Angaben verändert ein Import dieser Datei nicht. Neue Sektionen ohne `id` dürfen ergänzt werden.
+- `type: "sections"`: Die Datei steht nur für die in `sectionIds` genannten, bereits vorhandenen Sektionen; `sectionIds` ist eine nichtleere Liste verschiedener IDs. Andere Sektionen und die Set-Angaben verändert ein Import dieser Datei nicht. Neue Sektionen ohne `id` dürfen ergänzt werden.
 
 `scope` wird von der App beim Export geschrieben und muss bei einer Korrektur **unverändert bleiben**.
 
@@ -217,7 +218,8 @@ Eine Datei kann ein ganzes Set oder nur ausgewählte Sektionen enthalten.
 
 ### 8.1 Neues oder bekanntes Set
 
-- Ist die `set.id` in der App **unbekannt** oder fehlt sie, wird die Datei als **neues Set** angelegt. IDs aus der Datei bleiben dabei erhalten; fehlende werden vergeben. Ähnelt das Set stark einem vorhandenen Set, weist die App vorher darauf hin.
+- Ist die `set.id` in der App **unbekannt** oder fehlt sie, wird die Datei als **neues Set** angelegt. IDs aus der Datei bleiben dabei erhalten; fehlende werden vergeben. Felder mit dem Wert `null` gelten dabei als nicht angegeben. Ähnelt das Set stark einem vorhandenen Set, weist die App vorher darauf hin.
+- Ein **Teil-Export** (`scope.type: "sections"`) kann nicht als neues Set angelegt werden, weil die genannten Sektionen noch nicht vorhanden sind.
 - Ist die `set.id` **bekannt**, zeigt die App eine Vorschau der Änderungen und bietet zwei Wege an: **Aktualisieren** oder **Ersetzen**.
 
 ### 8.2 Aktualisieren (Standard)
@@ -225,7 +227,7 @@ Eine Datei kann ein ganzes Set oder nur ausgewählte Sektionen enthalten.
 - Einträge und Sektionen mit bekannter `id` werden aktualisiert.
 - Einträge und Sektionen ohne `id` werden ergänzt.
 - Was in der Datei **fehlt, bleibt erhalten** – sowohl ganze Einträge als auch einzelne Felder.
-- Ein Feld mit dem Wert **`null`** löscht dieses Feld, z. B. `"notes": null`. Für Pflichtfelder ist `null` nicht erlaubt.
+- Ein Feld mit dem Wert **`null`** löscht dieses Feld, z. B. `"notes": null`. Für Pflichtfelder, `id`, `rev`, `scope`, `exportedAt` und Elemente von Listen ist `null` nicht erlaubt.
 - Wurde ein Eintrag seit dem Export **sowohl in der App als auch in der Datei** geändert, zeigt die Vorschau beide Fassungen und fragt, welche gelten soll.
 
 ### 8.3 Ersetzen
@@ -236,11 +238,17 @@ Eine Datei kann ein ganzes Set oder nur ausgewählte Sektionen enthalten.
 
 ### 8.4 Toleranz und Prüfung
 
-- **Unbekannte Felder** werden ignoriert und in der Vorschau als „wird ignoriert“ aufgeführt. Der Import scheitert daran nicht.
+- **Unbekannte Felder** werden ignoriert und in der Vorschau als „wird ignoriert“ aufgeführt. Der Import scheitert daran nicht. Stehen `meanings` und `meaning` beide in einem Eintrag, wird `meaning` ignoriert.
 - **Eingefügter Text** darf das JSON in einem Markdown-Codeblock (```` ```json … ``` ````) oder mit kurzem Begleittext davor oder danach enthalten; die App schneidet das JSON-Objekt heraus.
 - Der Schlüssel `meaning` (Einzahl) mit einer einzelnen Antwort wird als `meanings` mit einem Element verstanden; die Vorschau weist darauf hin.
-- **Fehler**, die eine sichere Übernahme verhindern, blockieren den Import mit einer verständlichen Meldung samt Fundstelle, z. B. „Sektion 2 „Freizeit“, Eintrag 5: Es fehlt die Bedeutung.“ Dazu gehören: kein gültiges JSON, unbekannte Formatversion, fehlende Pflichtfelder, leere Texte, ungültige Sprachcodes, doppelte IDs, widersprüchlicher `scope`.
-- **Grenzen:** Datei höchstens 10 MiB, Titel höchstens 200, Antworttexte höchstens 500, Notizen höchstens 2.000 Zeichen.
+- **Fehler**, die eine sichere Übernahme verhindern, blockieren den Import mit einer verständlichen Meldung samt Fundstelle, z. B. „Sektion 2 „Freizeit“, Eintrag 5: Es fehlt die Bedeutung.“ Dazu gehören: kein gültiges JSON, unbekannte Formatversion, fehlende Pflichtfelder, leere Pflichttexte oder Listenelemente, Werte vom falschen Typ (z. B. eine Zahl als `notes`), ein anderer `reviewStatus` als `"unchecked"` oder `"checked"`, ungültige Sprachcodes, IDs oder `rev`-Werte, doppelte IDs, widersprüchlicher `scope`, zu lange Texte.
+- **Grenzen:** Datei höchstens 10 MiB, höchstens 500 Sektionen und 20.000 Einträge. Texte höchstens (in Zeichen, ohne Leerzeichen am Rand):
+
+  | Text | Zeichen |
+  |---|---|
+  | Titel von Set und Sektion; `level`, `textbook`, `edition`, `source`, `license`; Angaben in `grammar` (auch jede Wortform) | 200 |
+  | Antworttexte und Varianten; Beispielsätze und ihre Übersetzungen | 500 |
+  | `notes` (Set und Eintrag) | 2.000 |
 
 ---
 
@@ -405,3 +413,4 @@ Wichtige Regeln:
 | Stand | Änderung |
 |---|---|
 | 19. Oktober 2026 | Erster Entwurf für Formatversion 1 (Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer), auf Basis der Review-Entscheidungen vom 19. Oktober 2026 (`20261019_TDD_v1_Review_Notizen.md`, F-03 bis F-07). |
+| 21. Oktober 2026 | Präzisiert mit der vollständigen Validierung (S-12, TDD 2.12), Formatversion bleibt 1: JSON Schema liegt bei; leere optionale Felder werden entfernt statt abgelehnt (5.5, D-24); Form von `rev` und `sectionIds` (6, 7); `null` bei neuen Sets, Teil-Export nicht als neues Set (8.1); `null` nur bei optionalen Feldern (8.2); `meaning` neben `meanings`, vollständige Fehlerliste, Grenzen für alle Texte (8.4). Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer. |

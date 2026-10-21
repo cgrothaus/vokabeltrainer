@@ -1,0 +1,31 @@
+Ich habe alle Wörter von deinem Foto übernommen. Ein Wort war schwer zu lesen; ich habe es markiert.
+
+```json
+{
+  "format": "vokabeltrainer-set",
+  "formatVersion": 1,
+  "set": {
+    "title": "Englisch – Wetter",
+    "termLanguage": "en",
+    "meaningLanguage": "de",
+    "level": "",
+    "source": "Foto einer handgeschriebenen Liste",
+    "notes": ""
+  },
+  "sections": [
+    {
+      "title": "Wetter",
+      "entries": [
+        { "term": "fog", "meanings": ["Nebel"], "notes": "", "examples": [] },
+        {
+          "term": "thunder",
+          "meanings": ["Donner"],
+          "notes": "unsicher: Foto unscharf, könnte auch „thunderstorm“ sein",
+          "reviewStatus": "unchecked",
+          "grammar": { "partOfSpeech": "noun", "plural": "" }
+        }
+      ]
+    }
+  ]
+}
+```

@@ -1,0 +1,35 @@
+{
+  "format": "vokabeltrainer-set",
+  "formatVersion": 1,
+  "exportedAt": "2026-10-19T17:00:00Z",
+  "scope": {
+    "type": "sections",
+    "sectionIds": ["q7h3kd"]
+  },
+  "set": {
+    "id": "m4x8c2r9tw",
+    "rev": "k2p9w4ha",
+    "title": "Englisch – Wetter",
+    "termLanguage": "en",
+    "meaningLanguage": "de"
+  },
+  "sections": [
+    {
+      "id": "q7h3kd",
+      "rev": "t5m2b8xe",
+      "title": "Wetter",
+      "entries": [
+        {
+          "id": "a8f2kc",
+          "rev": "3hd9w2mq",
+          "term": "rain",
+          "meanings": ["Regen", "regnen"]
+        },
+        {
+          "term": "snow",
+          "meanings": ["Schnee"]
+        }
+      ]
+    }
+  ]
+}

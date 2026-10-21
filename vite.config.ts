@@ -23,7 +23,14 @@ export default defineConfig({
   test: {
     projects: [
       // Unit- und Integrationstests liegen neben dem Code; fake-indexeddb wird pro Testdatei importiert.
-      { test: { name: "unit", include: ["src/**/*.test.ts"], environment: "node" } },
+      // Der Schemaabgleich liest Fixtures mit Node-APIs und liegt deshalb unter tests/ (TDD 15.3).
+      {
+        test: {
+          name: "unit",
+          include: ["src/**/*.test.ts", "tests/format/**/*.test.ts"],
+          environment: "node",
+        },
+      },
       // Prüfung der Build-Ausgabe (TAK-01), läuft als Teil von `npm run build`.
       { test: { name: "build", include: ["tests/build/**/*.test.ts"], environment: "node" } },
     ],

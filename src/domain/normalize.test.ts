@@ -97,18 +97,123 @@ describe("normalizeSetFile", () => {
         { title: "Ohne", entries: [{ term: "c", meanings: ["d"] }] },
       ],
     } as SetFile;
-    expect(normalizeSetFile(file)).toEqual({
+    expect(normalizeSetFile(file)).toStrictEqual({
       id: "m4x8c2r9tw",
       title: "Englisch",
       termLanguage: "en",
       meaningLanguage: "de",
+      level: "Klasse 6",
       sections: [
         {
           id: "q7h3kd",
           title: "S",
-          entries: [{ id: "a8f2kc", term: { text: "a" }, meanings: [{ text: "b" }] }],
+          entries: [
+            { id: "a8f2kc", term: { text: "a" }, meanings: [{ text: "b" }], notes: "später" },
+          ],
         },
         { title: "Ohne", entries: [{ term: { text: "c" }, meanings: [{ text: "d" }] }] },
+      ],
+    });
+  });
+
+  it("übernimmt optionale Felder, trimmt sie und bringt Beispiele in die Langform", () => {
+    const file: SetFile = {
+      set: {
+        ...base,
+        level: " Klasse 6 ",
+        textbook: "eigene Liste",
+        edition: "2. Auflage",
+        source: "Arbeitsblatt",
+        license: "CC0",
+        notes: "Zum Wiederholen",
+        reviewStatus: "checked",
+      },
+      sections: [
+        {
+          title: "S",
+          entries: [
+            {
+              term: "to go",
+              meanings: ["gehen"],
+              notes: " unregelmäßig ",
+              examples: [" I go. ", { text: "We went.", translation: " Wir gingen. " }],
+              grammar: { partOfSpeech: "verb", gender: "-", plural: "-", forms: [" go ", "went"] },
+              reviewStatus: "unchecked",
+            },
+          ],
+        },
+      ],
+    };
+    expect(normalizeSetFile(file)).toStrictEqual({
+      ...base,
+      level: "Klasse 6",
+      textbook: "eigene Liste",
+      edition: "2. Auflage",
+      source: "Arbeitsblatt",
+      license: "CC0",
+      notes: "Zum Wiederholen",
+      reviewStatus: "checked",
+      sections: [
+        {
+          title: "S",
+          entries: [
+            {
+              term: { text: "to go" },
+              meanings: [{ text: "gehen" }],
+              notes: "unregelmäßig",
+              examples: [{ text: "I go." }, { text: "We went.", translation: "Wir gingen." }],
+              grammar: { partOfSpeech: "verb", gender: "-", plural: "-", forms: ["go", "went"] },
+              reviewStatus: "unchecked",
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  it("entfernt leere optionale Felder und null stillschweigend", () => {
+    const file: SetFile = {
+      set: { ...base, level: "", notes: "  ", license: null, reviewStatus: null },
+      sections: [
+        {
+          title: "S",
+          entries: [
+            {
+              term: { text: "a", acceptedVariants: null },
+              meanings: ["b"],
+              notes: null,
+              examples: [],
+              grammar: { partOfSpeech: " ", plural: null, forms: [] },
+              reviewStatus: null,
+            },
+            {
+              term: "c",
+              meanings: ["d"],
+              examples: [
+                { text: "x", translation: "" },
+                { text: "y", translation: null },
+              ],
+              grammar: { gender: "f", forms: null },
+            },
+          ],
+        },
+      ],
+    };
+    expect(normalizeSetFile(file)).toStrictEqual({
+      ...base,
+      sections: [
+        {
+          title: "S",
+          entries: [
+            { term: { text: "a" }, meanings: [{ text: "b" }] },
+            {
+              term: { text: "c" },
+              meanings: [{ text: "d" }],
+              examples: [{ text: "x" }, { text: "y" }],
+              grammar: { gender: "f" },
+            },
+          ],
+        },
       ],
     });
   });

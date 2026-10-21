@@ -1,0 +1,29 @@
+{
+  "format": "vokabeltrainer-set",
+  "formatVersion": 1,
+  "set": {
+    "title": "Englisch – Wetter",
+    "termLanguage": "en",
+    "meaningLanguage": "de"
+  },
+  "sections": [
+    {
+      "title": "Wetter",
+      "entries": [
+        {
+          "term": "rain",
+          "meanings": ["Regen"]
+        },
+        {
+          "term": "cloud",
+          "meanings": ["Wolke"]
+        }
+      ],
+      "id": "q7h3kd"
+    }
+  ],
+  "scope": {
+    "type": "sections",
+    "sectionIds": ["q7h3kd", "q7h3kd"]
+  }
+}

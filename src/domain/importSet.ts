@@ -11,6 +11,9 @@ export const MAX_IMPORT_SIZE = 10 * 1024 * 1024;
 
 export const TOO_LARGE = "Der Text ist zu groß. Ein Vokabelset darf höchstens 10 MB haben.";
 
+const PARTIAL_EXPORT =
+  "Diese Datei enthält nur einen Teil eines Sets. Ein Teil kann nur in ein vorhandenes Set übernommen werden.";
+
 export type PrepareResult =
   /** `trimmed`: Begleittext oder Codeblock wurde entfernt. */
   | { ok: true; set: StoredSet; warnings: string[]; trimmed: boolean }
@@ -25,6 +28,8 @@ export function prepareNewSet(
   if (!extracted.ok) return { ok: false, errors: [extracted.error] };
   const validated = validateSetFile(extracted.value);
   if (!validated.ok) return { ok: false, errors: validated.errors };
+  // Ein neues Set hat keine Sektionen, auf die sich ein Teil-Export beziehen könnte (TDD 9.6).
+  if (validated.file.scope?.type === "sections") return { ok: false, errors: [PARTIAL_EXPORT] };
   const set = assignIds(normalizeSetFile(validated.file), options.randomBytes);
   return {
     ok: true,

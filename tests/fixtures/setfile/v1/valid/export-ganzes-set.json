@@ -1,0 +1,48 @@
+{
+  "format": "vokabeltrainer-set",
+  "formatVersion": 1,
+  "exportedAt": "2026-10-19T17:00:00Z",
+  "scope": {
+    "type": "set"
+  },
+  "set": {
+    "id": "m4x8c2r9tw",
+    "rev": "k2p9w4ha",
+    "title": "Englisch – Wetter",
+    "termLanguage": "en",
+    "meaningLanguage": "de"
+  },
+  "sections": [
+    {
+      "id": "q7h3kd",
+      "rev": "t5m2b8xe",
+      "title": "Wetter",
+      "entries": [
+        {
+          "id": "a8f2kc",
+          "rev": "3hd9w2mq",
+          "term": "rain",
+          "meanings": ["Regen"]
+        },
+        {
+          "id": "p3z7rn",
+          "rev": "x9c4k2fj",
+          "term": "cloud",
+          "meanings": ["Wolke"]
+        }
+      ]
+    },
+    {
+      "id": "Q-0_legacy",
+      "rev": "w2n8vbaa",
+      "title": "Jahreszeiten",
+      "entries": [
+        {
+          "id": "550e8400-e29b-41d4",
+          "term": "summer",
+          "meanings": ["Sommer"]
+        }
+      ]
+    }
+  ]
+}

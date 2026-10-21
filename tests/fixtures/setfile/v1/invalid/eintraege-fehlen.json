@@ -1,0 +1,14 @@
+{
+  "format": "vokabeltrainer-set",
+  "formatVersion": 1,
+  "set": {
+    "title": "Englisch – Wetter",
+    "termLanguage": "en",
+    "meaningLanguage": "de"
+  },
+  "sections": [
+    {
+      "title": "Wetter"
+    }
+  ]
+}

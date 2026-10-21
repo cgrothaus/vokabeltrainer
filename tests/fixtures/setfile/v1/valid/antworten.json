@@ -1,0 +1,59 @@
+{
+  "format": "vokabeltrainer-set",
+  "formatVersion": 1,
+  "set": {
+    "title": "Englisch – Wetter",
+    "termLanguage": "en",
+    "meaningLanguage": "de"
+  },
+  "sections": [
+    {
+      "title": "Wetter",
+      "entries": [
+        {
+          "term": "rain",
+          "meanings": ["Regen"]
+        },
+        {
+          "term": "car",
+          "meanings": [
+            {
+              "text": "Auto",
+              "acceptedVariants": ["Wagen"]
+            }
+          ]
+        },
+        {
+          "term": "each",
+          "meanings": [
+            {
+              "text": "jede/-r/-s",
+              "acceptedVariants": ["jeder", "jede", "jedes"]
+            }
+          ]
+        },
+        {
+          "term": {
+            "text": "autumn",
+            "acceptedVariants": ["fall"]
+          },
+          "meanings": ["Herbst"]
+        },
+        {
+          "term": "to miss",
+          "meanings": ["vermissen", "verpassen"]
+        },
+        {
+          "term": "bank",
+          "meanings": [
+            {
+              "text": "Bank (Geldinstitut)",
+              "acceptedVariants": ["Bank"]
+            },
+            "Ufer"
+          ]
+        }
+      ]
+    }
+  ]
+}

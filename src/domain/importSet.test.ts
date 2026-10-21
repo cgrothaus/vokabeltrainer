@@ -77,6 +77,39 @@ describe("prepareNewSet", () => {
     if (!result.ok) expect(result.errors).toContain("Set-Angaben: Es fehlt der Titel („title“).");
   });
 
+  it("lehnt einen Teil-Export ab, weil das Set noch nicht vorhanden ist", () => {
+    const text = JSON.stringify({
+      scope: { type: "sections", sectionIds: ["q7h3kd"] },
+      set: { title: "T", termLanguage: "en", meaningLanguage: "de" },
+      sections: [{ id: "q7h3kd", title: "S", entries: [] }],
+    });
+    expect(prepareNewSet(text, { now, randomBytes })).toEqual({
+      ok: false,
+      errors: [
+        "Diese Datei enthält nur einen Teil eines Sets. Ein Teil kann nur in ein vorhandenes Set übernommen werden.",
+      ],
+    });
+  });
+
+  it("übernimmt optionale Felder", () => {
+    const text = JSON.stringify({
+      set: { title: "T", termLanguage: "en", meaningLanguage: "de", level: "A2", notes: "" },
+      sections: [
+        { title: "S", entries: [{ term: "a", meanings: ["b"], examples: ["c"], notes: null }] },
+      ],
+    });
+    const result = prepareNewSet(text, { now, randomBytes });
+    if (!result.ok) throw new Error(result.errors.join("\n"));
+    expect(result.set).toMatchObject({ level: "A2" });
+    expect(result.set).not.toHaveProperty("notes");
+    expect(result.set.sections[0]!.entries[0]).toStrictEqual({
+      id: expect.any(String),
+      term: { text: "a" },
+      meanings: [{ text: "b" }],
+      examples: [{ text: "c" }],
+    });
+  });
+
   it("lehnt zu große Texte ab, ohne sie zu lesen", () => {
     const text = `{"x": "${"a".repeat(MAX_IMPORT_SIZE)}"}`;
     expect(prepareNewSet(text, { now, randomBytes })).toEqual({

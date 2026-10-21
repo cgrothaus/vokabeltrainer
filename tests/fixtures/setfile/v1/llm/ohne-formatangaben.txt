@@ -1,0 +1,14 @@
+```json
+{
+  "set": { "title": "Latein – Wetter", "termLanguage": "la", "meaningLanguage": "de" },
+  "sections": [
+    {
+      "title": "Caelum",
+      "entries": [
+        { "term": "pluvia", "meanings": ["Regen"] },
+        { "term": "ventus", "meanings": ["Wind"] }
+      ]
+    }
+  ]
+}
+```
