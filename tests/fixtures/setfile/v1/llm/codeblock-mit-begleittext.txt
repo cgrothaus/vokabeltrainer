@@ -1,0 +1,21 @@
+Gern! Hier ist dein Vokabelset zum Thema Wetter:
+
+```json
+{
+  "format": "vokabeltrainer-set",
+  "formatVersion": 1,
+  "set": { "title": "Englisch – Wetter", "termLanguage": "en", "meaningLanguage": "de", "level": "Klasse 6" },
+  "sections": [
+    {
+      "title": "Wetter",
+      "entries": [
+        { "term": "rain", "meanings": ["Regen"] },
+        { "term": "sunny", "meanings": ["sonnig"] },
+        { "term": "storm", "meanings": [{ "text": "Sturm", "acceptedVariants": ["Unwetter"] }] }
+      ]
+    }
+  ]
+}
+```
+
+Du kannst die Datei jetzt in deinen Vokabeltrainer einfügen. Viel Erfolg beim Lernen!

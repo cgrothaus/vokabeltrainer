@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { canonicalize, cyrb53, encodeRev, entryRev } from "./hash";
 import type { StoredEntry } from "./model";
 import { normalizeSetFile } from "./normalize";
-import type { FileAnswer, SetFile } from "./validate";
+import type { FileAnswer, FileEntry, SetFile } from "./validate";
 
 describe("cyrb53", () => {
   it("liefert die Werte der Referenzimplementierung", () => {
@@ -100,6 +100,24 @@ describe("entryRev", () => {
           { text: "verpassen", acceptedVariants: [] },
         ]),
       ),
+    );
+  });
+
+  it("ergibt für Beispiele in Kurz- und Langform und leere optionale Felder denselben Wert", () => {
+    const rev = (fields: Partial<FileEntry>) =>
+      entryRev(
+        normalizeSetFile({
+          set: { title: "T", termLanguage: "en", meaningLanguage: "de" },
+          sections: [
+            { title: "S", entries: [{ id: "a8f2kc", term: "a", meanings: ["b"], ...fields }] },
+          ],
+        }).sections[0]!.entries[0] as StoredEntry,
+      );
+    expect(rev({ examples: ["I go."] })).toBe(
+      rev({ examples: [{ text: "I go.", translation: "" }] }),
+    );
+    expect(rev({ notes: "", examples: [], grammar: { forms: [] }, reviewStatus: null })).toBe(
+      rev({}),
     );
   });
 });

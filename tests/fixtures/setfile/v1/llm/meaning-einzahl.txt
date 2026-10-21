@@ -1,0 +1,17 @@
+```json
+{
+  "format": "vokabeltrainer-set",
+  "formatVersion": 1,
+  "set": { "title": "Spanisch – Wetter", "termLanguage": "es", "meaningLanguage": "de" },
+  "sections": [
+    {
+      "title": "El tiempo",
+      "entries": [
+        { "term": "la lluvia", "meaning": "der Regen" },
+        { "term": "el sol", "meaning": "die Sonne" },
+        { "term": "nublado", "meanings": ["bewölkt"] }
+      ]
+    }
+  ]
+}
+```

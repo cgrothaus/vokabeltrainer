@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Vokabelset-Datei (vokabeltrainer-set, Formatversion 1)",
+  "description": "Maßgeblich ist Formatspezifikation_Vokabelset_v1.md. Unbekannte Felder sind erlaubt; die App ignoriert sie und meldet sie als Warnung. Nicht abgebildet sind: doppelte IDs, die Höchstzahl von 20.000 Einträgen über alle Sektionen, das Entfernen von Leerzeichen am Rand und die NFC-Normalisierung vor der Längenprüfung sowie die vollständige Prüfung der Sprachcodes nach BCP 47.",
+  "type": "object",
+  "required": ["set", "sections"],
+  "properties": {
+    "format": { "const": "vokabeltrainer-set" },
+    "formatVersion": { "const": 1 },
+    "exportedAt": { "type": "string" },
+    "scope": { "$ref": "#/$defs/scope" },
+    "set": { "$ref": "#/$defs/set" },
+    "sections": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 500,
+      "items": { "$ref": "#/$defs/section" }
+    }
+  },
+  "$defs": {
+    "id": {
+      "description": "ID oder Prüfwert (rev); von der App erzeugte IDs haben 6 oder 10, Prüfwerte 8 Zeichen.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,64}$"
+    },
+    "title": { "type": "string", "pattern": "\\S", "maxLength": 200 },
+    "language": {
+      "description": "Sprachcode nach BCP 47, z. B. en, en-GB, la.",
+      "type": "string",
+      "pattern": "^[A-Za-z]{2,3}(-[A-Za-z0-9]{1,8})*$"
+    },
+    "shortText": {
+      "description": "Optionaler Text; leer oder null bedeutet „nicht angegeben“.",
+      "type": ["string", "null"],
+      "maxLength": 200
+    },
+    "notes": { "type": ["string", "null"], "maxLength": 2000 },
+    "reviewStatus": { "enum": ["unchecked", "checked", null] },
+    "answerText": { "type": "string", "pattern": "\\S", "maxLength": 500 },
+    "answer": {
+      "description": "Antwort in Kurzform (Text) oder Langform (Objekt mit text und acceptedVariants).",
+      "anyOf": [{ "$ref": "#/$defs/answerText" }, { "$ref": "#/$defs/answerObject" }]
+    },
+    "answerObject": {
+      "type": "object",
+      "required": ["text"],
+      "properties": {
+        "text": { "$ref": "#/$defs/answerText" },
+        "acceptedVariants": {
+          "description": "Gleichwertige Schreibweisen derselben Bedeutung.",
+          "type": ["array", "null"],
+          "items": { "$ref": "#/$defs/answerText" }
+        }
+      }
+    },
+    "example": {
+      "anyOf": [{ "$ref": "#/$defs/answerText" }, { "$ref": "#/$defs/exampleObject" }]
+    },
+    "exampleObject": {
+      "type": "object",
+      "required": ["text"],
+      "properties": {
+        "text": { "$ref": "#/$defs/answerText" },
+        "translation": { "type": ["string", "null"], "maxLength": 500 }
+      }
+    },
+    "grammar": {
+      "type": ["object", "null"],
+      "properties": {
+        "partOfSpeech": { "$ref": "#/$defs/shortText" },
+        "gender": { "$ref": "#/$defs/shortText" },
+        "plural": { "$ref": "#/$defs/shortText" },
+        "forms": {
+          "type": ["array", "null"],
+          "items": { "type": "string", "pattern": "\\S", "maxLength": 200 }
+        }
+      }
+    },
+    "scope": {
+      "description": "Umfang eines Teil-Exports; fehlt er, steht die Datei für das ganze Set.",
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["set", "sections"] },
+        "sectionIds": true
+      },
+      "if": { "properties": { "type": { "const": "sections" } } },
+      "then": {
+        "required": ["sectionIds"],
+        "properties": {
+          "sectionIds": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/id" }
+          }
+        }
+      }
+    },
+    "set": {
+      "type": "object",
+      "required": ["title", "termLanguage", "meaningLanguage"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "rev": { "$ref": "#/$defs/id" },
+        "title": { "$ref": "#/$defs/title" },
+        "termLanguage": { "$ref": "#/$defs/language" },
+        "meaningLanguage": { "$ref": "#/$defs/language" },
+        "level": { "$ref": "#/$defs/shortText" },
+        "textbook": { "$ref": "#/$defs/shortText" },
+        "edition": { "$ref": "#/$defs/shortText" },
+        "source": { "$ref": "#/$defs/shortText" },
+        "license": { "$ref": "#/$defs/shortText" },
+        "notes": { "$ref": "#/$defs/notes" },
+        "reviewStatus": { "$ref": "#/$defs/reviewStatus" }
+      }
+    },
+    "section": {
+      "type": "object",
+      "required": ["title", "entries"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "rev": { "$ref": "#/$defs/id" },
+        "title": { "$ref": "#/$defs/title" },
+        "entries": { "type": "array", "items": { "$ref": "#/$defs/entry" } }
+      }
+    },
+    "entry": {
+      "type": "object",
+      "required": ["term"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "rev": { "$ref": "#/$defs/id" },
+        "term": { "$ref": "#/$defs/answer" },
+        "meanings": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/answer" } },
+        "meaning": {
+          "description": "Toleriert statt meanings mit einer Bedeutung; neben meanings wird es ignoriert."
+        },
+        "notes": { "$ref": "#/$defs/notes" },
+        "examples": { "type": ["array", "null"], "items": { "$ref": "#/$defs/example" } },
+        "grammar": { "$ref": "#/$defs/grammar" },
+        "reviewStatus": { "$ref": "#/$defs/reviewStatus" }
+      },
+      "anyOf": [{ "required": ["meanings"] }, { "required": ["meaning"] }],
+      "if": { "required": ["meanings"] },
+      "else": { "properties": { "meaning": { "$ref": "#/$defs/answer" } } }
+    }
+  }
+}

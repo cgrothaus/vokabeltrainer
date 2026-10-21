@@ -1,6 +1,6 @@
 # TDD: Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.11 – E2E-Tests in der CI  
+**Version:** 2.12 – Vollständige Validierung und JSON Schema  
 **Stand:** 21. Oktober 2026  
 **Bezug:** PRD 2.4 (`PRD_Vokabeltrainer_Allgemein_v2.md`), Formatspezifikation Version 1 (`Formatspezifikation_Vokabelset_v1.md`), Review-Notizen (`20261019_TDD_v1_Review_Notizen.md`)  
 **Status:** Entwurf; Grundlage für M0 (Walking Skeleton)  
@@ -126,7 +126,7 @@ Hash-basiertes Routing (`#/`, `#/set/<id>`, `#/import`, `#/practice`, `#/backup`
 | Sprache | TypeScript, `strict`, `erasableSyntaxOnly`; `@types/node` für Tests und Konfiguration | Typen schützen das Datenmodell; nur Syntax, die beim Übersetzen ersatzlos entfällt (keine `enum`, keine `namespace`). |
 | Build und Dev-Server | Vite 8 + `vite-plugin-singlefile` | Schneller Dev-Server mit Hot Reload; Plugin bettet JS und CSS in `index.html` ein; Konfiguration wird mit Vitest geteilt. |
 | Unit- und Integrationstests | Vitest 5 + `fake-indexeddb` | Gleiche Konfiguration wie Vite; IndexedDB-Logik ohne Browser testbar. Vitest 5 (seit September 2026) unterstützt Vite 8 und Node.js ab 22.12; die Änderungen gegenüber Vitest 4 betreffen ein neues Projekt nicht. |
-| Schemaabgleich | Ajv (nur Entwicklung) | Prüft Testfixtures gegen das JSON Schema (TAK-10). |
+| Schemaabgleich | Ajv 8 (nur Entwicklung) | Prüft Testfixtures gegen das JSON Schema (TAK-10); Draft 2020-12 über `ajv/dist/2020`. |
 | End-to-End-Tests | Playwright Test | Chromium und WebKit, mobile Emulation, Offline-Simulation. |
 | Browserprüfung durch den Coding-Agent | `playwright-cli` | Für Coding-Agents empfohlen; Snapshots landen in Dateien statt im Kontext. Global installiert (nicht in `package.json`, da es eine eigene Playwright-Version mitbringt); der Skill liegt versioniert unter `.claude/skills/`. |
 | App-Icons | Playwright (Chromium) per `npm run icons` | Rendert die PNG-Größen aus einer SVG-Vorlage, ohne zusätzliche Abhängigkeit; die PNGs werden eingecheckt (D-22). |
@@ -380,16 +380,20 @@ Die Extraktion meldet in der Vorschau, ob Text entfernt wurde. Weitere Reparatur
   - **Warnungen** werden in der Vorschau gezeigt (z. B. ignorierte Felder, angenommene Formatversion),
   - **Hinweise** sind rein informativ.
 - Sprachcodes werden mit `Intl.getCanonicalLocales` geprüft und kanonisiert.
-- Grenzen aus der Formatspezifikation; zusätzlich höchstens 500 Sektionen und 20.000 Einträge pro Datei (DF-08, Schutz vor Blockade).
-- Der Validator und das JSON Schema werden über gemeinsame Fixtures abgeglichen (TAK-10, T-18).
+- Grenzen aus der Formatspezifikation 8.4, darunter höchstens 500 Sektionen und 20.000 Einträge pro Datei (DF-08, Schutz vor Blockade). Textlängen zählen Unicode-Zeichen (Codepoints) nach Trimmen und NFC.
+- Bekannte Felder stehen pro Ebene (Datei, `set`, `scope`, Sektion, Eintrag, Antwort, Beispiel, Grammatik) in einer Tabelle in `validate.ts`; daraus ergeben sich Typ- und Längenprüfung und die Warnungen für unbekannte Felder. Diese werden pro Ebene und Feldname gebündelt: „Das Feld „difficulty“ wird ignoriert (Sektion 1 „Freizeit“, Eintrag 2 (to go) und 41 weitere Stellen).“ Stehen `meanings` und `meaning` beide da, wird `meaning` ignoriert.
+- `null` ist nur bei optionalen Inhaltsfeldern zulässig (Löschmarkierung, D-10); bei Pflichtfeldern, IDs, `rev`, `scope`, `exportedAt` und Listenelementen ist es ein Fehler; bei Pflichtfeldern lautet die Meldung wie bei einem fehlenden Feld. `rev` wird wie eine ID geprüft, `exportedAt` nur als Text.
+- `validateSetFile` prüft die Datei unabhängig vom Ziel. Ob sie zum Ziel passt, prüft der Ablauf: `prepareNewSet` lehnt einen Teil-Export ab (9.6), weil ein neues Set keine Sektionen hat, auf die er sich beziehen könnte. `scope` selbst wird nur in seiner Form geprüft (`sectionIds` nichtleer, eindeutig, gültige IDs); Widersprüche zwischen `sectionIds` und den Sektionen prüft `diff.ts` (S-34).
+- Der Validator und das JSON Schema (`docs/vokabeltrainer-set.schema.json`, Draft 2020-12) werden über gemeinsame Fixtures abgeglichen (TAK-10, T-18). Das Schema kann nicht ausdrücken: doppelte IDs über Ebenen hinweg, die Höchstzahl der Einträge über alle Sektionen, Trimmen und NFC (es zählt Längen ungetrimmt) sowie die Kanonisierung der Sprachcodes (es prüft nur das Muster `^[A-Za-z]{2,3}(-[A-Za-z0-9]{1,8})*$`). Bei Widerspruch gelten Formatspezifikation und Validator.
 
 ### 8.4 Normalisierung (`normalize.ts`)
 
 - Kurzformen (String) zu Langform `{ text }` auflösen; `meaning` (Einzahl) zu `meanings` mit einem Element.
 - Texte trimmen und in Unicode-NFC überführen; innere Leerzeichen bleiben unverändert.
-- Unbekannte Felder entfernen und als Warnung melden (D-11, F-04).
-- Leere optionale Arrays und Strings entfernen.
-- Werte `null` bleiben in der normalisierten **Datei**-Darstellung als Löschmarkierung erhalten (für Aktualisieren, D-10).
+- Unbekannte Felder entfernen; die Warnung dazu erzeugt die Validierung (D-11, F-04).
+- Leere optionale Felder (Strings, Arrays, Objekte, auch solche, die erst durch Trimmen leer werden) stillschweigend entfernen, ohne Warnung (D-24). Elemente von Listen (Varianten, Beispiele, Wortformen) dürfen nicht leer sein; das prüft die Validierung.
+- Beispiele (`examples`) in die Langform `{ text, translation? }` überführen.
+- Werte `null` bleiben in der normalisierten **Datei**-Darstellung als Löschmarkierung erhalten (für Aktualisieren, D-10). Bei einem neuen Set entfallen sie wie fehlende Felder.
 
 ---
 
@@ -713,15 +717,16 @@ UI-Code wird nicht testgetrieben entwickelt, sondern über E2E-Smoke-Tests und m
 
 ```text
 tests/fixtures/
-├── setfile/v1/valid/      minimal, mit IDs, Teil-Export, Kurz- und Langform, Varianten, mehrere Bedeutungen
-├── setfile/v1/invalid/    je ein Fehlerfall pro Regel
-├── setfile/v1/llm/        typische LLM-Ausgaben: Codeblock, Begleittext, Zusatzfelder, "meaning"
-├── db/                    gespeicherte Stände pro DB_VERSION (ab erster Auslieferung)
-├── backup/                Backups pro dataVersion
-└── perf/                  3.000 Einträge; 50.000 Events
+├── setfile/v1/valid/                   minimal, mit IDs, Teil-Export, Kurz- und Langform, Varianten, mehrere Bedeutungen, alle optionalen Felder
+├── setfile/v1/invalid/                 je ein Fehlerfall pro Regel
+├── setfile/v1/invalid-validator-only/  Regeln, die das Schema nicht ausdrücken kann (8.3), z. B. doppelte IDs
+├── setfile/v1/llm/                     typische LLM-Ausgaben als Text: Codeblock, Begleittext, Zusatzfelder, "meaning"
+├── db/                                 gespeicherte Stände pro DB_VERSION (ab erster Auslieferung)
+├── backup/                             Backups pro dataVersion
+└── perf/                               3.000 Einträge; 50.000 Events
 ```
 
-Das Beispielset (13.2) ist zugleich gültiges Fixture.
+Das Beispielset (13.2) ist zugleich gültiges Fixture. Der Schemaabgleich (`tests/format/setfile.test.ts`, Vitest-Projekt `unit`) führt jedes Fixture durch `extractJson` und danach durch Validator und Schema. Für `invalid/` und `invalid-validator-only/` hält er pro Datei die erwartete Meldung fest (genau ein Fehler), für `valid/` und `llm/` die erwarteten Warnungen; ein Fixture ohne Erwartung lässt den Test scheitern. Ein weiterer Test vergleicht die Feldnamen jeder Ebene im Schema mit den Feldtabellen des Validators.
 
 ### 15.4 End-to-End-Smoke-Tests
 
@@ -789,7 +794,7 @@ Ergebnisse (LLM-App, Modell, Datum, Befund) werden im Umsetzungsplan bei S-15 fe
 | TAK-07 | Eine veraltete Vorschau (geänderter `editCount`) wird nicht angewandt. | Integrationstest |
 | TAK-08 | Jeder frühere DB- und Backup-Stand wird auf den aktuellen migriert; eine fehlschlagende Migration lässt den alten Stand unverändert und bietet das Notfall-Backup an. | Integrationstest, E2E-04 (ab `DB_VERSION` 2) |
 | TAK-09 | Backup → Wiederherstellen ergibt denselben Bestand (tiefer Vergleich aller Stores außer `meta`). | Integrationstest, E2E-02 |
-| TAK-10 | Validator und JSON Schema urteilen bei allen Fixtures gleich. | Schemaabgleich |
+| TAK-10 | Validator und JSON Schema urteilen bei allen Fixtures gleich; ausgenommen sind die Fixtures in `invalid-validator-only/` mit Regeln, die das Schema nicht ausdrücken kann (8.3): Dort akzeptiert das Schema, der Validator lehnt ab. | Schemaabgleich |
 | TAK-11 | Die App startet nach dem ersten Laden offline vollständig. | E2E-03 |
 | TAK-12 | Eine neue App-Version wird während einer Sitzung oder Bearbeitung nicht aktiviert. | E2E-11, E2E-14 (Sitzung), manuell |
 | TAK-13 | Alle in 15.2 genannten Module haben Unit-Tests für die dort genannten Fälle. | Review |
@@ -826,6 +831,7 @@ Ergebnisse (LLM-App, Modell, Datum, Befund) werden im Umsetzungsplan bei S-15 fe
 | D-21 | Deployment nur vom Branch `production`, der ausschließlich per Fast-Forward aus `main` nachgezogen wird | 4.4, 4.5 | Nutzerentscheidung in S-04, 20. Oktober 2026 |
 | D-22 | App-Icons aus einer SVG-Vorlage; PNGs per Playwright-Skript erzeugt und eingecheckt; Cache-Version über alle vorab gespeicherten Dateien | 4.1, 4.2, 5.1 | Nutzerentscheidung in S-05, 20. Oktober 2026 |
 | D-23 | Fundstelle bei ungültigem JSON über einen eigenen Syntaxprüfer statt aus der Fehlermeldung des Browsers (Safari nennt keine Position) | 8.2 | Nutzerentscheidung in S-07, 20. Oktober 2026 |
+| D-24 | Leere optionale Felder einer Set-Datei werden beim Import stillschweigend entfernt; leere Pflichttexte und leere Listenelemente bleiben Fehler | 8.4, Formatspez. 5.5 | Nutzerentscheidung in S-12, 21. Oktober 2026 |
 
 ---
 
@@ -896,6 +902,7 @@ Geprüft am 18. bis 20. Oktober 2026.
 | 2.9 | 20. Oktober 2026 | LLM-Tauglichkeit der Formatspezifikation ohne Prompt-Vorlage als manueller Test (15.7) und offener Punkt O-09, Anschluss an S-15 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.10 | 20. Oktober 2026 | Backup und Wiederherstellung (S-09): `backup.ts` und `validateRecords.ts` (3.1); Rückgabewert von `deliverFile`, Rückfall auf Download, Inhalt vor der Geste fertig (11.2); Backup beim Öffnen der Ansicht lesen, `lastBackupAt` = `exportedAt` (11.3); Prüfregeln, Größengrenze, M0-Bestätigung, `lastBackupAt` in derselben Transaktion (11.4) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.11 | 21. Oktober 2026 | E2E-Tests in der CI (S-10): E2E-04 auf die erste Erhöhung von `DB_VERSION` verschoben, weil es vorher gegen das gebaute Artefakt keine ältere Datenbank gibt; bis dahin prüfen die Integrationstests den Migrationsmechanismus (7.4, 15.4, 16) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.12 | 21. Oktober 2026 | Vollständige Validierung (S-12): Feldtabellen pro Ebene, gebündelte Warnungen für unbekannte Felder, Zählweise der Textlängen, `null` nur bei optionalen Inhaltsfeldern, Teil-Export-Prüfung im Importablauf statt im Validator, Grenzen des JSON Schemas (8.3); leere optionale Felder ohne Warnung entfernen (8.4, D-24); Ajv 8 (4.1); Fixture-Verzeichnis `invalid-validator-only/` und Schemaabgleich (15.3, TAK-10) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 
 ---
 
@@ -937,16 +944,18 @@ Ziel: Jeder riskante Teil läuft einmal von vorn bis hinten, in einfachster Form
 
 ### M1 – Lernen mit eigenen Sets
 
-- 🔲 **S-12** Vollständige Validierung und Normalisierung nach Formatspezifikation, testgetrieben, mit Fixtures; JSON Schema `vokabeltrainer-set.schema.json` und Schemaabgleich – DF-01–DF-08, TAK-10  
-  Baut auf der Grundvalidierung aus S-07 auf. Ergänzen: optionale Felder (`level`, `textbook`, `edition`, `source`, `license`, `notes`, `examples`, `grammar`, `reviewStatus`) prüfen und übernehmen – S-07 lässt sie noch weg –, Textlängen, Warnungen für unbekannte Felder.
+- ✅ **S-12** Vollständige Validierung und Normalisierung nach Formatspezifikation, testgetrieben, mit Fixtures; JSON Schema `vokabeltrainer-set.schema.json` und Schemaabgleich – DF-01–DF-08, TAK-10  
+  Erledigt am 21. Oktober 2026 mit Ajv 8.20. `validate.ts` prüft alle optionalen Felder (Set: `level`, `textbook`, `edition`, `source`, `license`, `notes`, `reviewStatus`; Eintrag: `notes`, `examples`, `grammar`, `reviewStatus`), Textlängen in Codepoints nach Trimmen und NFC, `null` nur bei optionalen Feldern, `rev` und `exportedAt`, die Form von `scope`. Bekannte Felder stehen pro Ebene in `KNOWN_FIELDS`; unbekannte werden gebündelt gemeldet („… und 11 weitere Stellen“). `normalize.ts` übernimmt die optionalen Felder, Beispiele in Langform, und entfernt leere optionale Felder ohne Warnung (Nutzerentscheidung, D-24); leere Listenelemente bleiben Fehler, weil z. B. eine leere Wortform die Stellung der übrigen verschieben würde. Die Ablehnung eines Teil-Exports als neues Set liegt jetzt in `prepareNewSet`, damit das gültige Fixture „Teil-Export“ bei Validator und Schema gleich ausfällt. Spezifikation präzisiert (5.5, 6, 7, 8.1, 8.2, 8.4 mit Grenzen für alle Texte), Formatversion bleibt 1. Schema unter `docs/vokabeltrainer-set.schema.json` (Draft 2020-12, ohne `$id` bis S-29); 53 Fixtures (9 gültig, 6 LLM-Ausgaben als Text, 35 ungültig mit genau einer Meldung, 3 nur für den Validator) in `tests/format/setfile.test.ts` abgeglichen, dazu ein Test, dass Schema und `KNOWN_FIELDS` dieselben Felder kennen. Ajv läuft mit `strict`, nur `strictRequired` ist aus (es meldet `required` in `anyOf`/`if` fälschlich). Gegenproben: Titelgrenze im Schema auf 300, `level` aus der Validator-Tabelle entfernt, leere Notiz nicht entfernt, Teil-Export-Prüfung entfernt – jeweils scheitern die passenden Tests. E2E-06 (Datei mit Begleittext und Zusatzfeld → Warnung sichtbar, optionale Felder im Store) läuft in mobile-chromium und mobile-webkit. Mit `playwright-cli` (mobiles Chromium, 320 px, hell und dunkel) geprüft: Lange Wörter in Warnungen ließen die Seite horizontal scrollen (420 px); Live-Bereiche brechen jetzt wie die Fehlerbox um (`overflow-wrap: anywhere`), danach 320 px, Konsole leer. Angezeigt werden die optionalen Felder noch nicht (Nutzerentscheidung, siehe S-14 und S-18).
 - 🔲 **S-13** Importvorschau für neue Sets mit Warnungen; Duplikaterkennung – FR-16, FR-30, AK-19  
   Dazu die Schaltfläche „Aus Zwischenablage einfügen“ (8.1), in S-07 bewusst weggelassen.
-- 🔲 **S-14** Bibliothek gruppiert nach Sprache, Set-Ansicht mit Sektionen, Set löschen – FR-01–FR-03
+- 🔲 **S-14** Bibliothek gruppiert nach Sprache, Set-Ansicht mit Sektionen, Set löschen – FR-01–FR-03  
+  Dazu die optionalen Angaben anzeigen, die seit S-12 gespeichert werden: Set (Lernstufe, Lehrwerk, Herkunft, Lizenz, Notiz, Prüfstatus) und Einträge (Notiz, Beispiele, Grammatik, „ungeprüft“).
 - 🔲 **S-15** Empty State, Hilfe mit Formatbeispiel und Prompt-Vorlagen – FR-20, FR-28, AK-14  
-  Vorab der LLM-Test nach 15.7 (O-09, AK-13), sobald die Spezifikation mit S-12 vollständig umgesetzt ist; sein Ergebnis bestimmt, wie ausführlich die Prompt-Vorlagen sein müssen.
+  Vorab der LLM-Test nach 15.7 (O-09, AK-13); seit S-12 ist die Spezifikation vollständig umgesetzt, der Test ist also möglich. Sein Ergebnis bestimmt, wie ausführlich die Prompt-Vorlagen sein müssen.
 - 🔲 **S-16** Beispielset erstellen (13.2) – FR-32, AK-23
 - 🔲 **S-17** Sitzung einrichten: Auswahl Sektionen, Richtung, Anzahl, Multiple-Choice-Anteil; gemerkte Einstellungen – FR-07, FR-08, FR-21
-- 🔲 **S-18** Multiple Choice mit Kandidatenregeln (testgetrieben), Bedienwege Karteikarte – FR-09, AK-22
+- 🔲 **S-18** Multiple Choice mit Kandidatenregeln (testgetrieben), Bedienwege Karteikarte – FR-09, AK-22  
+  Dazu Notiz, Beispiele und Grammatik eines Eintrags auf der Rückseite der Karteikarte zeigen (seit S-12 gespeichert).
 - 🔲 **S-19** Fehlerwiederholung, Zwischenstand, Fortsetzen, Ergebnis, „Nur Fehler üben“ – FR-10, FR-12
 - 🔲 **S-20** Lernüberblick aus Events (testgetrieben) – FR-11, AK-17
 - 🔲 **S-21** Einstellungen, Hell/Dunkel, App-Version – FR-21, FR-25

@@ -132,6 +132,11 @@ input[type="file"] {
   overflow-wrap: anywhere;
 }
 
+/* Statusmeldungen nennen Wörter aus importierten Dateien, die ohne Trennstelle sehr lang sein können. */
+[aria-live] {
+  overflow-wrap: anywhere;
+}
+
 .sets {
   padding: 0;
   list-style: none;

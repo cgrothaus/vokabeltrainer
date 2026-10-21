@@ -1,0 +1,3 @@
+Hier ist das Set:
+{"format": "vokabeltrainer-set", "formatVersion": 1, "set": {"title": "Französisch – Wetter", "termLanguage": "fr", "meaningLanguage": "de"}, "sections": [{"title": "Le temps", "entries": [{"term": "la pluie", "meanings": ["der Regen"]}, {"term": "le nuage", "meanings": ["die Wolke"]}]}]}
+Sag Bescheid, wenn du noch etwas ändern möchtest.

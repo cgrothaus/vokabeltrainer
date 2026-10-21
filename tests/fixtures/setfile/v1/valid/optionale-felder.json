@@ -1,0 +1,49 @@
+{
+  "format": "vokabeltrainer-set",
+  "formatVersion": 1,
+  "set": {
+    "title": "Englisch – Wetter",
+    "termLanguage": "en",
+    "meaningLanguage": "de",
+    "level": "Klasse 6",
+    "textbook": "eigene Zusammenstellung",
+    "edition": "1. Fassung",
+    "source": "Arbeitsblatt vom 3. 10.",
+    "license": "CC0",
+    "notes": "Zum Wiederholen vor der Arbeit",
+    "reviewStatus": "checked"
+  },
+  "sections": [
+    {
+      "title": "Wetter",
+      "entries": [
+        {
+          "term": "to rain",
+          "meanings": ["regnen"],
+          "notes": "unsicher: Foto unscharf",
+          "examples": [
+            "It rains a lot.",
+            {
+              "text": "It rained yesterday.",
+              "translation": "Gestern hat es geregnet."
+            }
+          ],
+          "grammar": {
+            "partOfSpeech": "verb",
+            "forms": ["rain", "rained", "rained"]
+          },
+          "reviewStatus": "unchecked"
+        },
+        {
+          "term": "cloud",
+          "meanings": ["Wolke"],
+          "grammar": {
+            "partOfSpeech": "noun",
+            "plural": "clouds",
+            "gender": "f"
+          }
+        }
+      ]
+    }
+  ]
+}
