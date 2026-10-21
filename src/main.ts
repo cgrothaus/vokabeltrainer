@@ -1,7 +1,7 @@
 import "./styles/main.css";
 import { checkBackup, lastBackupAt, prepareBackup, restore, saveBackup } from "./app/backup";
 import { mountUpdateNotice, showUpdateNotice } from "./app/components/updateNotice";
-import { importText } from "./app/importText";
+import { previewImport, saveImport } from "./app/importText";
 import { beginPractice, currentPractice } from "./app/practice";
 import { startRouter } from "./app/router";
 import { backupView } from "./app/views/backup";
@@ -10,6 +10,7 @@ import { libraryView } from "./app/views/library";
 import { notFoundView } from "./app/views/notFound";
 import { practiceView } from "./app/views/practice";
 import { storageErrorView } from "./app/views/storageError";
+import { canReadClipboard, readClipboard } from "./platform/clipboard";
 import { persistenceState, requestPersistence } from "./platform/persistence";
 import { registerServiceWorker } from "./platform/serviceWorker";
 import { type OpenOptions, type OpenResult, openDatabase } from "./storage/database";
@@ -72,6 +73,8 @@ async function start(): Promise<void> {
   await interruptActiveSessions(db).catch((error: unknown) => {
     console.warn("Unterbrochene Sitzungen nicht vermerkt", error);
   });
+  // Erfolgsmeldung des Imports für die Bibliothek; lebt nur bis zum nächsten Anzeigen.
+  let message: string | null = null;
   const library = () =>
     libraryView({
       persistence,
@@ -81,11 +84,22 @@ async function start(): Promise<void> {
         await beginPractice(db, set);
         location.hash = "#/practice";
       },
+      takeMessage: () => {
+        const taken = message;
+        message = null;
+        return taken;
+      },
     });
   const importPage = () =>
     importView({
-      importText: (text) => importText(db, text),
-      onSaved: () => void askOnceAfterSave(),
+      previewImport: (text) => previewImport(db, text),
+      saveImport: (set) => saveImport(db, set),
+      readClipboard: canReadClipboard() ? readClipboard : null,
+      onSaved: (saved) => {
+        void askOnceAfterSave();
+        message = saved;
+        location.hash = "#/";
+      },
     });
   const practicePage = (signal: AbortSignal) => practiceView(currentPractice(), signal);
   const backupPage = () =>

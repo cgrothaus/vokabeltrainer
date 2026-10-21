@@ -9,6 +9,8 @@ export interface LibraryContext {
   loadSets: () => Promise<StoredSet[]>;
   /** Legt die Sitzung an und wechselt zu ihr; lehnt ab, wenn das Speichern scheitert. */
   startPractice: (set: StoredSet) => Promise<void>;
+  /** Meldung aus dem vorigen Schritt, z. B. nach dem Import; wird beim Abholen geleert. */
+  takeMessage: () => string | null;
 }
 
 const NOT_STARTED =
@@ -38,10 +40,15 @@ export function libraryView(context: LibraryContext): Node {
   );
   const sets = h("section", { "aria-label": "Vokabelsets" });
   void showSets(sets, context);
+  const text = context.takeMessage();
+  const message = text && h("p", { role: "status", class: "message", tabindex: "-1" }, text);
+  // Fokus auf die Meldung, sobald die Ansicht eingehängt ist, damit Screenreader sie vorlesen.
+  if (message) queueMicrotask(() => message.isConnected && message.focus());
   return h(
     "main",
     null,
     h("h1", null, "Vokabeltrainer"),
+    message,
     sets,
     h("p", null, h("a", { href: "#/import", class: "action" }, "Vokabelset importieren")),
     h("p", null, h("a", { href: "#/backup" }, "Backup und Wiederherstellung")),

@@ -225,8 +225,8 @@ input[type="file"] {
   font-size: 1.25rem;
 }
 
-/* Bestätigung vor dem Ersetzen: abgesetzt, damit die Folge nicht übersehen wird. */
-.backup .confirm {
+/* Bestätigung vor dem Ersetzen oder Importieren: abgesetzt, damit die Folge nicht übersehen wird. */
+.confirm {
   margin: 1rem 0;
   padding: 0.25rem 1rem 1rem;
   border: 1px solid var(--border);
@@ -238,6 +238,48 @@ input[type="file"] {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
+}
+
+/* Importvorschau (TDD 9.2): Titel und Sektionsnamen stammen aus der Datei und können sehr lang sein. */
+.confirm h2 {
+  margin-top: 0.75rem;
+  font-size: 1.25rem;
+}
+
+.confirm .preview-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.confirm p,
+.confirm li {
+  overflow-wrap: anywhere;
+}
+
+/* Ohne `display: flex`, sonst verschwindet das Dreieck zum Aufklappen; Höhe über den Innenabstand. */
+.confirm summary {
+  padding: 0.6rem 0;
+  cursor: pointer;
+}
+
+.confirm details li .count {
+  opacity: 0.75;
+}
+
+/* Hinweis auf ein vorhandenes Set: Rahmen statt nur Farbe (TDD 13.4). */
+.confirm .duplicate {
+  margin: 1rem 0;
+  padding: 0 1rem;
+  border-left: 4px solid var(--accent);
+  background: var(--bg);
+}
+
+/* Meldung in der Bibliothek, z. B. nach dem Import. */
+.message {
+  padding: 0.5rem 1rem;
+  border-left: 4px solid var(--accent);
+  background: var(--surface);
+  overflow-wrap: anywhere;
 }
 
 /* Hinweisleiste am unteren Rand, z. B. „Neue Version verfügbar“ (TDD 5.3). */

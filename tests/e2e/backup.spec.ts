@@ -71,7 +71,6 @@ test("E2E-02 Backup → frisches Gerät → Wiederherstellen ergibt denselben Be
   const errors = collectErrors(page);
   await withoutShare(page);
   await importSet(page, "Englisch – Wetter");
-  await page.getByRole("link", { name: "Zurück zur Bibliothek" }).click();
   await page.getByRole("button", { name: "Englisch – Wetter lernen" }).click();
   await page.getByRole("button", { name: /Tippen zum Aufdecken/ }).click();
   await page.getByRole("button", { name: "Gewusst" }).click();

@@ -40,10 +40,10 @@ Formatbeschreibung ──┘
 
 In der App „**Vokabelset importieren**“ öffnen, dann eine der beiden Möglichkeiten:
 
-- **Als Text:** Im Chat die Antwort (oder den Codeblock) kopieren → in der App lange ins Feld „Text einfügen“ tippen → „Einfügen“ → „**Importieren**“. Begleittext vor oder nach dem Codeblock stört nicht.
+- **Als Text:** Im Chat die Antwort (oder den Codeblock) kopieren → in der App „**Aus Zwischenablage einfügen**“ tippen (das iPhone fragt dann noch einmal mit „Einfügen“). Alternativ lange ins Feld „Text einfügen“ tippen → „Einfügen“ → „**Prüfen**“. Begleittext vor oder nach dem Codeblock stört nicht.
 - **Als Datei:** Den Chat bitten „Gib mir das als JSON-Datei“, Datei speichern (z. B. in „Dateien“ bzw. „Downloads“) → in der App „**Oder eine Datei auswählen**“.
 
-Klappt es, steht dort „… gespeichert.“ Bei einer Fehlermeldung: Screenshot machen und die Meldung ruhig an den Chat zurückgeben („Der Import meldet: …“). Wie oft das nötig war, ist eine wichtige Rückmeldung.
+Klappt es, zeigt eine **Vorschau** Titel, Sprachen und Sektionen mit der Zahl der Einträge – fehlt eine Lektion? Dann „**Importieren**“; die App wechselt zur Bibliothek und meldet „… gespeichert.“ Hast du ein ähnliches Set schon, weist die Vorschau darauf hin. Bei einer Fehlermeldung: Screenshot machen und die Meldung ruhig an den Chat zurückgeben („Der Import meldet: …“). Wie oft das nötig war, ist eine wichtige Rückmeldung.
 
 ## 4. Lernen und sichern
 
@@ -57,7 +57,7 @@ Klappt es, steht dort „… gespeichert.“ Bei einer Fehlermeldung: Screenshot
 Bitte nicht als Fehler melden – das kommt in späteren Meilensteinen:
 
 - Nur Karteikarten, nur von der Fremdsprache ins Deutsche, immer das ganze Set.
-- Keine Vorschau vor dem Speichern; Sets lassen sich weder bearbeiten noch löschen. Dasselbe Set zweimal importieren ergibt zwei Sets.
+- Sets lassen sich weder bearbeiten noch löschen.
 - Notizen, Beispielsätze und Grammatik aus der Datei werden noch nicht angezeigt.
 - Die Schaltfläche „Dauerhaften Speicher anfordern“ ist nur für unsere Messung da.
 
@@ -67,7 +67,7 @@ Bitte schick mir nach dem Test kurz:
 
 1. **Gerät und System**, z. B. „iPhone 15, iOS 26“ oder „Pixel 8, Android 16, Chrome“.
 2. **KI-Chat:** App und Modell (z. B. „ChatGPT, GPT-5“), Formatbeschreibung als Link oder Datei, hat der Chat nachgefragt?
-3. **Import:** auf Anhieb geklappt? Als Text oder Datei? Fehlermeldungen als Screenshot.
+3. **Import:** auf Anhieb geklappt? Als Text (über „Aus Zwischenablage einfügen“ oder das Feld) oder Datei? Hat die Vorschau geholfen? Fehlermeldungen als Screenshot.
 4. **Inhalt:** falsche Übersetzungen, fehlende Wörter, unsinnig zusammengefasste oder getrennte Bedeutungen.
 5. **Backup:** Wo ist die Datei gelandet? Hat Abbrechen im Teilen-Menü etwas gespeichert?
 6. **Offline-Start** und **Aktualisieren:** hat beides funktioniert?
