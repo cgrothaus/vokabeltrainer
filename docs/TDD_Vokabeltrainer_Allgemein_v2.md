@@ -1,6 +1,6 @@
 # TDD: Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.13 – Importvorschau und Duplikaterkennung  
+**Version:** 2.14 – Ergebnisse der Gerätechecks  
 **Stand:** 21. Oktober 2026  
 **Bezug:** PRD 2.4 (`PRD_Vokabeltrainer_Allgemein_v2.md`), Formatspezifikation Version 1 (`Formatspezifikation_Vokabelset_v1.md`), Review-Notizen (`20261019_TDD_v1_Review_Notizen.md`)  
 **Status:** Entwurf; Grundlage für M0 (Walking Skeleton)  
@@ -154,7 +154,7 @@ dist/
 
 ### 4.3 Browserziel (D-20)
 
-Vite-Standardziel `baseline-widely-available`; das entspricht etwa Safari/iOS 16 und Chrome der letzten gut zwei Jahre. Benötigte Plattformfunktionen (IndexedDB, Service Worker, `crypto.getRandomValues`, `Intl.getCanonicalLocales`, `Intl.DisplayNames`, `BroadcastChannel`, `navigator.storage`) sind dort vorhanden. Moderne CSS-Syntax (Verschachtelung, `light-dark()`) wird beim Build bei Bedarf heruntertransformiert. Das tatsächliche Mindestziel wird in M0 auf echten Geräten bestätigt.
+Vite-Standardziel `baseline-widely-available`; das entspricht etwa Safari/iOS 16 und Chrome der letzten gut zwei Jahre. Benötigte Plattformfunktionen (IndexedDB, Service Worker, `crypto.getRandomValues`, `Intl.getCanonicalLocales`, `Intl.DisplayNames`, `BroadcastChannel`, `navigator.storage`) sind dort vorhanden. Moderne CSS-Syntax (Verschachtelung, `light-dark()`) wird beim Build bei Bedarf heruntertransformiert. In M0 (S-11) auf echten Geräten bestätigt mit iOS 27, iPadOS 26 und Android 16 mit aktuellem Chrome; ältere Versionen sind ungeprüft.
 
 ### 4.4 Bereitstellung (D-19)
 
@@ -315,7 +315,7 @@ interface Answer {
   - auf iOS/iPadOS ohne Installation: kurze Anleitung „Teilen → Zum Home-Bildschirm“,
   - sonst: regelmäßige Backups.
 - **Backup-Erinnerung:** Gibt es Sets oder Review-Events und liegt `meta.lastBackupAt` mehr als 14 Tage zurück oder fehlt, zeigt die Bibliothek einen Hinweis mit der Aktion „Backup speichern“ und „Später“ (zurückstellen um 3 Tage über `meta.backupReminderSnoozedUntil`). Während einer Sitzung erscheint der Hinweis nie.
-- Das tatsächliche Verhalten von `persist()` in Safari (Browser vs. Home-Bildschirm) wird in M0 gemessen und in Kapitel 21 (S-11) dokumentiert.
+- In M0 gemessen (S-11): Safari gewährt `persist()` im Tab nicht, als Home-Bildschirm-App schon; Chrome auf Android gewährt es schon im Browser. Auf iOS ist „Teilen → Zum Home-Bildschirm“ damit der entscheidende Schutz.
 
 ---
 
@@ -513,7 +513,7 @@ Ungültiges JSON, unbekannte Formatversion, Validierungsfehler, widersprüchlich
 - Bricht die Person das Teilen ab (`AbortError`), gilt der Export als nicht erfolgt (`"cancelled"`).
 - Scheitert `share()` mit einem anderen Fehler (z. B. `NotAllowedError`, wenn die Nutzergeste verbraucht ist), wird stattdessen heruntergeladen. Mobiles Chromium unter Playwright meldet `canShare` als erfüllt, lehnt `share()` aber so ab.
 - `share()` verlangt eine frische Nutzergeste. Der Inhalt muss deshalb vor dem Tippen fertig sein; zwischen Tippen und Aufruf liegt nichts, worauf gewartet wird.
-- Die genaue Auswahlregel wird im M0-Spike (S-09, S-11) auf iPhone und Android bestätigt. Vermutung: Chrome auf Android lässt `.json` im Teilen-Menü nicht zu und lädt herunter.
+- Auf Geräten bestätigt (S-11): iPhone und iPad öffnen das Teilen-Menü (Safari-Tab und Home-Bildschirm-App), die Datei lässt sich in „Dateien“ sichern. Chrome auf Android lädt herunter und zeigt dabei einen eigenen Dialog mit Dateiname, Zielordner und „Abbrechen“; ein Abbruch dort ist für die App nicht erkennbar und zählt nach 11.4 als Backup.
 
 ### 11.3 Backupformat
 
@@ -827,10 +827,10 @@ Ergebnisse (LLM-App, Modell, Datum, Befund) werden im Umsetzungsplan bei S-15 fe
 | D-14 | Sicherungskopie in separater Datenbank vor Migrationen mit Datenumwandlung | 7.3 | FR-33 |
 | D-15 | Handgeschriebener Service Worker, cache-first, Aktivierung nur auf Bestätigung außerhalb von Sitzungen | 5 | T-03 |
 | D-16 | Duplikaterkennung über Inhaltsüberschneidung ≥ 0,8 oder gleichen Titel | 9.2 | T-07 |
-| D-17 | Dateiauslieferung über Teilen-Menü auf Mobilgeräten, sonst Download (in M0 zu bestätigen) | 11.2 | T-22 |
+| D-17 | Dateiauslieferung über Teilen-Menü auf Mobilgeräten, sonst Download (bestätigt in S-11) | 11.2 | T-22 |
 | D-18 | Multiple-Choice-Kandidaten aus demselben Set und derselben Sprachseite, ohne Überschneidung mit akzeptierten Antworten | 12.3 | FR-09 |
 | D-19 | Hosting auf GitHub Pages per Actions, eigene Domain vor erster Auslieferung | 4.4 | F-02, bestätigt am 19. Oktober 2026 |
-| D-20 | Browserziel `baseline-widely-available` (in M0 zu bestätigen) | 4.3 | – |
+| D-20 | Browserziel `baseline-widely-available` (bestätigt in S-11) | 4.3 | – |
 | D-21 | Deployment nur vom Branch `production`, der ausschließlich per Fast-Forward aus `main` nachgezogen wird | 4.4, 4.5 | Nutzerentscheidung in S-04, 20. Oktober 2026 |
 | D-22 | App-Icons aus einer SVG-Vorlage; PNGs per Playwright-Skript erzeugt und eingecheckt; Cache-Version über alle vorab gespeicherten Dateien | 4.1, 4.2, 5.1 | Nutzerentscheidung in S-05, 20. Oktober 2026 |
 | D-23 | Fundstelle bei ungültigem JSON über einen eigenen Syntaxprüfer statt aus der Fehlermeldung des Browsers (Safari nennt keine Position) | 8.2 | Nutzerentscheidung in S-07, 20. Oktober 2026 |
@@ -843,13 +843,13 @@ Ergebnisse (LLM-App, Modell, Datum, Befund) werden im Umsetzungsplan bei S-15 fe
 | ID | Thema | Umgang |
 |---|---|---|
 | O-01 | Hosting endgültig (D-19) | Entschieden am 19. Oktober 2026: GitHub Pages |
-| O-02 | Verhalten von `persist()` und der 7-Tage-Regel in Safari, Browser vs. installierte App (R-01) | Messung in S-11 |
-| O-03 | Dateiauslieferung auf iOS in der installierten App (D-17, T-22) | Spike in S-09, Prüfung in S-11 |
-| O-04 | Mindestversionen der Zielbrowser (D-20) | Bestätigung in S-11 |
+| O-02 | Verhalten von `persist()` und der 7-Tage-Regel in Safari, Browser vs. installierte App (R-01) | Gemessen am 21. Oktober 2026 (S-11): im Safari-Tab nicht gewährt, als Home-Bildschirm-App gewährt (6.6). Die 7-Tage-Regel wurde bewusst nicht gemessen; sie betrifft vermutlich nur den Tab, dagegen hilft die Empfehlung „Zum Home-Bildschirm“. |
+| O-03 | Dateiauslieferung auf iOS in der installierten App (D-17, T-22) | Geprüft am 21. Oktober 2026 (S-11): Teilen-Menü auf iPhone und iPad, Download auf Android (11.2) |
+| O-04 | Mindestversionen der Zielbrowser (D-20) | Geprüft am 21. Oktober 2026 (S-11) mit iOS 27, iPadOS 26 und Android 16; ältere Versionen ungeprüft (4.3) |
 | O-05 | Bewertung inhaltlicher Änderungen für den Lernstand (R-04) | Daten über `entryRev` vorbereitet; Entscheidung mit späterer Didaktik |
 | O-06 | Wachstum der Review-Events über Jahre | Messung TAK-15; bei Bedarf Cache oder Archivierung mit Backup-Konzept |
 | O-07 | Schwellenwert der Duplikaterkennung (0,8) | Mit Beispielsets und echten Daten in M1 prüfen |
-| O-08 | iOS graut im Dateiwähler Dateien aus, deren Typ nicht zu `accept` passt; ob `.json` mit `accept=".json,application/json,text/plain"` wählbar ist, ist nicht belegt (Quellen 26, 27) | Prüfung in S-11; falls nötig `accept` weglassen |
+| O-08 | iOS graut im Dateiwähler Dateien aus, deren Typ nicht zu `accept` passt; ob `.json` mit `accept=".json,application/json,text/plain"` wählbar ist, ist nicht belegt (Quellen 26, 27) | Geprüft am 21. Oktober 2026 (S-11): auf iPhone und iPad wählbar, `accept` bleibt |
 | O-09 | Reicht die Formatspezifikation allein, damit ein LLM aus Fotos oder einer Wortliste ein gültiges Set erzeugt oder ein exportiertes Set korrigiert (AK-13)? | Test nach 15.7 in S-15; je nach Ergebnis Spezifikation ergänzen oder Prompt-Vorlagen verkürzen |
 
 ---
@@ -907,6 +907,7 @@ Geprüft am 18. bis 20. Oktober 2026.
 | 2.11 | 21. Oktober 2026 | E2E-Tests in der CI (S-10): E2E-04 auf die erste Erhöhung von `DB_VERSION` verschoben, weil es vorher gegen das gebaute Artefakt keine ältere Datenbank gibt; bis dahin prüfen die Integrationstests den Migrationsmechanismus (7.4, 15.4, 16) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.12 | 21. Oktober 2026 | Vollständige Validierung (S-12): Feldtabellen pro Ebene, gebündelte Warnungen für unbekannte Felder, Zählweise der Textlängen, `null` nur bei optionalen Inhaltsfeldern, Teil-Export-Prüfung im Importablauf statt im Validator, Grenzen des JSON Schemas (8.3); leere optionale Felder ohne Warnung entfernen (8.4, D-24); Ajv 8 (4.1); Fixture-Verzeichnis `invalid-validator-only/` und Schemaabgleich (15.3, TAK-10) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.13 | 21. Oktober 2026 | Importvorschau und Duplikaterkennung (S-13): Zwischenablage prüft sofort (8.1); bekannte Set-ID vor der Vorschau abgelehnt, Sprachpaar in gleicher Richtung, Titelvergleich ohne Groß-/Kleinschreibung, Inhalt der Vorschau, Ziel nach dem Speichern (9.2); E2E-15 (15.4) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.14 | 21. Oktober 2026 | Ergebnisse der Gerätechecks (S-11): `persist()` in Safari und Chrome (6.6), Teilen-Menü auf iOS und iPadOS, Download auf Android (11.2), geprüfte Versionen (4.3); D-17 und D-20 bestätigt; O-02, O-03, O-04 und O-08 abgeschlossen | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 
 ---
 
@@ -940,11 +941,15 @@ Ziel: Jeder riskante Teil läuft einmal von vorn bis hinten, in einfachster Form
   Erledigt am 20. Oktober 2026. Domain testgetrieben: `validateRecords.ts` (Pflichtangaben und Typen pro Store, eindeutige Schlüssel, eindeutige Sektions- und Eintrags-IDs pro Set, Verweise von Sitzungen und Events, `entryId` bewusst ungeprüft, Meldungen ohne Inhalte) und `parseBackup` in `backup.ts` (Hülle, Vokabelset erkannt, neuere Version abgelehnt, Migration über die Kette, scheiternde Migration als Meldung). `storage/backup.ts` mit Integrationstests: Lesen in einer Transaktion (auch für das Notfall-Backup), Ersetzen samt `lastBackupAt` in einer Transaktion; Hin und zurück ergibt denselben Bestand (TAK-09), ein doppelter Schlüssel lässt alles unverändert (TAK-05). `deliverFile` mit Teilen-Menü (11.2). Ansicht `#/backup` mit Link in der Bibliothek; Wiederherstellen nur per Datei mit knapper Bestätigung (Nutzerentscheidung, 11.4). E2E-02 (frischer Browserkontext als neues Gerät), Teilen-Menü, Abbrechen im Teilen-Menü und Ablehnung eines Vokabelsets laufen in mobile-chromium und mobile-webkit; das Teilen-Menü wird dort per Init-Skript ersetzt oder entfernt. Gegenproben: ohne `clear()`, `lastBackupAt` vor der Transaktion, `AbortError` als Erfolg – jeweils scheitert der passende Test. Mit `playwright-cli` (mobiles Chromium, 320 px) geprüft: kein horizontales Scrollen, hell und dunkel lesbar, Fokus auf dem Umfang und danach auf „Backup wiederhergestellt.“, Dateiname `Vokabeltrainer-Backup_2026-10-20.json`. Dort meldet `canShare` Erfolg, `share()` scheitert aber mit `NotAllowedError`; der Rückfall auf den Download greift. Der Gerätecheck (Teilen-Menü auf iPhone im Tab und als Home-Bildschirm-App, Android, Wiederherstellen aus „Dateien“) folgt mit S-11 und bestätigt oder ändert D-17.
 - ✅ **S-10** E2E-01 bis E2E-04 in der CI (E2E-03 besteht seit S-05, E2E-01 seit S-08)  
   Erledigt am 21. Oktober 2026. E2E-01 (`practice.spec.ts`), E2E-02 (`backup.spec.ts`) und E2E-03 (`offline.spec.ts`) laufen in der CI in mobile-chromium und mobile-webkit; im Lauf 39652042870 auf `main` (Stand S-09) waren alle 32 E2E-Tests in rund 1,5 Minuten grün. `ci.yml` blieb unverändert. E2E-04 ist auf Nutzerentscheidung bis zur ersten Erhöhung von `DB_VERSION` verschoben (7.4, 15.4): Solange `DB_VERSION` 1 ist, gibt es gegen das gebaute Artefakt keine ältere Datenbank. Ein eigener Testbuild mit Version 2 wurde erwogen und verworfen, weil er nur nachbildet, was die Integrationstests schon zeigen (Migration v1 → v2, scheiternde Migration mit unverändertem Altstand und Notfall-Backup, Backup über die Kette). S-29 friert Version 1 erst ein; E2E-04 entsteht mit der ersten echten Migration danach.
-- 🔶 **S-11** Manuelle Prüfung auf echtem iPhone und Android (15.5); Ergebnisse zu O-02, O-03, O-04, O-08 hier festhalten  
-  Erste Prüfung am 20. Oktober 2026 mit dem Stand von S-06 unter https://cgrothaus.github.io/vokabeltrainer/:
+- ✅ **S-11** Manuelle Prüfung auf echtem iPhone und Android (15.5); Ergebnisse zu O-02, O-03, O-04, O-08 hier festhalten  
+  Erledigt am 21. Oktober 2026. Erste Prüfung am 20. Oktober 2026 mit dem Stand von S-06 unter https://cgrothaus.github.io/vokabeltrainer/:
   - Android (Chrome): Hinzufügen zum Startbildschirm funktioniert; `persist()` wird schon im Browser gewährt.
   - iPhone 17 mit aktuellem iOS (Stand 20. Oktober 2026), Safari: Hinzufügen zum Home-Bildschirm funktioniert, Name „Vokabeln“ und Icon stimmen, die App startet vom Home-Bildschirm im Flugmodus (AK-21). Im Safari-Tab gewährt `persist()` nichts, die Schaltfläche wirkt wirkungslos, weil der Hinweis unverändert bleibt. Als Home-Bildschirm-App wird `persist()` gewährt (O-02, R-01). Die Empfehlung „Teilen → Zum Home-Bildschirm“ aus 6.6 ist damit auf iOS der entscheidende Schutz; für S-26: Eine abgelehnte Anfrage braucht eine sichtbare Rückmeldung mit dieser Empfehlung.
-  - Offen: Offline-Start im Flugmodus sowie Gerät und Version auf Android, genaue iOS-Version (O-04), Update-Hinweis auf dem Gerät, 7-Tage-Regel in Safari (O-02), Dateiauslieferung und Wiederherstellen (O-03, D-17, seit S-09: „Backup speichern“ im Safari-Tab, als Home-Bildschirm-App und auf Android; landet die Datei in „Dateien“ bzw. „Downloads“, zählt Abbrechen nicht als Backup, ist die Datei beim Wiederherstellen wählbar?), Import per Dateiauswahl und Einfügen aus einer LLM-App (O-08, seit S-07).
+  Abschließende Prüfung am 21. Oktober 2026 mit dem Stand von S-09 auf Samsung Galaxy A34 (Android 16, One UI 8.5, Chrome), iPhone 17 (iOS 27, Safari-Tab und Home-Bildschirm-App) und iPad Air 13" M2 (iPadOS 26). Der Nutzer hat summarisch „ok“ gemeldet und nur Rückfragen beantwortet, die eine Entscheidung ändern; Einzelergebnisse pro Punkt aus 15.5 liegen deshalb nicht vor.
+  - Ohne Befund auf allen drei Geräten: Home-Bildschirm und Offline-Start, Update-Hinweis, Import per Einfügen und per Datei, Lernen, Backup speichern und wiederherstellen (O-04, D-20).
+  - Android: „Backup speichern“ in der Home-Bildschirm-App öffnet Chromes Dialog „Datei herunterladen?“ mit Dateiname und Zielordner, kein Teilen-Menü (O-03, D-17, 11.2). Ein Abbruch dort ist für die App nicht erkennbar und zählt nach 11.4 als Backup.
+  - iPhone und iPad: Die `.json`-Datei ist im Dateiwähler wählbar, `accept` bleibt (O-08).
+  - 7-Tage-Regel in Safari bewusst nicht gemessen (Nutzerentscheidung, O-02).
 
 ### M1 – Lernen mit eigenen Sets
 
