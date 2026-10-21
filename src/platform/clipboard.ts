@@ -1,5 +1,5 @@
-// Text aus der Zwischenablage lesen (TDD 8.1). iOS fragt dabei mit „Einfügen“ nach; Chromium fragt
-// nach der Berechtigung. Beides verlangt eine frische Nutzergeste: im Klick ohne vorheriges `await` aufrufen.
+// Zwischenablage (TDD 8.1, 13.1). Lesen: iOS fragt mit „Einfügen“ nach, Chromium nach der Berechtigung.
+// Lesen und Schreiben verlangen eine frische Nutzergeste: im Klick ohne vorheriges `await` aufrufen.
 
 export type ClipboardResult =
   { ok: true; text: string } | { ok: false; reason: "denied" | "empty" };
@@ -19,4 +19,15 @@ export async function readClipboard(): Promise<ClipboardResult> {
   }
   if (text.trim() === "") return { ok: false, reason: "empty" };
   return { ok: true, text };
+}
+
+/** `false`, wenn der Browser das Schreiben nicht kann oder ablehnt; dann kopiert die Person selbst. */
+export async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (error) {
+    console.warn("Zwischenablage nicht beschreibbar", error);
+    return false;
+  }
 }

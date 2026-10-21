@@ -1,0 +1,113 @@
+```json
+{
+  "format": "vokabeltrainer-set",
+  "formatVersion": 1,
+  "set": {
+    "title": "Englisch Klasse 7 – Vokabeln vom 21.10.",
+    "termLanguage": "en",
+    "meaningLanguage": "de",
+    "level": "Klasse 7",
+    "source": "Foto einer handschriftlichen Vokabelliste",
+    "reviewStatus": "unchecked",
+    "notes": "Zwei Stellen auf dem Foto waren nicht sicher lesbar; die betroffenen Einträge sind als ungeprüft markiert."
+  },
+  "sections": [
+    {
+      "title": "Am Strand",
+      "entries": [
+        {
+          "term": { "text": "the sand", "acceptedVariants": ["sand"] },
+          "meanings": [{ "text": "der Sand", "acceptedVariants": ["Sand"] }]
+        },
+        {
+          "term": "shell",
+          "meanings": ["Muschel"]
+        },
+        {
+          "term": "wave",
+          "meanings": ["Welle"],
+          "grammar": { "partOfSpeech": "noun" }
+        },
+        {
+          "term": "to wave",
+          "meanings": ["winken"],
+          "grammar": { "partOfSpeech": "verb" }
+        },
+        {
+          "term": "to dive",
+          "meanings": ["tauchen"],
+          "grammar": { "partOfSpeech": "verb", "forms": ["dive", "dove / dived", "dived"] },
+          "notes": "Simple Past: dove oder dived; Past Participle: dived"
+        },
+        {
+          "term": "lifeguard",
+          "meanings": [{ "text": "Rettungsschwimmer", "acceptedVariants": ["Bademeister"] }]
+        },
+        {
+          "term": "to float",
+          "meanings": [{ "text": "treiben", "acceptedVariants": ["schwimmen"] }],
+          "notes": "auf dem Wasser treiben oder schwimmen"
+        },
+        {
+          "term": "storm",
+          "meanings": ["Sturm"],
+          "reviewStatus": "unchecked",
+          "notes": "Auf dem Foto nicht lesbar: Das englische Wort sieht aus wie „st??m“, die deutsche Bedeutung fehlt ganz. „storm – Sturm“ ist nur geraten (möglich wäre z. B. auch „steam – Dampf“). Bitte mit dem Heft vergleichen."
+        },
+        {
+          "term": "towel",
+          "meanings": ["Handtuch"]
+        }
+      ]
+    },
+    {
+      "title": "Im Wald",
+      "entries": [
+        {
+          "term": { "text": "a path", "acceptedVariants": ["path"] },
+          "meanings": [{ "text": "Pfad", "acceptedVariants": ["Weg"] }]
+        },
+        {
+          "term": "to hide",
+          "meanings": [{ "text": "verstecken", "acceptedVariants": ["sich verstecken"] }],
+          "grammar": { "partOfSpeech": "verb", "forms": ["hide", "hid", "hidden"] }
+        },
+        {
+          "term": "fox",
+          "meanings": ["Fuchs"],
+          "grammar": { "partOfSpeech": "noun", "plural": "foxes" }
+        },
+        {
+          "term": "bark",
+          "meanings": ["Rinde"],
+          "grammar": { "partOfSpeech": "noun" }
+        },
+        {
+          "term": "to bark",
+          "meanings": ["bellen"],
+          "grammar": { "partOfSpeech": "verb" }
+        },
+        {
+          "term": "owl",
+          "meanings": ["Eule"]
+        },
+        {
+          "term": "mushroom",
+          "meanings": ["Pilz"]
+        },
+        {
+          "term": "to get lost",
+          "meanings": [{ "text": "sich verlaufen", "acceptedVariants": ["verlaufen"] }],
+          "reviewStatus": "unchecked",
+          "notes": "Auf dem Foto nur teilweise lesbar („sich verl??fen“), vermutlich „sich verlaufen“. Bitte mit dem Heft vergleichen."
+        },
+        {
+          "term": "leaf",
+          "meanings": ["Blatt"],
+          "grammar": { "partOfSpeech": "noun", "plural": "leaves" }
+        }
+      ]
+    }
+  ]
+}
+```

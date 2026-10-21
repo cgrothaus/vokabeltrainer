@@ -33,7 +33,7 @@ test("Import (Text) mit Begleittext → Vorschau → Bibliothek → Neuladen →
 }) => {
   const errors = collectErrors(page);
   await page.goto("./");
-  await expect(page.getByText("Noch keine Vokabelsets vorhanden.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Noch keine Vokabelsets" })).toBeVisible();
   await page.getByRole("link", { name: "Vokabelset importieren" }).click();
 
   const answer = `Hier ist dein Set:\n\n\`\`\`json\n${setFile("Englisch – Wetter")}\n\`\`\`\n\nViel Spaß!`;

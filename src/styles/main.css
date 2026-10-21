@@ -398,6 +398,48 @@ input[type="file"] {
   overflow-wrap: anywhere;
 }
 
+/* Empty State der Bibliothek (TDD 13.1) */
+.empty h2 {
+  font-size: 1.25rem;
+}
+
+/* Hilfe (TDD 13.1): Vorlage und Beispiel brechen um statt die Seite seitlich scrollen zu lassen. */
+.help h2 {
+  margin-top: 2rem;
+  font-size: 1.25rem;
+}
+
+.help .steps li + li {
+  margin-top: 0.25rem;
+}
+
+.help pre {
+  margin: 0.5rem 0 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--surface);
+  font:
+    0.875rem / 1.4 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.help .prompt {
+  font-size: 1rem;
+}
+
+/* Ohne `display: flex`, sonst verschwindet das Dreieck zum Aufklappen; Höhe über den Innenabstand. */
+.help summary {
+  margin-top: 1.5rem;
+  padding: 0.6rem 0;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 /* Hinweisleiste am unteren Rand, z. B. „Neue Version verfügbar“ (TDD 5.3). */
 .notice {
   position: fixed;

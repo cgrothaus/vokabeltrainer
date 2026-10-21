@@ -11,10 +11,22 @@ export interface Precache {
   version: string;
 }
 
+/**
+ * Dokumente, die neben index.html veröffentlicht werden (D-26): Die Hilfe verweist KI-Chats per Link
+ * auf die Formatspezifikation; das Schema liegt laut Spezifikation „neben diesem Dokument“.
+ * Veröffentlichter Name → Quelle im Repository; vite.config.ts gibt sie beim Build aus.
+ */
+export const PUBLISHED_DOCS: Record<string, string> = {
+  "formatspezifikation.md": "docs/Formatspezifikation_Vokabelset_v1.md",
+  "vokabeltrainer-set.schema.json": "docs/vokabeltrainer-set.schema.json",
+};
+
 export function precache(dist: string): Precache {
   const paths = [
     "index.html",
     "manifest.webmanifest",
+    // Vorab gespeichert, damit „Formatbeschreibung teilen“ auch offline funktioniert.
+    ...Object.keys(PUBLISHED_DOCS),
     ...readdirSync(join(dist, "icons")).map((name) => `icons/${name}`),
   ].sort();
   const hash = createHash("sha256");

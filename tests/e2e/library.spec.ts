@@ -154,7 +154,7 @@ test("Set löschen kündigt den Umfang an und löscht den Lernstand mit", async 
   ).toBeVisible();
   await page.getByRole("button", { name: "Set mit 3 Einträgen löschen" }).click();
   await expect(libraryMessage(page)).toHaveText("„Französisch – Tiere und Farben“ gelöscht.");
-  await expect(page.getByText("Noch keine Vokabelsets vorhanden.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Noch keine Vokabelsets" })).toBeVisible();
   expect(errors, "Fehler in der Konsole").toEqual([]);
 });
 

@@ -4,6 +4,7 @@ import type { PersistenceState } from "../../platform/persistence";
 import { learnButton } from "../components/learnButton";
 import { h } from "../dom";
 import { languageName } from "../languages";
+import { emptyLibrary } from "./emptyLibrary";
 
 export interface LibraryContext {
   persistence: PersistenceState;
@@ -39,7 +40,14 @@ export function libraryView(context: LibraryContext): Node {
     "Dauerhaften Speicher anfordern",
   );
   const sets = h("section", { "aria-label": "Vokabelsets" });
-  void showSets(sets, context);
+  // Erst nach dem Laden zeigen: Bei leerer Bibliothek bietet der Empty State dieselben Wege an.
+  const more = h(
+    "div",
+    { hidden: true },
+    h("p", null, h("a", { href: "#/import", class: "action" }, "Vokabelset importieren")),
+    h("p", null, h("a", { href: "#/help" }, "Wie bekomme ich ein Vokabelset?")),
+  );
+  void showSets(sets, context).then((empty) => (more.hidden = empty));
   const text = context.takeMessage();
   const message = text && h("p", { role: "status", class: "message", tabindex: "-1" }, text);
   // Fokus auf die Meldung, sobald die Ansicht eingehängt ist, damit Screenreader sie vorlesen.
@@ -50,26 +58,27 @@ export function libraryView(context: LibraryContext): Node {
     h("h1", null, "Vokabeltrainer"),
     message,
     sets,
-    h("p", null, h("a", { href: "#/import", class: "action" }, "Vokabelset importieren")),
+    more,
     h("p", null, h("a", { href: "#/backup" }, "Backup und Wiederherstellung")),
     status,
     context.persistence === "not-granted" && request,
   );
 }
 
-async function showSets(container: HTMLElement, context: LibraryContext): Promise<void> {
+/** Liefert `true`, wenn die Bibliothek leer ist und der Empty State erscheint. */
+async function showSets(container: HTMLElement, context: LibraryContext): Promise<boolean> {
   let sets: StoredSet[];
   try {
     sets = await context.loadSets();
   } catch (error) {
     console.error("Sets nicht lesbar", error);
     container.replaceChildren(h("p", null, "Die Vokabelsets konnten nicht geladen werden."));
-    return;
+    return false;
   }
-  // Empty State mit Hilfe und Beispielset folgt mit S-15; er erscheint auch nach dem Löschen.
+  // Ergibt sich aus dem Bestand, erscheint also auch nach dem Löschen des letzten Sets (TDD 13.1).
   if (sets.length === 0) {
-    container.replaceChildren(h("p", null, "Noch keine Vokabelsets vorhanden."));
-    return;
+    container.replaceChildren(emptyLibrary());
+    return true;
   }
   const problem = h("div", { role: "alert" });
   container.replaceChildren(
@@ -100,4 +109,5 @@ async function showSets(container: HTMLElement, context: LibraryContext): Promis
       .flat(),
     problem,
   );
+  return false;
 }

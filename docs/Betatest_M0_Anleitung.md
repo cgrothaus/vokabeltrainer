@@ -25,13 +25,9 @@ Formatbeschreibung ──┘
 ## 2. Vokabeln mit dem KI-Chat umwandeln
 
 1. **Foto machen** von einer Vokabelliste, am besten einer selbst geschriebenen. Mehrere Fotos gehen auch.
-2. **Formatbeschreibung bereitstellen** – eine der beiden Möglichkeiten:
-   - **Link** in den Chat einfügen:  
-     https://raw.githubusercontent.com/cgrothaus/vokabeltrainer/production/docs/Formatspezifikation_Vokabelset_v1.md
-   - **Datei** `Formatspezifikation_Vokabelset_v1.md` an den Chat anhängen (über den Link herunterladen oder von mir bekommen).  
-     Nimm die Datei, wenn der Chat den Link nicht öffnen kann.
-3. **Fotos dazu und einen kurzen Satz schreiben**, z. B.:  
-   > Mach daraus ein Set für meinen Vokabeltrainer.
+2. **Vorlage aus der App holen:** In der App „**Wie bekomme ich ein Vokabelset?**“ öffnen (auf der leeren Startseite, unter der Liste oder beim Import) → „**Vorlage kopieren**“. Die Vorlage enthält den Link auf die Formatbeschreibung:  
+   https://cgrothaus.github.io/vokabeltrainer/formatspezifikation.md
+3. **Im Chat die Vorlage einfügen und die Fotos anhängen.** Kann der Chat den Link nicht öffnen, in der App „**Formatbeschreibung teilen**“ tippen und die Datei im Chat anhängen.
 
    Mehr bitte nicht vorgeben: Wir testen, ob die Formatbeschreibung allein reicht. Fragt der Chat nach, beantworte die Frage und notiere sie für die Rückmeldung.
 4. **Antwort kurz prüfen:** Stimmen Wörter und Übersetzungen? Unsichere Stellen markiert der Chat meist selbst; die App zeigt solche Hinweise noch nicht an.
@@ -67,7 +63,7 @@ Bitte nicht als Fehler melden – das kommt in späteren Meilensteinen:
 Bitte schick mir nach dem Test kurz:
 
 1. **Gerät und System**, z. B. „iPhone 15, iOS 26“ oder „Pixel 8, Android 16, Chrome“.
-2. **KI-Chat:** App und Modell (z. B. „ChatGPT, GPT-5“), Formatbeschreibung als Link oder Datei, hat der Chat nachgefragt?
+2. **KI-Chat:** App und Modell (z. B. „ChatGPT, GPT-5“), Formatbeschreibung als Link oder Datei, hat der Chat nachgefragt? Haben „Vorlage kopieren“ und „Formatbeschreibung teilen“ geklappt?
 3. **Import:** auf Anhieb geklappt? Als Text (über „Aus Zwischenablage einfügen“ oder das Feld) oder Datei? Hat die Vorschau geholfen? Fehlermeldungen als Screenshot.
 4. **Inhalt:** falsche Übersetzungen, fehlende Wörter, unsinnig zusammengefasste oder getrennte Bedeutungen.
 5. **Backup:** Wo ist die Datei gelandet? Hat Abbrechen im Teilen-Menü etwas gespeichert?

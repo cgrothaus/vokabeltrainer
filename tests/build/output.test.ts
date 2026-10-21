@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { runInNewContext } from "node:vm";
 import { describe, expect, test } from "vitest";
-import { precache } from "../../scripts/precache";
+import { PUBLISHED_DOCS, precache } from "../../scripts/precache";
 
 const dist = new URL("../../dist/", import.meta.url);
 const indexPath = new URL("index.html", dist);
@@ -84,6 +84,18 @@ describe("Web-App-Manifest", () => {
   });
 });
 
+describe("Veröffentlichte Dokumente (D-26)", () => {
+  for (const [name, source] of Object.entries(PUBLISHED_DOCS)) {
+    test(`${name} ist bytegleich mit ${source}`, () => {
+      const published = new URL(name, dist);
+      expect(existsSync(published), `${name} fehlt`).toBe(true);
+      expect(
+        readFileSync(published).equals(readFileSync(new URL(`../../${source}`, import.meta.url))),
+      ).toBe(true);
+    });
+  }
+});
+
 describe("Service Worker", () => {
   const swPath = new URL("sw.js", dist);
 
@@ -94,7 +106,7 @@ describe("Service Worker", () => {
   const sw = readFileSync(swPath, "utf8");
   const { files, version } = precache(fileURLToPath(dist));
 
-  test("lädt beim Installieren App, Manifest und Icons in den Cache der aktuellen Version", async () => {
+  test("lädt beim Installieren App, Manifest, Icons und Dokumente in den Cache der aktuellen Version", async () => {
     // sw.js in einer Attrappe ausführen und mitschreiben, was der install-Handler anfordert.
     const handlers = new Map<string, (event: unknown) => void>();
     const stored: { cache: string; urls: string[] }[] = [];
@@ -126,7 +138,13 @@ describe("Service Worker", () => {
 
     expect(stored).toEqual([{ cache: `vokabeltrainer-${version}`, urls: files }]);
     expect(files).toEqual(
-      expect.arrayContaining(["./", "./manifest.webmanifest", "./icons/icon-192.png"]),
+      expect.arrayContaining([
+        "./",
+        "./manifest.webmanifest",
+        "./icons/icon-192.png",
+        "./formatspezifikation.md",
+        "./vokabeltrainer-set.schema.json",
+      ]),
     );
   });
 

@@ -98,7 +98,7 @@ test("E2E-02 Backup → frisches Gerät → Wiederherstellen ergibt denselben Be
   const fresh = await freshPage(browser, testInfo);
   const freshErrors = collectErrors(fresh);
   await fresh.goto("./");
-  await expect(fresh.getByText("Noch keine Vokabelsets vorhanden.")).toBeVisible();
+  await expect(fresh.getByRole("heading", { name: "Noch keine Vokabelsets" })).toBeVisible();
   await fresh.getByRole("link", { name: "Backup und Wiederherstellung" }).click();
   await chooseBackup(fresh, content);
   await expect(

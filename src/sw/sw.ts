@@ -37,8 +37,11 @@ sw.addEventListener("fetch", (event) => {
 
 async function respond(request: Request): Promise<Response> {
   const cache = await caches.open(CACHE);
-  // Jede Navigation bekommt die App; das Routing läuft über den Hash.
-  const cached = request.mode === "navigate" ? await cache.match("./") : await cache.match(request);
+  // Vorab gespeicherte Dateien kommen als sie selbst, auch beim Öffnen per Link (z. B. die
+  // Formatspezifikation). Jede andere Navigation bekommt die App; das Routing läuft über den Hash.
+  const cached =
+    (await cache.match(request)) ??
+    (request.mode === "navigate" ? await cache.match("./") : undefined);
   return cached ?? fetch(request);
 }
 
