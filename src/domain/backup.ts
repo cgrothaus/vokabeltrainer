@@ -45,12 +45,30 @@ export function backupFileName(date: Date): string {
   return `Vokabeltrainer-Backup_${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}.json`;
 }
 
-export interface BackupSummary {
-  exportedAt: string;
+/** Umfang eines Bestands, z. B. für die Vorschau eines Backups oder „Alle Daten löschen“. */
+export interface RecordCounts {
   sets: number;
   entries: number;
   sessions: number;
   events: number;
+}
+
+export interface BackupSummary extends RecordCounts {
+  exportedAt: string;
+}
+
+/** Erwartet geprüfte Datensätze; Einstellungen zählen nicht mit. */
+export function summarizeRecords(records: StoreRecords): RecordCounts {
+  const sets = records.sets as StoredSet[];
+  return {
+    sets: sets.length,
+    entries: sets.reduce(
+      (sum, set) => sum + set.sections.reduce((n, section) => n + section.entries.length, 0),
+      0,
+    ),
+    sessions: records.sessions.length,
+    events: records.reviewEvents.length,
+  };
 }
 
 /** Geprüftes Backup auf dem Stand der App, bereit zum Wiederherstellen. */
@@ -123,7 +141,6 @@ export function parseBackup(
   const recordErrors = validateRecords(records);
   if (recordErrors.length > 0) return fail(...recordErrors);
 
-  const sets = records.sets as StoredSet[];
   return {
     ok: true,
     backup: {
@@ -134,15 +151,6 @@ export function parseBackup(
       exportedAt: exportedAt as string,
       data: records,
     },
-    summary: {
-      exportedAt: exportedAt as string,
-      sets: sets.length,
-      entries: sets.reduce(
-        (sum, set) => sum + set.sections.reduce((n, section) => n + section.entries.length, 0),
-        0,
-      ),
-      sessions: records.sessions.length,
-      events: records.reviewEvents.length,
-    },
+    summary: { exportedAt: exportedAt as string, ...summarizeRecords(records) },
   };
 }

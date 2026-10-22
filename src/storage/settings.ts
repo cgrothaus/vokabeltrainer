@@ -16,6 +16,13 @@ export async function getSetting(db: IDBDatabase, key: string): Promise<unknown>
   return value;
 }
 
+/** Gespeichert erst, wenn die Transaktion abgeschlossen ist. */
+export function setSetting(db: IDBDatabase, record: SettingRecord): Promise<void> {
+  return runTransaction(db, "settings", "readwrite", (transaction) =>
+    putSetting(transaction, record),
+  );
+}
+
 /** Innerhalb einer größeren Transaktion, die `settings` einschließt. */
 export function putSetting(transaction: IDBTransaction, record: SettingRecord): void {
   transaction.objectStore("settings").put(record);

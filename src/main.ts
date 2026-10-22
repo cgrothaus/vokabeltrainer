@@ -1,6 +1,7 @@
 import "./styles/main.css";
 import { checkBackup, lastBackupAt, prepareBackup, restore, saveBackup } from "./app/backup";
 import { mountUpdateNotice, showUpdateNotice } from "./app/components/updateNotice";
+import { dataScope, removeAllData } from "./app/deleteAll";
 import { deletionScope, removeSet } from "./app/deleteSet";
 import { loadSpec, newSetPrompt, shareSpec } from "./app/help";
 import { loadOverview } from "./app/overview";
@@ -8,6 +9,7 @@ import { previewImport, saveImport } from "./app/importText";
 import { loadSampleSet } from "./app/sampleSet";
 import { beginPractice, currentPractice, loadSetup } from "./app/practice";
 import { startRouter } from "./app/router";
+import { applyTheme, loadTheme, saveTheme } from "./app/theme";
 import { backupView } from "./app/views/backup";
 import { helpView } from "./app/views/help";
 import { importView } from "./app/views/import";
@@ -16,11 +18,13 @@ import { libraryView } from "./app/views/library";
 import { notFoundView } from "./app/views/notFound";
 import { practiceView } from "./app/views/practice";
 import { setView } from "./app/views/set";
+import { settingsView } from "./app/views/settings";
 import { storageErrorView } from "./app/views/storageError";
 import { canReadClipboard, copyText, readClipboard } from "./platform/clipboard";
 import { persistenceState, requestPersistence } from "./platform/persistence";
 import type { StoredSet } from "./domain/model";
 import type { PracticeSetup } from "./domain/practiceSetup";
+import type { Theme } from "./domain/theme";
 import { registerServiceWorker } from "./platform/serviceWorker";
 import { type OpenOptions, type OpenResult, openDatabase } from "./storage/database";
 import { getMeta, setMeta } from "./storage/meta";
@@ -82,6 +86,13 @@ async function start(): Promise<void> {
   await interruptActiveSessions(db).catch((error: unknown) => {
     console.warn("Unterbrochene Sitzungen nicht vermerkt", error);
   });
+  // Vor der ersten Ansicht (TDD 13.5); bis die Datenbank offen ist, gilt die Darstellung des Geräts.
+  let theme: Theme = await loadTheme(db);
+  const showTheme = (chosen: Theme) => {
+    theme = chosen;
+    applyTheme(chosen);
+  };
+  showTheme(theme);
   // Meldung nach Import oder Löschen für die Bibliothek; lebt nur bis zum nächsten Anzeigen.
   let message: string | null = null;
   const library = () =>
@@ -142,7 +153,28 @@ async function start(): Promise<void> {
       saveBackup: (prepared) => saveBackup(db, prepared),
       lastBackupAt: () => lastBackupAt(db),
       checkBackup,
-      restore: (backup) => restore(db, backup),
+      restore: async (backup) => {
+        const outcome = await restore(db, backup);
+        // Das Backup bringt seine Darstellung mit.
+        if (outcome.ok) showTheme(await loadTheme(db));
+        return outcome;
+      },
+    });
+  const settingsPage = () =>
+    settingsView({
+      theme,
+      chooseTheme: (chosen) => {
+        showTheme(chosen);
+        return saveTheme(db, chosen);
+      },
+      dataScope: () => dataScope(db),
+      removeAllData: () => removeAllData(db),
+      onRemoved: (removed) => {
+        showTheme("system");
+        message = removed;
+        location.hash = "#/";
+      },
+      appVersion: __APP_VERSION__,
     });
   const helpPage = () => helpView({ prompt: newSetPrompt(), copyText, loadSpec, shareSpec });
   stopRouter = startRouter(
@@ -155,6 +187,7 @@ async function start(): Promise<void> {
       "/learn/": learnPage,
       "/practice": practicePage,
       "/backup": backupPage,
+      "/settings": settingsPage,
     },
     notFoundView,
   );

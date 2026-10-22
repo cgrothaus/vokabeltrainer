@@ -1,6 +1,6 @@
 # TDD: Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.21 – Lernüberblick  
+**Version:** 2.22 – Einstellungen  
 **Stand:** 22. Oktober 2026  
 **Bezug:** PRD 2.4 (`PRD_Vokabeltrainer_Allgemein_v2.md`), Formatspezifikation Version 1 (`Formatspezifikation_Vokabelset_v1.md`), Review-Notizen (`20261019_TDD_v1_Review_Notizen.md`)  
 **Status:** Entwurf; Grundlage für M0 (Walking Skeleton)  
@@ -82,6 +82,7 @@ src/
 │   ├── practice.ts      Sitzungswarteschlange, Fehler, Multiple-Choice-Auswahl
 │   ├── practiceSetup.ts Einrichtung einer Sitzung: Auswahl, Stufen, gemerkte Werte prüfen
 │   ├── stats.ts         Lernstand und Überblick aus Events
+│   ├── theme.ts         Darstellung: erlaubte Werte, gespeicherten Wert tolerant lesen
 │   ├── exportFormat.ts  Set-Export
 │   ├── backup.ts        Backup-Hülle, Prüfen und Migrieren beim Wiederherstellen
 │   ├── validateRecords.ts gespeicherte Datensätze prüfen (Backup, später DB-Fixtures)
@@ -237,7 +238,7 @@ Datenmigrationen laufen nach dem Neuladen beim Öffnen der Datenbank (Kapitel 7)
 | `sets` | `id` | – | Ein Set als Dokument mit eingebetteten Sektionen und Einträgen |
 | `reviewEvents` | `id` | `setId`, `sessionId` | Eine Antwort pro Datensatz |
 | `sessions` | `id` | `setId` | Lernsitzungen |
-| `settings` | `key` | – | Präferenzen (im Backup enthalten), z. B. `practice:<setId>` für die zuletzt gewählte Einrichtung einer Sitzung (12.1) |
+| `settings` | `key` | – | Präferenzen (im Backup enthalten), z. B. `practice:<setId>` für die zuletzt gewählte Einrichtung einer Sitzung (12.1) und `theme` für die Darstellung der ganzen App (13.5) |
 | `meta` | `key` | – | Interne Angaben, z. B. `lastBackupAt`, `persistRequested`, `backupReminderSnoozedUntil` |
 
 Ein Store `progress` für den Lernstand gibt es nicht (D-07, F-08). Lernstand und Überblick werden aus `reviewEvents` und `sessions` berechnet (Kapitel 12.6).
@@ -499,7 +500,7 @@ Ungültiges JSON, unbekannte Formatversion, Validierungsfehler, widersprüchlich
 - Ein Eintrag wird in einem kompakten Formular bearbeitet: `term` mit Varianten, beliebig viele Bedeutungen mit Varianten, Notizen, Beispiele, Grammatik, Prüfstatus. Kein horizontales Scrollen (AK-12).
 - **Speichern:** ausdrücklich „Speichern“ / „Verwerfen“. Beim Verlassen mit ungespeicherten Änderungen fragt die App „Speichern“, „Verwerfen“ oder „Weiter bearbeiten“. Erst nach dem Commit gilt eine Änderung als gespeichert; dabei werden `editCount` und `updatedAt` erhöht.
 - **Löschen von Einträgen:** Review-Events bleiben erhalten (siehe 9.7).
-- **Alle Daten löschen:** in den Einstellungen, deutlich gekennzeichnet und mit Bestätigung (optional mit vorherigem Backup-Angebot).
+- **Alle Daten löschen:** in den Einstellungen (13.6), mit Ankündigung wie beim Set: Umfang (Sets, Einträge, Antworten und Lernsitzungen, gezählt mit `summarizeRecords` aus `domain/backup.ts`), der Hinweis, dass auch die Einstellungen zurückgesetzt werden, und ein Link „Vorher ein Backup speichern“; die Schaltfläche nennt die Folge („2 Sets und Lernstand löschen“, ohne Sets „Einstellungen zurücksetzen“). Gelöscht wird in **einer** Transaktion alles, was ins Backup gehört (`sets`, `reviewEvents`, `sessions`, `settings`), dazu in `meta` `lastBackupAt` und `backupReminderSnoozedUntil`, weil das letzte Backup einen künftigen Bestand nicht sichert (6.6); `persistRequested` bleibt, weil es den Browser betrifft. Danach folgt die Darstellung wieder dem Gerät, und die Bibliothek zeigt „Alle Daten gelöscht.“ mit dem Empty State.
 
 ---
 
@@ -675,6 +676,7 @@ Kein Algorithmus für verteiltes Wiederholen in dieser Version. Die Events entha
   - Link „Wie bekomme ich ein Vokabelset?“ zur Hilfe.
   Die Aktionen unter der Liste („Vokabelset importieren“, Hilfe) entfallen dann, weil der Empty State sie schon anbietet.
 - Der Empty State ergibt sich aus dem Datenbestand, erscheint also auch nach dem Löschen des letzten Sets.
+- Unter der Liste und auch im Empty State stehen immer „Backup und Wiederherstellung“ und „Einstellungen“ (13.6).
 - **Hilfe „Wie bekomme ich ein Vokabelset?“** (`#/help`, FR-20, D-26), erreichbar aus dem Empty State, unter der Liste und aus dem Import:
   - drei Schritte: Vokabelliste fotografieren, Vorlage mit den Fotos in einen KI-Chat geben, Antwort unter „Vokabelset importieren“ einfügen;
   - die Vorlage aus Formatspezifikation 11.1 mit eingesetzter Adresse der veröffentlichten Spezifikation (`formatspezifikation.md` relativ zur App) und „Vorlage kopieren“; scheitert das Kopieren, ist die Vorlage markiert und ein Hinweis erklärt, sie selbst zu kopieren;
@@ -708,7 +710,23 @@ Kurze Erklärungen direkt am Schritt, insbesondere bei: Import (neu oder bekannt
 
 ### 13.5 Darstellung (FR-25)
 
-Helles und dunkles Farbschema über CSS-Variablen; Standard folgt `prefers-color-scheme`, eine manuelle Einstellung in `settings.theme` (`system`, `light`, `dark`) hat Vorrang.
+Helles und dunkles Farbschema über CSS-Variablen in `:root`; Standard folgt `prefers-color-scheme`, eine eigene Wahl hat Vorrang. Angeboten werden „Wie auf dem Gerät“, „Hell“ und „Dunkel“, gespeichert in `settings` unter `theme` (`system`, `light`, `dark`) und damit im Backup. Gelesen wird tolerant (`domain/theme.ts`): Unbekanntes gilt als `system`.
+
+- Angewendet über `data-theme` an `<html>` (`app/theme.ts`); ohne Attribut folgt das CSS dem Gerät. Die dunklen Variablen stehen deshalb zweimal, in der Media Query für `:root:not([data-theme="light"])` und für `:root[data-theme="dark"]`; E2E-17 vergleicht beide. Kein `light-dark()`: Vite rechnet es auf die Media Query herunter.
+- `color-scheme` folgt der Wahl, damit Regler, Radioknöpfe und Scrollleisten passen.
+- Die `theme-color`-Angaben (5.1) bekommen bei eigener Wahl den Hintergrund der Wahl, aus dem CSS gelesen; bei „Wie auf dem Gerät“ wieder ihre Werte je Farbschema.
+- Eine Wahl wirkt sofort und wird danach gespeichert. Scheitert das Speichern, erklärt ein Hinweis, dass sie nur bis zum Schließen der App gilt (FR-23).
+- Angewendet wird nach dem Öffnen der Datenbank vor der ersten Ansicht, nach dem Wiederherstellen eines Backups sofort neu; nach „Alle Daten löschen“ gilt wieder das Gerät. Bis die Datenbank offen ist, zeigt die noch leere Seite die Farbe des Geräts. Dieses kurze Aufblitzen wird hingenommen, statt die Wahl zusätzlich außerhalb von IndexedDB zu spiegeln (D-31).
+
+### 13.6 Einstellungen (FR-21)
+
+Ansicht `#/settings`, erreichbar unter der Bibliotheksliste (13.1), mit dem Fokus auf der Überschrift:
+
+- **Darstellung** (13.5) als Radiogruppe;
+- **Daten:** Link „Backup und Wiederherstellung“ (11) und „Alle Daten löschen“ (10);
+- **Über die App:** die App-Version (4.2).
+
+Eine globale Standardrichtung gibt es nicht: Die Richtung merkt sich die Einrichtung pro Set (12.1, D-27), Voreinstellung ist Lernsprache → Muttersprache (D-31).
 
 ---
 
@@ -749,6 +767,8 @@ Für diese Module werden Tests vor der Implementierung geschrieben:
 - `practice.ts`: Warteschlange, Wiedereinfügen, `firstAttempt`, Fehlerliste und „Nur Fehler üben“, Multiple-Choice-Auswahl und Rückfall auf Karteikarte;
 - `practiceSetup.ts`: Voreinstellung, gemerkte Einrichtung mit fehlenden oder unbrauchbaren Teilen, Stufen, zufällige Teilmenge nur aus den gewählten Sektionen;
 - `stats.ts`: Kennzahlen, gelöschte Einträge, verschobene Einträge, letzte fünf Sitzungen nach letzter Antwort, nur Erstversuche in der Quote, Datumsangabe;
+- `theme.ts`: erlaubte Werte, Unbekanntes als `system`;
+- `backup.ts`: Umfang eines Bestands (`summarizeRecords`) für Backup-Vorschau und „Alle Daten löschen“;
 - `migrations/`: jede Migration mit Fixture vorher und nachher.
 
 UI-Code wird nicht testgetrieben entwickelt, sondern über E2E-Smoke-Tests und manuelle Prüfung abgesichert.
@@ -790,6 +810,8 @@ Projekte: `mobile-chromium` (Pixel-Emulation) und `mobile-webkit` (iPhone-Emulat
 | E2E-14 Update während einer Lernsitzung: neue Version wird gefunden, der Hinweis erscheint erst nach dem Ende der Sitzung | M0 | TAK-12 |
 | E2E-15 Dieselbe Datei ohne IDs zweimal importieren → Hinweis auf das vorhandene Set; „Abbrechen“ ändert nichts, „Trotzdem …“ legt ein zweites Set an | M1 | AK-19 |
 | E2E-16 Empty State → Hilfe → Vorlage mit Link kopieren, Formatbeschreibung teilen; die veröffentlichte Spezifikation ist auch offline und im Browser mit installierter App als Datei erreichbar | M1 | AK-14, FR-20, D-26 |
+| E2E-17 Darstellung: „Dunkel“ bei hellem Gerät ergibt dieselben Farben wie ein dunkles Gerät (beide Blöcke gleich), `color-scheme` und `theme-color` folgen, die Wahl bleibt nach dem Neuladen; „Hell“ bei dunklem Gerät; „Wie auf dem Gerät“ folgt einem Wechsel sofort; ein wiederhergestelltes Backup bringt seine Darstellung mit | M1 | FR-21, FR-25, AK-10 |
+| E2E-18 Alle Daten löschen: Ankündigung mit Umfang, „Abbrechen“ ändert nichts, danach leere Bibliothek mit Meldung, alle Stores des Backups leer, `persistRequested` bleibt, Darstellung wieder wie auf dem Gerät | M1 | FR-06, TDD 10 |
 
 Playwright-WebKit entspricht nicht Safari auf iOS. Speicherlöschung, Installation, `persist()` und Teilen-Menü werden manuell geprüft (15.5).
 
@@ -881,6 +903,7 @@ Ergebnisse (LLM-App, Modell, Datum, Befund) werden im Umsetzungsplan bei S-15 fe
 | D-28 | Multiple Choice als feste Quote beim Start; falsch beantwortete Karten kommen in derselben Form wieder; Rückmeldung mit „Weiter“ statt automatischem Weiterschalten; Grammatik, Beispiele und Notiz auf der Rückseite der Karteikarte und nach einer Multiple-Choice-Antwort | 12.3 | Nutzerentscheidung in S-18, 22. Oktober 2026 |
 | D-29 | „Nur Fehler üben“ stellt die Fehlerkarten in Richtung und Form wie beim Fehler als eigene Sitzung mit `repeatOf`; die Zurück-Taste zeigt in der Sitzung den Zwischenstand (zusätzlicher Verlaufseintrag); ohne Antwort kein Zwischenstand | 3.2, 12.2, 12.5 | Nutzerentscheidung in S-19, 22. Oktober 2026 |
 | D-30 | Lernüberblick in der Set-Ansicht: Absatz für das Set, je Sektion eine Zeile im Aufklapptitel; nur aus Events berechnet (Sitzung zählt mit mindestens einer Antwort, auch „Nur Fehler üben“); Kennzahlen pro Eintrag berechnet, aber noch nicht angezeigt | 12.6, 13.1 | Nutzerentscheidung in S-20, 22. Oktober 2026 |
+| D-31 | Einstellungen als eigene Ansicht, erreichbar unter der Bibliotheksliste; Darstellung nur in IndexedDB, das kurze Aufblitzen der Gerätefarbe beim Start wird hingenommen; „Alle Daten löschen“ und der Weg zum Backup in den Einstellungen; keine globale Standardrichtung, FR-21 gilt über die gemerkte Einrichtung pro Set (D-27) | 10, 13.5, 13.6 | Nutzerentscheidung in S-21, 22. Oktober 2026 |
 
 ---
 
@@ -961,6 +984,7 @@ Geprüft am 18. bis 20. Oktober 2026.
 | 2.19 | 22. Oktober 2026 | Multiple Choice (S-18): Regler und gemerkter Anteil (12.1), feste Quote, Wiederholung als Multiple Choice, Bevorzugung der Sektionen der Sitzung, Ablauf mit Rückmeldung und „Weiter“, Wischschwelle, gehaltene Tasten, Details auf der Rückseite (12.3, D-28), `mcShare` in Prozent (12.5), E2E-05 (15.4) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.20 | 22. Oktober 2026 | Zwischenstand und Fehlerwiederholung (S-19): Zwischenstand mit Weiterlernen, Zurück-Taste über einen zusätzlichen Verlaufseintrag (3.2, 3.3), Fehlerliste und „Nur Fehler üben“ als eigene Sitzung mit `repeatOf` (12.2, 12.5, D-29), Hinweis für den Lernüberblick (12.6), E2E-05 (15.4) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.21 | 22. Oktober 2026 | Lernüberblick (S-20): Zählregeln für Sitzungen, letzte Sitzung und Erstversuchsquote, „Nur Fehler üben“ zählt mit, Anzeige und Datumsform (12.6, D-30), Lernstand in der Set-Ansicht (13.1), Testfälle `stats.ts` (15.2) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.22 | 22. Oktober 2026 | Einstellungen (S-21): Darstellung über `data-theme` mit `color-scheme` und `theme-color` (13.5, D-31), Ansicht Einstellungen (13.6), „Alle Daten löschen“ (10), Links unter der Bibliothek (13.1), `theme` in `settings` (6.1), `theme.ts` (3.1, 15.2), E2E-17 und E2E-18 (15.4) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 
 ---
 
@@ -1034,7 +1058,8 @@ Ziel: Jeder riskante Teil läuft einmal von vorn bis hinten, in einfachster Form
   Erledigt am 22. Oktober 2026. Nutzerentscheidungen (D-29): Fehlerkarten in Richtung und Form wie beim Fehler, Fehlersitzung mit `repeatOf`, die Zurück-Taste zeigt den Zwischenstand, ohne Antwort kein Zwischenstand. Selbst festgelegt: Im Zwischenstand bleibt die Sitzung `active` und der Update-Hinweis zurückgehalten; die Fehlersitzung merkt keine Einrichtung und übernimmt Sektionen, Richtung und Anteil; aus dem Zwischenstand endet die Ausgangssitzung erst, wenn die neue gespeichert ist. Domain testgetrieben in `practice.ts`: `missed` (nur Erstversuche, jede Karte einmal, Reihenfolge der Antworten) und `repeatMistakes` (Richtung und Form bleiben, neu gemischt, wieder Erstversuch). `validateRecords` prüft `repeatOf` als optionalen Text; Integrationstest: Eine Fehlersitzung lässt die gemerkte Einrichtung unverändert. `app/practice.ts`: Der Sitzungsablauf ist als `run()` herausgelöst, `repeatMistakes()` startet daraus die Fehlersitzung. Die Ansicht legt beim Zeigen der Karten einen Verlaufseintrag mit derselben Adresse an (`history.pushState`, kein `hashchange`); `popstate` zeigt den Zwischenstand, Vorwärts setzt fort. Gefunden durch den E2E-Test in Chromium: Zurück direkt nach einer Antwort kam vor deren Speicherung an und führte als „ohne Antwort“ aus der Sitzung; eine laufende Speicherung zählt jetzt mit, und der Zwischenstand wird danach mit dem neuen Stand gezeigt. E2E: Zwischenstand und Weiterlernen in derselben Sitzung, Zwischenstand → Bibliothek und Beenden ohne Antwort (`ended`), Zurück → Zwischenstand → Vorwärts → Zurück → Einrichtung und Zurück ohne Antwort, „Nur Fehler üben“ aus Ergebnis (Verweis, Sektionen, Anteil, Einrichtung unverändert) und Zwischenstand (Ausgangssitzung `ended`), E2E-05 mit Ergebnisliste und Wiederholung als Multiple Choice, E2E-14 mit Zwischenstand – in mobile-chromium und mobile-webkit, die Sitzungstests fünfmal wiederholt grün. Bestehende Tests beenden über den Helfer `endPractice`. Gegenproben: Fehler auch bei der Wiederholung merken, Fehlersitzung nur als Karteikarten, ohne Verlaufseintrag, Fehlersitzung mit gemerkter Einrichtung – jeweils scheitern die passenden Tests. Mit `playwright-cli` (mobiles Chromium, 320 px, hell und dunkel, Beispielset) geprüft: kein horizontales Scrollen in Zwischenstand und Ergebnis, Fokus auf „Zwischenstand“ bzw. „Geschafft“, Tab-Reihenfolge Weiterlernen → Nur Fehler üben → Bibliothek, Schaltflächen 44 px hoch, `lang` an Wort und Bedeutungen, Zurück vom Ergebnis zur Einrichtung, Konsole leer. Offen für den Gerätecheck: Zurück-Geste auf Android im Browser und als Home-Bildschirm-App.
 - ✅ **S-20** Lernüberblick aus Events (testgetrieben) – FR-11, AK-17  
   Erledigt am 22. Oktober 2026. Nutzerentscheidungen (D-30): Anzeige in der Set-Ansicht mit einer Zeile je Sektion im Aufklapptitel statt einer eigenen Ansicht, Kennzahlen pro Eintrag berechnet, aber noch nicht angezeigt. Selbst festgelegt (12.6): nur Events zählen, eine Sitzung zählt mit mindestens einer Antwort, „Nur Fehler üben“ zählt mit, Reihenfolge und Datum nach der letzten Antwort, Quote über die zusammengefassten Erstversuche, Datum als „heute“, „gestern“ oder „am 18. Okt.“. Domain testgetrieben: `stats.ts` (`computeStats` in einem Durchlauf, `describeDay` in Ortszeit; Tests mit lokalen Zeitpunkten, damit sie in jeder Zeitzone gelten). Storage: `listSetEvents` über den Index `setId` mit Integrationstest; App-Ablauf `app/overview.ts`. Die Set-Ansicht lädt den Lernstand nach, ein Lesefehler zeigt einen Hinweis. E2E (`overview.spec.ts`): vor dem Lernen „noch nicht gelernt“, nach einer Sitzung in einer Sektion Werte für Set und diese Sektion, die andere unverändert, nach einer zweiten Sitzung in der anderen Sektion und Neuladen beide Sektionen und das Set zusammen – in mobile-chromium und mobile-webkit. Gegenproben: aufsteigende Sortierung der Sitzungen, Antworten zu gelöschten Einträgen mitgezählt, letzter Erstversuch ohne eigenen Zeitpunkt, Wiederholungen in der Quote, Sektionszeile mit den Werten des Sets – jeweils scheitert der passende Test. Die übrigen E2E-Tests fanden, dass die neue Zeile ohne Leerzeichen am Sektionstitel hing („15 Einträgenoch nicht gelernt“, so auch im vorgelesenen Namen); ein Leerzeichen trennt sie jetzt, die Tests der Set-Ansicht erwarten die Zeile mit. Richtwert für S-24: `computeStats` mit 50.000 Events (3.000 Einträge, 20 Sektionen) braucht in Node auf dem Mac 14–22 ms, ohne das Lesen aus IndexedDB; gemessen mit einer nicht eingecheckten Testdatei. Mit `playwright-cli` (mobiles Chromium, 320 px, hell und dunkel, Beispielset, zwei Sitzungen in verschiedenen Sektionen) geprüft: kein horizontales Scrollen, Zeile im zugeklappten Sektionstitel lesbar, Aufklappen per Enter weiter möglich, Konsole leer.
-- 🔲 **S-21** Einstellungen, Hell/Dunkel, App-Version – FR-21, FR-25
+- ✅ **S-21** Einstellungen, Hell/Dunkel, App-Version – FR-21, FR-25  
+  Erledigt am 22. Oktober 2026. Nutzerentscheidungen (D-31): Darstellung nur in IndexedDB (kurzes Aufblitzen der Gerätefarbe beim Start hingenommen, kein Spiegel in localStorage), „Alle Daten löschen“ und der Weg zum Backup in den Einstellungen (Paket erweitert), Einstieg als Textlink unter der Bibliotheksliste, keine globale Standardrichtung: FR-21 („Standard-Abfragerichtung“) gilt über die gemerkte Einrichtung pro Set (12.1, D-27) als erfüllt. Umgesetzt nach dem Merge von S-20 auf dessen Stand (Nutzerentscheidung, wie bei S-16). Domain testgetrieben: `theme.ts` (erlaubte Werte, Unbekanntes als `system`) und `summarizeRecords` in `backup.ts`, herausgelöst aus `parseBackup`. Storage mit Integrationstests: `setSetting`; `clearAllData` leert alle Stores des Backups in einer Transaktion und vergisst `lastBackupAt` und `backupReminderSnoozedUntil`, `persistRequested` bleibt. App: `app/theme.ts` setzt `data-theme` und die `theme-color`-Angaben (Farbe aus `--bg`, damit sie nur im CSS steht), `app/deleteAll.ts`, Ansicht `views/settings.ts` (13.6). Die Darstellung wird nach dem Öffnen der Datenbank vor dem Routing angewendet, nach dem Wiederherstellen eines Backups sofort neu und nach „Alle Daten löschen“ auf das Gerät zurückgesetzt. Im Build ergänzt Lightningcss wegen `color-scheme` eigene Hilfsvariablen und eine zusätzliche Regel im dunklen Media-Block; der Vergleichstest liest die Farbvariablen deshalb aus allen Regeln des Blocks. E2E (`settings.spec.ts`): Einstellungen aus dem Empty State mit Version und Weg zum Backup, „Alle Daten löschen“ ohne Sets, E2E-17 (Darstellung, gemerkt, live, aus dem Backup) und E2E-18 (Alle Daten löschen) – in mobile-chromium und mobile-webkit; die ganze Suite mit 102 Tests grün. Gegenproben: Media Query ohne `:not([data-theme="light"])`, eine Farbe nur in einem der beiden dunklen Blöcke geändert, kein Anwenden beim Start, kein Anwenden nach dem Wiederherstellen, `clearAllData` ohne `settings`, `readTheme` ohne Rückfall – jeweils scheitert der passende Test. Mit `playwright-cli` (mobiles Chromium, 320 px, Gerät hell und dunkel) geprüft: kein horizontales Scrollen in den Einstellungen und in der Ankündigung (auch mit langem Set-Titel ohne Trennstelle), alle Ziele mindestens 44 px, gewählter Zustand an Radioknopf und Rahmen erkennbar, `color-scheme` und `theme-color` folgen der Wahl und kehren bei „Wie auf dem Gerät“ zu den Werten je Farbschema zurück, Fokus auf der Überschrift, auf der Ankündigung, nach „Abbrechen“ auf dem Auslöser und nach dem Löschen auf der Meldung in der Bibliothek, Konsole leer. Das Aufblitzen beim Start wurde nicht eigens gemessen; bis die Datenbank offen ist, ist die Seite leer. Offen für den Gerätecheck: Statusleiste bzw. `theme-color` bei eigener Wahl als Home-Bildschirm-App auf iPhone und Android, Aufblitzen beim Start.
 - 🔲 **S-22** Speicherfehler und Statusanzeige – FR-23, AK-26
 - 🔲 **S-23** Mobile- und Barrierearmut-Durchsicht, E2E-05, E2E-06, E2E-10 – FR-24, FR-27, NFR-09–NFR-13  
   E2E-06 besteht seit S-12, E2E-10 seit S-14.

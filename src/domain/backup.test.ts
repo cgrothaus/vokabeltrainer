@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { backupFileName, createBackup, parseBackup } from "./backup";
+import { backupFileName, createBackup, parseBackup, summarizeRecords } from "./backup";
 import type { DataMigration } from "./migrations";
 import type { StoredSet } from "./model";
 
@@ -106,6 +106,23 @@ const file = (overrides: Record<string, unknown> = {}) => ({
 });
 
 const current = { dataVersion: 1, migrations: [] };
+
+describe("summarizeRecords", () => {
+  it("zählt Sets, Einträge über alle Sektionen, Sitzungen und Antworten", () => {
+    expect(summarizeRecords(data())).toEqual({ sets: 1, entries: 3, sessions: 1, events: 2 });
+  });
+
+  it("zählt einen leeren Bestand als null, auch wenn Einstellungen vorhanden sind", () => {
+    expect(
+      summarizeRecords({
+        sets: [],
+        reviewEvents: [],
+        sessions: [],
+        settings: [{ key: "theme", value: "dark" }],
+      }),
+    ).toEqual({ sets: 0, entries: 0, sessions: 0, events: 0 });
+  });
+});
 
 describe("parseBackup", () => {
   it("übernimmt ein gültiges Backup und fasst den Umfang zusammen", () => {

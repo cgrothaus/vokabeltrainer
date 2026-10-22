@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BACKUP_STORES, type CheckedBackup, parseBackup } from "../domain/backup";
 import { migrations } from "../domain/migrations";
 import type { ReviewEvent, Session, StoredSet } from "../domain/model";
-import { readBackup, readStores, restoreBackup } from "./backup";
+import { clearAllData, readBackup, readStores, restoreBackup } from "./backup";
 import { openDatabase } from "./database";
 import { getMeta, setMeta } from "./meta";
 import { DB_VERSION } from "./schema";
@@ -177,5 +177,32 @@ describe("restoreBackup", () => {
     expect(await restoreBackup(db, backup)).toEqual({ ok: false, reason: "failed" });
     expect(await readStores(db, BACKUP_STORES)).toEqual(before);
     expect(await getMeta(db, "lastBackupAt")).toBe("2026-10-01T08:00:00.000Z");
+  });
+});
+
+describe("clearAllData", () => {
+  it("leert alle Stores des Backups und behält die Anfrage nach dauerhaftem Speicher", async () => {
+    await fill(db);
+    await setMeta(db, "lastBackupAt", "2026-10-20T20:00:00.000Z");
+    await setMeta(db, "backupReminderSnoozedUntil", "2026-10-23T20:00:00.000Z");
+
+    await clearAllData(db);
+
+    expect(await readStores(db, BACKUP_STORES)).toEqual({
+      sets: [],
+      reviewEvents: [],
+      sessions: [],
+      settings: [],
+    });
+    expect(await getMeta(db, "persistRequested")).toBe(true);
+    expect(await getMeta(db, "lastBackupAt")).toBeUndefined();
+    expect(await getMeta(db, "backupReminderSnoozedUntil")).toBeUndefined();
+  });
+
+  it("hinterlässt einen Bestand, dessen Backup die Prüfung besteht", async () => {
+    await fill(db);
+    await clearAllData(db);
+    const backup = check(await readBackup(db, "test", "2026-10-20T20:00:00.000Z"));
+    expect(backup.data).toEqual({ sets: [], reviewEvents: [], sessions: [], settings: [] });
   });
 });
