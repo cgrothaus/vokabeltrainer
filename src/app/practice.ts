@@ -4,7 +4,15 @@
 import { entryRev } from "../domain/hash";
 import { createId, ID_LENGTH } from "../domain/ids";
 import type { ReviewEvent, Session, StoredEntry, StoredSet } from "../domain/model";
-import { answer, type PracticeState, type Result, startPractice } from "../domain/practice";
+import {
+  answer,
+  currentCard,
+  hasChoices,
+  multipleChoice,
+  type PracticeState,
+  type Result,
+  startPractice,
+} from "../domain/practice";
 import {
   type PracticeSetup,
   pickEntries,
@@ -16,9 +24,20 @@ import { randomBytes } from "../platform/random";
 import { finishSession, recordAnswer, startSession } from "../storage/sessions";
 import { getSetting } from "../storage/settings";
 
+/** Wie die aktuelle Karte gestellt wird (TDD 12.3). */
+export type Question =
+  | { readonly mode: "flashcard" }
+  | {
+      readonly mode: "multipleChoice";
+      readonly options: readonly string[];
+      readonly correct: number;
+    };
+
 export interface PracticeSession {
   readonly set: StoredSet;
   readonly state: PracticeState;
+  /** Für die aktuelle Karte einmal ausgewählt; erneutes Zeichnen mischt nicht neu. */
+  question(): Question;
   /** Alle Karten gewusst; die Sitzung ist als abgeschlossen gespeichert oder wird es gerade. */
   readonly finished: boolean;
   entry(id: string): StoredEntry;
@@ -59,15 +78,27 @@ export async function beginPractice(
       .filter((entry) => chosen.has(entry.id))
       .map((entry) => [entry.id, entry]),
   );
-  let state = startPractice([...entries.keys()], setup.direction, Math.random);
+  // Falsche Antworten bevorzugt aus den Sektionen der Sitzung, dann aus dem übrigen Set (TDD 12.3).
+  const inSession = new Set(setup.sectionIds);
+  const preferred = set.sections.filter((s) => inSession.has(s.id)).flatMap((s) => s.entries);
+  const rest = set.sections.filter((s) => !inSession.has(s.id)).flatMap((s) => s.entries);
+  const everything = [...preferred, ...rest];
+  let state = startPractice(
+    [...entries.keys()],
+    {
+      direction: setup.direction,
+      mcShare: setup.mcShare,
+      canChoose: (id, direction) => hasChoices(entries.get(id)!, direction, everything),
+    },
+    Math.random,
+  );
   const session: Session = {
     id: createId(ID_LENGTH.session, randomBytes),
     setId: set.id,
     sectionIds: [...setup.sectionIds],
     startedAt: new Date().toISOString(),
     status: "active",
-    // Multiple Choice folgt mit S-18.
-    config: { direction: setup.direction, count: state.total, mcShare: 0 },
+    config: { direction: setup.direction, count: state.total, mcShare: setup.mcShare },
   };
   await startSession(db, session, { key: settingKey(set.id), value: storedSetup(set, setup) });
 
@@ -75,6 +106,22 @@ export async function beginPractice(
   const revs = new Map([...entries].map(([id, entry]) => [id, entryRev(entry)]));
   let finished = false;
   let ended = false;
+  let asked: { state: PracticeState; question: Question } | null = null;
+  const question = (): Question => {
+    if (asked?.state !== state) {
+      const card = currentCard(state)!;
+      const choice =
+        card.mode === "multipleChoice"
+          ? multipleChoice(entries.get(card.entryId)!, card.direction, preferred, rest, Math.random)
+          : null;
+      // Ohne genug falsche Antworten als Karteikarte; beim Start geprüft, also nur zur Sicherheit.
+      asked = {
+        state,
+        question: choice ? { mode: "multipleChoice", ...choice } : { mode: "flashcard" },
+      };
+    }
+    return asked.question;
+  };
   const close = (status: "completed" | "ended") =>
     finishSession(db, session.id, status, new Date().toISOString()).catch((error: unknown) => {
       // Beim nächsten Start wird die Sitzung als unterbrochen vermerkt.
@@ -90,7 +137,9 @@ export async function beginPractice(
       return finished;
     },
     entry: (id) => entries.get(id)!,
+    question,
     async answer(result) {
+      const { mode } = question();
       const next = answer(state, result);
       const event: ReviewEvent = {
         id: createId(ID_LENGTH.reviewEvent, randomBytes),
@@ -100,7 +149,7 @@ export async function beginPractice(
         entryRev: revs.get(next.recorded.entryId)!,
         occurredAt: new Date().toISOString(),
         direction: next.recorded.direction,
-        mode: "flashcard",
+        mode,
         result,
         firstAttempt: next.recorded.firstAttempt,
       };

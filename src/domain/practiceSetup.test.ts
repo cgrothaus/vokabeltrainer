@@ -58,6 +58,7 @@ describe("defaultSetup", () => {
       sectionIds: ["a", "b", "c"],
       direction: "termToMeaning",
       count: "all",
+      mcShare: 25,
     });
   });
 });
@@ -68,13 +69,16 @@ describe("restoreSetup", () => {
   });
 
   it("übernimmt eine gemerkte Einrichtung", () => {
-    const stored = { sections: ["c", "a"], direction: "mixed", count: 20 };
+    const stored = { sections: ["c", "a"], direction: "mixed", count: 20, mcShare: 40 };
     expect(restoreSetup(set, stored)).toEqual({
       // Reihenfolge wie im Set, nicht wie gemerkt.
       sectionIds: ["a", "c"],
       direction: "mixed",
       count: 20,
+      mcShare: 40,
     });
+    expect(restoreSetup(set, { ...stored, mcShare: 0 }).mcShare).toBe(0);
+    expect(restoreSetup(set, { ...stored, mcShare: 100 }).mcShare).toBe(100);
   });
 
   it("wählt bei „alle Sektionen“ auch später hinzugekommene", () => {
@@ -101,7 +105,12 @@ describe("restoreSetup", () => {
       sectionIds: ["b"],
       direction: "termToMeaning",
       count: "all",
+      mcShare: 25,
     });
+    // Nur ganze Prozent in Schritten des Reglers.
+    for (const mcShare of [-5, 105, 33, 12.5, "25", null, Number.NaN]) {
+      expect(restoreSetup(set, { sections: "all", mcShare }).mcShare).toBe(25);
+    }
     for (const broken of [null, "practice", 42, [], { sections: [1, null] }]) {
       expect(restoreSetup(set, broken)).toEqual(defaultSetup(set));
     }
@@ -110,18 +119,39 @@ describe("restoreSetup", () => {
 
 describe("storedSetup", () => {
   it("merkt „alle Sektionen“ als solches, sonst die gewählten", () => {
-    const all: PracticeSetup = { sectionIds: ["a", "b", "c"], direction: "mixed", count: 10 };
-    expect(storedSetup(set, all)).toEqual({ sections: "all", direction: "mixed", count: 10 });
-    const some: PracticeSetup = { sectionIds: ["b"], direction: "termToMeaning", count: "all" };
+    const all: PracticeSetup = {
+      sectionIds: ["a", "b", "c"],
+      direction: "mixed",
+      count: 10,
+      mcShare: 25,
+    };
+    expect(storedSetup(set, all)).toEqual({
+      sections: "all",
+      direction: "mixed",
+      count: 10,
+      mcShare: 25,
+    });
+    const some: PracticeSetup = {
+      sectionIds: ["b"],
+      direction: "termToMeaning",
+      count: "all",
+      mcShare: 0,
+    };
     expect(storedSetup(set, some)).toEqual({
       sections: ["b"],
       direction: "termToMeaning",
       count: "all",
+      mcShare: 0,
     });
   });
 
   it("ergibt beim Wiederherstellen dieselbe Einrichtung", () => {
-    const setup: PracticeSetup = { sectionIds: ["a", "c"], direction: "meaningToTerm", count: 30 };
+    const setup: PracticeSetup = {
+      sectionIds: ["a", "c"],
+      direction: "meaningToTerm",
+      count: 30,
+      mcShare: 55,
+    };
     expect(restoreSetup(set, storedSetup(set, setup))).toEqual(setup);
   });
 });
@@ -166,12 +196,18 @@ describe("pickEntries", () => {
       sectionIds: ["a", "c"],
       direction: "termToMeaning",
       count: "all",
+      mcShare: 25,
     };
     expect(pickEntries(set, setup, sequence(0.5))).toEqual([...ids("a"), ...ids("c")]);
   });
 
   it("wählt eine zufällige Teilmenge nur aus den gewählten Sektionen, ohne Doppelte", () => {
-    const setup: PracticeSetup = { sectionIds: ["b", "c"], direction: "mixed", count: 10 };
+    const setup: PracticeSetup = {
+      sectionIds: ["b", "c"],
+      direction: "mixed",
+      count: 10,
+      mcShare: 25,
+    };
     const picked = pickEntries(set, setup, sequence(0.7, 0.1, 0.4, 0.9, 0.3));
     expect(picked).toHaveLength(10);
     expect(new Set(picked).size).toBe(10);
@@ -182,7 +218,12 @@ describe("pickEntries", () => {
   });
 
   it("nimmt alle, wenn die Stufe größer ist als die Auswahl", () => {
-    const setup: PracticeSetup = { sectionIds: ["c"], direction: "termToMeaning", count: 10 };
+    const setup: PracticeSetup = {
+      sectionIds: ["c"],
+      direction: "termToMeaning",
+      count: 10,
+      mcShare: 25,
+    };
     expect(pickEntries(set, setup, sequence(0.5))).toEqual(ids("c"));
   });
 });

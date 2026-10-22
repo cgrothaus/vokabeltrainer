@@ -1,11 +1,12 @@
-// Sitzung einrichten (TDD 12.1, FR-07, FR-08, D-27): Sektionen, Richtung und Anzahl in festen Stufen,
-// vorbelegt mit der zuletzt gewählten Einrichtung des Sets. Der Anteil an Multiple Choice folgt mit S-18.
+// Sitzung einrichten (TDD 12.1, FR-07, FR-08, D-27): Sektionen, Richtung, Anzahl in festen Stufen und
+// Anteil an Multiple Choice, vorbelegt mit der zuletzt gewählten Einrichtung des Sets.
 import type { Direction, StoredSet } from "../../domain/model";
 import {
   type CountChoice,
   countOptions,
   effectiveCount,
   fitCount,
+  MC_SHARE_STEP,
   type PracticeSetup,
   selectedEntryCount,
 } from "../../domain/practiceSetup";
@@ -71,6 +72,7 @@ function form(set: StoredSet, initial: PracticeSetup, context: LearnContext): No
   let direction = initial.direction;
   // Die gewählte Stufe bleibt, auch wenn sie bei kleinerer Auswahl zeitweise als „alle“ erscheint.
   let chosenCount = initial.count;
+  let mcShare = initial.mcShare;
 
   const term = languageName(set.termLanguage);
   const meaning = languageName(set.meaningLanguage);
@@ -86,6 +88,7 @@ function form(set: StoredSet, initial: PracticeSetup, context: LearnContext): No
     sectionIds: sectionIds(),
     direction,
     count: fitCount(chosenCount, available()),
+    mcShare,
   });
 
   const boxes = set.sections.map((section) =>
@@ -165,6 +168,30 @@ function form(set: StoredSet, initial: PracticeSetup, context: LearnContext): No
 
   const countChoices = h("div", { class: "choices" });
   const countChoice = h("fieldset", null, h("legend", null, "Anzahl"), countChoices);
+  const shareText = () => `${mcShare} % (Rest: Karteikarten)`;
+  const shareValue = h("span", { class: "share-value" }, shareText());
+  const slider = h("input", {
+    type: "range",
+    id: "mc-share",
+    min: 0,
+    max: 100,
+    step: MC_SHARE_STEP,
+    value: mcShare,
+    "aria-valuetext": `${mcShare} Prozent`,
+    oninput: () => {
+      mcShare = slider.valueAsNumber;
+      shareValue.textContent = shareText();
+      slider.setAttribute("aria-valuetext", `${mcShare} Prozent`);
+    },
+  });
+  const shareChoice = h(
+    "div",
+    { class: "share" },
+    h("label", { for: "mc-share" }, "Multiple Choice"),
+    slider,
+    shareValue,
+  );
+
   const status = h("p", { "aria-live": "polite", class: "selection" });
   const problem = h("div", { role: "alert" });
   const start = h("button", { type: "submit" });
@@ -232,6 +259,7 @@ function form(set: StoredSet, initial: PracticeSetup, context: LearnContext): No
       sections,
       directionChoice,
       countChoice,
+      shareChoice,
       status,
       h("div", { class: "actions" }, start),
     ),
