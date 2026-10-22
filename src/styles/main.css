@@ -380,6 +380,26 @@ input[type="file"] {
   margin-top: 1rem;
 }
 
+/* Zwischenstand und Ergebnis: beim ersten Versuch falsche Einträge (TDD 12.2) */
+.practice h2 {
+  margin: 1.5rem 0 0.5rem;
+  font-size: 1.125rem;
+}
+
+.mistakes {
+  margin: 0;
+  padding-left: 1.25rem;
+  overflow-wrap: anywhere;
+}
+
+.mistakes li {
+  margin: 0.25rem 0;
+}
+
+.mistakes .term {
+  font-weight: 600;
+}
+
 .sets .title {
   font-weight: 600;
 }

@@ -92,6 +92,15 @@ describe("startSession und finishSession", () => {
     expect(await getSetting(db, "practice:m4x8c2r9tw")).toBeUndefined();
   });
 
+  it("lässt die gemerkte Einrichtung bei einer Fehlersitzung unverändert", async () => {
+    const setup = { sections: "all", direction: "mixed", count: 10 };
+    await startSession(db, session("s2345678abcd"), { key: "practice:m4x8c2r9tw", value: setup });
+    const repeat = { ...session("t2345678abcd"), repeatOf: "s2345678abcd" };
+    await startSession(db, repeat);
+    expect(await getSetting(db, "practice:m4x8c2r9tw")).toEqual(setup);
+    expect(await readAll("sessions")).toEqual([session("s2345678abcd"), repeat]);
+  });
+
   it("lehnt das Abschließen einer unbekannten Sitzung ab, ohne etwas anzulegen", async () => {
     await expect(
       finishSession(db, "unbekannt", "ended", "2026-10-20T18:05:00.000Z"),

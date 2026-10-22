@@ -1,6 +1,7 @@
 // Ablauf einer Lernsitzung (TDD 12.2–12.5): Die Warteschlange liegt in domain/practice.ts, das
 // Speichern in storage/sessions.ts. Hier werden beide verbunden. Die laufende Sitzung lebt nur im
-// Arbeitsspeicher; nach einem Neuladen ist sie beendet, gespeicherte Antworten bleiben.
+// Arbeitsspeicher; nach einem Neuladen ist sie beendet, gespeicherte Antworten bleiben. „Nur Fehler
+// üben“ startet eine neue Sitzung mit Verweis auf die vorige (D-29).
 import { entryRev } from "../domain/hash";
 import { createId, ID_LENGTH } from "../domain/ids";
 import type { ReviewEvent, Session, StoredEntry, StoredSet } from "../domain/model";
@@ -10,6 +11,7 @@ import {
   hasChoices,
   multipleChoice,
   type PracticeState,
+  repeatMistakes,
   type Result,
   startPractice,
 } from "../domain/practice";
@@ -45,6 +47,21 @@ export interface PracticeSession {
   answer(result: Result): Promise<boolean>;
   /** Vorzeitiges Ende, z. B. beim Verlassen der Ansicht. */
   end(): void;
+  /**
+   * „Nur Fehler üben“: legt eine neue Sitzung mit den Fehlern an und beendet danach diese, falls sie
+   * noch läuft. Scheitert das Speichern, bleibt diese Sitzung bestehen.
+   */
+  repeatMistakes(): Promise<PracticeSession>;
+}
+
+/** Was alle Sitzungen aus derselben Einrichtung teilen; der Inhalt ändert sich währenddessen nicht. */
+interface Material {
+  readonly set: StoredSet;
+  readonly entries: ReadonlyMap<string, StoredEntry>;
+  readonly revs: ReadonlyMap<string, string>;
+  /** Kandidaten für falsche Antworten: erst die Sektionen der Sitzung, dann das übrige Set. */
+  readonly preferred: readonly StoredEntry[];
+  readonly rest: readonly StoredEntry[];
 }
 
 let current: PracticeSession | null = null;
@@ -83,7 +100,7 @@ export async function beginPractice(
   const preferred = set.sections.filter((s) => inSession.has(s.id)).flatMap((s) => s.entries);
   const rest = set.sections.filter((s) => !inSession.has(s.id)).flatMap((s) => s.entries);
   const everything = [...preferred, ...rest];
-  let state = startPractice(
+  const state = startPractice(
     [...entries.keys()],
     {
       direction: setup.direction,
@@ -104,6 +121,17 @@ export async function beginPractice(
 
   // Einmal pro Eintrag: Der Inhalt ändert sich während der Sitzung nicht.
   const revs = new Map([...entries].map(([id, entry]) => [id, entryRev(entry)]));
+  current = run(db, { set, entries, revs, preferred, rest }, session, state);
+}
+
+function run(
+  db: IDBDatabase,
+  material: Material,
+  session: Session,
+  initial: PracticeState,
+): PracticeSession {
+  const { set, entries, revs, preferred, rest } = material;
+  let state = initial;
   let finished = false;
   let ended = false;
   let asked: { state: PracticeState; question: Question } | null = null;
@@ -174,6 +202,23 @@ export async function beginPractice(
       ended = true;
       void close("ended");
     },
+    async repeatMistakes() {
+      const repeat = repeatMistakes(state.missed, Math.random);
+      const next: Session = {
+        id: createId(ID_LENGTH.session, randomBytes),
+        setId: set.id,
+        sectionIds: session.sectionIds,
+        startedAt: new Date().toISOString(),
+        status: "active",
+        config: { ...session.config, count: repeat.total },
+        repeatOf: session.id,
+      };
+      // Ohne gemerkte Einrichtung: Sie gehört zur Auswahl, nicht zu den Fehlern.
+      await startSession(db, next);
+      practice.end();
+      current = run(db, material, next, repeat);
+      return current;
+    },
   };
-  current = practice;
+  return practice;
 }

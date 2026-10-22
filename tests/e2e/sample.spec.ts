@@ -1,5 +1,5 @@
 // Beispielset (S-16): aus dem Empty State laden und üben (FR-32, AK-23, TDD 13.2). E2E-05 mit Multiple
-// Choice (S-18, AK-22); die Ergebnisliste ergänzt S-19.
+// Choice (S-18, AK-22), Ergebnisliste und „Nur Fehler üben“ (S-19, AK-08).
 import { expect, type Page, test } from "@playwright/test";
 import type { Answer, ReviewEvent, Session, StoredEntry, StoredSet } from "../../src/domain/model";
 import {
@@ -145,5 +145,26 @@ test("E2E-05 Empty State → Beispielset → Sitzung mit Multiple Choice", async
   expect(again.map((event) => event.result).sort()).toEqual(["correct", "incorrect"]);
   const [session] = await readStore<Session>(page, "sessions");
   expect(session!.config).toMatchObject({ count: 10, mcShare: 100 });
+
+  // Ergebnisliste mit dem Fehler; „Nur Fehler üben“ stellt ihn wieder als Multiple Choice (D-29).
+  const wrongEntry = byTerm.get(missed!)!;
+  await expect(page.locator(".mistakes li")).toHaveText([`${missed} – ${shown(wrongEntry)}`]);
+  await page.getByRole("button", { name: "Nur Fehler üben (1)" }).click();
+  await expect(page.getByText("0 von 1 geschafft")).toBeVisible();
+  await expect(page.locator(".card .prompt")).toHaveText(missed!);
+  await expect(options).toHaveCount(4);
+  await options.nth((await options.allTextContents()).indexOf(shown(wrongEntry))).click();
+  await page.getByRole("button", { name: "Weiter" }).click();
+  await expect(page.getByRole("heading", { name: "Geschafft" })).toBeVisible();
+  await expect(page.getByText("1 von 1 beim ersten Mal gewusst.")).toBeVisible();
+  await expect(page.locator(".mistakes")).toHaveCount(0);
+  const repeat = (await readStore<Session>(page, "sessions")).find((s) => s.repeatOf)!;
+  expect(repeat).toMatchObject({ repeatOf: session!.id, config: { count: 1, mcShare: 100 } });
+  const last = (await readStore<ReviewEvent>(page, "reviewEvents")).filter(
+    (event) => event.sessionId === repeat.id,
+  );
+  expect(last).toMatchObject([
+    { entryId: wrongEntry.id, mode: "multipleChoice", firstAttempt: true },
+  ]);
   expect(errors, "Fehler in der Konsole").toEqual([]);
 });

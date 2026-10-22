@@ -61,6 +61,12 @@ export async function startLearning(page: Page, title: string): Promise<void> {
   await page.getByRole("button", { name: /^\d+ Vokabeln? lernen$/ }).click();
 }
 
+/** Beendet eine Sitzung mit mindestens einer Antwort über den Zwischenstand; endet in der Bibliothek. */
+export async function endPractice(page: Page): Promise<void> {
+  await page.getByRole("button", { name: "Beenden" }).click();
+  await page.getByRole("link", { name: "Zurück zur Bibliothek" }).click();
+}
+
 /** Meldung oben in der Bibliothek, z. B. nach dem Import; die Hinweisleiste für Updates zählt nicht. */
 export const libraryMessage = (page: Page) => page.getByRole("main").getByRole("status");
 

@@ -1,6 +1,6 @@
 # TDD: Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.19 – Multiple Choice  
+**Version:** 2.20 – Zwischenstand und Fehlerwiederholung  
 **Stand:** 22. Oktober 2026  
 **Bezug:** PRD 2.4 (`PRD_Vokabeltrainer_Allgemein_v2.md`), Formatspezifikation Version 1 (`Formatspezifikation_Vokabelset_v1.md`), Review-Notizen (`20261019_TDD_v1_Review_Notizen.md`)  
 **Status:** Entwurf; Grundlage für M0 (Walking Skeleton)  
@@ -79,7 +79,7 @@ src/
 │   ├── merge.ts         Anwenden von Aktualisieren/Ersetzen
 │   ├── duplicates.ts    Duplikaterkennung
 │   ├── library.ts       Bibliothek: Gruppierung nach Lernsprache, Sortierung, Umfang eines Sets
-│   ├── practice.ts      Sitzungswarteschlange, Multiple-Choice-Auswahl
+│   ├── practice.ts      Sitzungswarteschlange, Fehler, Multiple-Choice-Auswahl
 │   ├── practiceSetup.ts Einrichtung einer Sitzung: Auswahl, Stufen, gemerkte Werte prüfen
 │   ├── stats.ts         Lernstand und Überblick aus Events
 │   ├── exportFormat.ts  Set-Export
@@ -103,11 +103,13 @@ Regeln:
 
 Hash-basiertes Routing (`#/`, `#/set/<id>`, `#/import`, `#/learn/<id>`, `#/practice`, `#/backup`, `#/settings`). Es funktioniert in einer einzelnen HTML-Datei, unter jedem Pfad des Hostings und unterstützt die Zurück-Taste unter Android. Feste Routen haben einen Pfadteil; eine Route wie `/set/` nimmt genau einen weiteren, nicht leeren Pfadteil als Parameter (URL-kodiert). `#/set/` ohne ID und eine kaputte Kodierung führen zu „Seite nicht gefunden“, eine unbekannte ID zu „Set nicht gefunden“, jeweils mit Weg zurück zur Bibliothek.
 
+In der Lernsitzung legt die App beim Zeigen der Karten einen zusätzlichen Verlaufseintrag mit derselben Adresse an (`history.pushState`). Er löst kein `hashchange` aus, der Router bemerkt ihn also nicht; die Zurück-Taste führt so zum Zwischenstand statt aus der Sitzung (12.2, D-29).
+
 ### 3.3 UI ohne Framework (D-05)
 
 - Ein kleiner Helfer `h(tag, props, ...children)` erzeugt DOM-Elemente. Kinder vom Typ String werden **immer als Textknoten** eingefügt. `innerHTML` wird im gesamten Code nicht für Daten verwendet (TAK-03).
 - Jede Ansicht ist eine Funktion, die aus dem Zustand ein DOM-Teilbaum erzeugt. Bei Zustandsänderungen wird die aktive Ansicht neu gerendert; Fokus und Scrollposition werden dabei gezielt erhalten.
-- Der Router übergibt jeder Ansicht ein `AbortSignal`, das beim Verlassen der Ansicht (auch über die Zurück-Taste) und beim Ende des Routings abgebrochen wird. Die Lernsitzung beendet sich darüber (12.5).
+- Der Router übergibt jeder Ansicht ein `AbortSignal`, das beim Verlassen der Ansicht (auch über die Zurück-Taste) und beim Ende des Routings abgebrochen wird. Die Lernsitzung beendet sich darüber (12.5); der zusätzliche Verlaufseintrag der Sitzung (3.2) zählt nicht als Verlassen.
 - Der Zustand liegt in `store.ts` (ein Objekt plus `subscribe`). Persistente Daten werden aus IndexedDB geladen; der Store ist nur eine Darstellung davon.
 
 ### 3.4 Mehrere Tabs (T-21)
@@ -575,8 +577,11 @@ Es gibt kein Zusammenführen von Backups.
 - Warteschlange aus den gewählten Einträgen, gemischt; bei `mixed` wird die Richtung pro Karte zufällig gewählt.
 - Falsch beantwortete Karten werden an Position 4 der Warteschlange wieder eingefügt (bzw. ans Ende, wenn diese kürzer ist).
 - `firstAttempt` gilt pro Eintrag und Sitzung: Nur die erste Antwort zu einem Eintrag zählt als Erstversuch.
-- „Ende“ während der Sitzung zeigt einen Zwischenstand und erlaubt das Fortsetzen. Der Sitzungszustand liegt im Arbeitsspeicher; nach einem Neuladen ist die Sitzung beendet, die bis dahin gespeicherten Antworten bleiben erhalten.
-- Ergebnis: Erstversuchsquote, Liste der beim ersten Versuch falschen Einträge, Aktion „Nur Fehler üben“.
+- Die beim ersten Versuch falschen Karten merkt sich der Zustand (`missed`) in der Reihenfolge der Antworten, jede nur einmal, mit Richtung und Form, wie sie gestellt wurde.
+- „Beenden“ und die Zurück-Taste (3.2) zeigen den **Zwischenstand**: Erstversuchsquote („3 von 4 beim ersten Mal gewusst.“), „Noch offen: n von m Vokabeln.“, „Weiterlernen (n offen)“, die Fehlerliste mit „Nur Fehler üben (k)“ und „Zurück zur Bibliothek“. Die Sitzung bleibt dabei `active` und der Update-Hinweis zurückgehalten (TAK-12); „Weiterlernen“ und die Vorwärts-Taste setzen sie fort, ein weiteres Zurück oder der Weg zur Bibliothek beenden sie als `ended`. Ohne Antwort gibt es keinen Zwischenstand: „Beenden“ führt zur Bibliothek, Zurück zur Einrichtung. Eine Antwort, die gerade gespeichert wird, zählt schon mit; ist sie erst im Zwischenstand gespeichert, wird er mit dem neuen Stand gezeigt (bzw. das Ergebnis, wenn es die letzte Karte war).
+- Der Sitzungszustand liegt im Arbeitsspeicher; nach einem Neuladen ist die Sitzung beendet, die bis dahin gespeicherten Antworten bleiben erhalten.
+- **Ergebnis:** Erstversuchsquote, Liste „Zum Nachlernen“ der beim ersten Versuch falschen Einträge („Wort – Bedeutungen“, beide Teile mit `lang`) und „Nur Fehler üben (k)“; ohne Fehler entfallen Liste und Aktion. Zurück verlässt die Sitzung.
+- **„Nur Fehler üben“** (D-29) aus Ergebnis oder Zwischenstand startet eine neue Sitzung mit genau den Fehlerkarten, neu gemischt, jede in Richtung und Form wie beim Fehler; jede Antwort zählt darin wieder als Erstversuch. Sie übernimmt `sectionIds`, Richtung und Anteil der Ausgangssitzung, `count` ist die Zahl der Fehler, `repeatOf` verweist auf die Ausgangssitzung (12.5). Die gemerkte Einrichtung (12.1) bleibt unverändert. Die neue Sitzung wird zuerst gespeichert, danach endet eine noch laufende Ausgangssitzung als `ended`; scheitert das Speichern, bleibt alles, wie es war, und ein Hinweis erscheint.
 
 ### 12.3 Abfrageformen und Bedienung (FR-09)
 
@@ -626,11 +631,13 @@ interface Session {
   endedAt?: string;
   status: "active" | "completed" | "ended" | "interrupted";
   config: { direction: "termToMeaning" | "meaningToTerm" | "mixed"; count: number; mcShare: number };  // mcShare in Prozent
+  repeatOf?: string;         // „Nur Fehler üben“: ID der Ausgangssitzung (D-29)
 }
 ```
 
 - Wird beim Start mit `status: "active"` geschrieben.
-- `completed`: alle Karten beantwortet. `ended`: vorzeitig beendet und nicht fortgesetzt, auch durch Verlassen der Ansicht.
+- `completed`: alle Karten beantwortet. `ended`: vorzeitig beendet und nicht fortgesetzt, auch durch Verlassen der Ansicht. Im Zwischenstand (12.2) bleibt eine Sitzung `active`.
+- `repeatOf` zeigt auf eine Sitzung desselben Sets; da beide nur zusammen gelöscht werden (D-25), prüft `validateRecords` nur den Typ.
 - Sitzungen, die beim nächsten App-Start noch `active` sind, werden auf `interrupted` gesetzt, bevor eine neue Sitzung beginnen kann. `endedAt` bleibt dabei leer, weil der Zeitpunkt des Abbruchs unbekannt ist.
 - Kennzahlen (Zahl der Antworten, Erstversuchsquote) werden aus den Events berechnet, nicht in der Sitzung gespeichert.
 
@@ -640,6 +647,7 @@ interface Session {
   - pro Eintrag: Zahl der Antworten, letzte Antwort, letztes Ergebnis, Ergebnis des letzten Erstversuchs,
   - pro Set und Sektion: Zahl der Sitzungen, Datum der letzten Sitzung, Erstversuchsquote der letzten fünf Sitzungen.
 - Die Zuordnung zu Sektionen richtet sich nach der **aktuellen** Sektion des Eintrags.
+- Sitzungen mit `repeatOf` („Nur Fehler üben“) sind erkennbar; ob sie in Zahl und Quote der Sitzungen eingehen, legt S-20 fest.
 - Einträge, die nicht mehr existieren, werden ignoriert.
 - Mengengerüst: etwa 11.000 Events pro Jahr bei täglicher Nutzung. Die Berechnung für ein Set mit 50.000 Events muss auf einem Mittelklasse-Smartphone unter 200 ms bleiben (TAK-15). Wird das verfehlt, kommt ein neu aufbaubarer Cache hinzu, der nicht ins Backup gehört.
 
@@ -734,7 +742,7 @@ Für diese Module werden Tests vor der Implementierung geschrieben:
 - `diff.ts` und `merge.ts`: Tabelle 9.5 vollständig, Sonderfälle 9.6, Aktualisieren vs. Ersetzen, `null`-Löschung, Reihenfolgeregeln, Scope-Schutz;
 - `duplicates.ts`: Schwellenwert, Sprachpaar, Ausgabe;
 - `library.ts`: Gruppierung nach Lernsprache, Sortierung nach Lernstufe (numerisch, ohne Lernstufe zuletzt) und Titel, Umfang eines Sets;
-- `practice.ts`: Warteschlange, Wiedereinfügen, `firstAttempt`, Multiple-Choice-Auswahl und Rückfall auf Karteikarte;
+- `practice.ts`: Warteschlange, Wiedereinfügen, `firstAttempt`, Fehlerliste und „Nur Fehler üben“, Multiple-Choice-Auswahl und Rückfall auf Karteikarte;
 - `practiceSetup.ts`: Voreinstellung, gemerkte Einrichtung mit fehlenden oder unbrauchbaren Teilen, Stufen, zufällige Teilmenge nur aus den gewählten Sektionen;
 - `stats.ts`: Kennzahlen, gelöschte Einträge, verschobene Einträge;
 - `migrations/`: jede Migration mit Fixture vorher und nachher.
@@ -766,7 +774,7 @@ Projekte: `mobile-chromium` (Pixel-Emulation) und `mobile-webkit` (iPhone-Emulat
 | E2E-02 Backup → Daten löschen → Wiederherstellen | M0 | AK-10 |
 | E2E-03 Offline-Start nach erstem Laden | M0 | AK-21 |
 | E2E-04 Migration: alte DB per Init-Skript anlegen → App öffnen → Daten nutzbar | mit der ersten Erhöhung von `DB_VERSION` nach S-29 (7.4); bis dahin Integrationstests | AK-24 |
-| E2E-05 Empty State → Beispielset → Sitzung mit Multiple Choice → Ergebnis (in `sample.spec.ts`; Multiple Choice mit einem zweiten Set in anderer Lernsprache seit S-18, Ergebnisliste mit S-19) | M1 | AK-08, AK-14, AK-22, AK-23 |
+| E2E-05 Empty State → Beispielset → Sitzung mit Multiple Choice → Ergebnis (in `sample.spec.ts`; Multiple Choice mit einem zweiten Set in anderer Lernsprache seit S-18, Ergebnisliste und „Nur Fehler üben“ seit S-19) | M1 | AK-08, AK-14, AK-22, AK-23 |
 | E2E-06 Import mit Begleittext und Zusatzfeld (Datei) → Warnung sichtbar | M1 | AK-01 |
 | E2E-07 Bearbeiten → Neuladen → Änderung da | M3 | AK-03, AK-25 |
 | E2E-08 Teil-Export → Datei ändern → Aktualisieren; andere Sektionen unverändert | M4 | AK-04, AK-05 |
@@ -867,6 +875,7 @@ Ergebnisse (LLM-App, Modell, Datum, Befund) werden im Umsetzungsplan bei S-15 fe
 | D-26 | Formatspezifikation und Schema werden unverändert neben der App veröffentlicht und vorab gespeichert; die Hilfe gibt KI-Chats eine Kurzvorlage mit Link darauf, das Teilen als Datei ist der Ausweichweg | 4.2, 5.2, 13.1, Formatspez. 11 | Nutzerentscheidung in S-15, 21. Oktober 2026 |
 | D-27 | „Lernen“ öffnet eine eigene Einrichtung; Anzahl in festen Stufen 10, 20, 30 und „alle“; Voreinstellung Lernsprache → Muttersprache; Regler für den Multiple-Choice-Anteil erst mit Multiple Choice | 12.1 | Nutzerentscheidung in S-17, 21. Oktober 2026 |
 | D-28 | Multiple Choice als feste Quote beim Start; falsch beantwortete Karten kommen in derselben Form wieder; Rückmeldung mit „Weiter“ statt automatischem Weiterschalten; Grammatik, Beispiele und Notiz auf der Rückseite der Karteikarte und nach einer Multiple-Choice-Antwort | 12.3 | Nutzerentscheidung in S-18, 22. Oktober 2026 |
+| D-29 | „Nur Fehler üben“ stellt die Fehlerkarten in Richtung und Form wie beim Fehler als eigene Sitzung mit `repeatOf`; die Zurück-Taste zeigt in der Sitzung den Zwischenstand (zusätzlicher Verlaufseintrag); ohne Antwort kein Zwischenstand | 3.2, 12.2, 12.5 | Nutzerentscheidung in S-19, 22. Oktober 2026 |
 
 ---
 
@@ -945,6 +954,7 @@ Geprüft am 18. bis 20. Oktober 2026.
 | 2.17 | 22. Oktober 2026 | Beispielset (S-16): ohne IDs, Laden über den normalen Importweg und danach Set-Ansicht (13.2), Strukturtest als Fixture (15.3), Teil von E2E-05 (15.4) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.18 | 22. Oktober 2026 | Sitzung einrichten (S-17): eigene Ansicht `#/learn/<id>` (3.2, D-27), Stufen, Voreinstellung und gemerkte Einrichtung pro Set (12.1, 6.1), Löschen nimmt sie mit (10), `practiceSetup.ts` (3.1, 15.2) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.19 | 22. Oktober 2026 | Multiple Choice (S-18): Regler und gemerkter Anteil (12.1), feste Quote, Wiederholung als Multiple Choice, Bevorzugung der Sektionen der Sitzung, Ablauf mit Rückmeldung und „Weiter“, Wischschwelle, gehaltene Tasten, Details auf der Rückseite (12.3, D-28), `mcShare` in Prozent (12.5), E2E-05 (15.4) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.20 | 22. Oktober 2026 | Zwischenstand und Fehlerwiederholung (S-19): Zwischenstand mit Weiterlernen, Zurück-Taste über einen zusätzlichen Verlaufseintrag (3.2, 3.3), Fehlerliste und „Nur Fehler üben“ als eigene Sitzung mit `repeatOf` (12.2, 12.5, D-29), Hinweis für den Lernüberblick (12.6), E2E-05 (15.4) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 
 ---
 
@@ -1014,7 +1024,8 @@ Ziel: Jeder riskante Teil läuft einmal von vorn bis hinten, in einfachster Form
 - ✅ **S-18** Multiple Choice mit Kandidatenregeln (testgetrieben), Bedienwege Karteikarte – FR-09, AK-22  
   Dazu Notiz, Beispiele und Grammatik eines Eintrags auf der Rückseite der Karteikarte zeigen (seit S-12 gespeichert) und den Regler für den Multiple-Choice-Anteil (Standard 25 %) in der Einrichtung ergänzen, gemerkt wie die übrigen Werte (12.1, D-27).  
   Erledigt am 22. Oktober 2026. Nutzerentscheidungen (D-28): feste Quote beim Start statt Zufall pro Karte, falsch beantwortete Multiple-Choice-Karten kommen als Multiple Choice wieder, Rückmeldung mit „Weiter“, Details auch nach einer Multiple-Choice-Antwort. Selbst festgelegt: „dieselben Sektionen“ heißt die Sektionen der Sitzung; Anteil in ganzen Prozent, Schritt 5; Wischschwelle 80 px wie im Prototyp. Domain testgetrieben in `practice.ts`: Seite und Vergleichsform der Antworten (getrimmt, klein, NFC), Ausschluss bei gemeinsamer akzeptierter Antwort auch über Varianten und weitere Bedeutungen, doppelte Anzeige nur einmal, Sektionen der Sitzung zuerst, Rückfall unter drei Kandidaten, Quote mit Rundung und Deckel, Eignung je Richtung, Wiederholung in derselben Form; `practiceSetup.ts` merkt `mcShare` und liest ihn tolerant. Die Eignung prüft `hasChoices` nur bis zum dritten Kandidaten, und beim Start werden nur so viele Karten geprüft, bis die Quote voll ist – sonst wäre der Start bei großen Sets quadratisch. Iterator-Helfer (`take`, `toArray`) sind nicht in ES2023 und nicht `baseline-widely-available`; deshalb eine Schleife. Die Detailanzeige ist aus der Set-Ansicht nach `components/entryDetails.ts` gewandert, das Wischen liegt in `components/swipe.ts`. E2E: E2E-05 (Beispielset und ein französisches Set, 100 % Multiple Choice, zehn Fragen: vier verschiedene Antworten aus den Bedeutungen des Beispielsets, genau eine richtig, keine mit gemeinsamer akzeptierter Antwort; eine falsche Antwort mit Markierung, Wiederholung als Multiple Choice, Events `multipleChoice`), Tastatur (Pfeile erst nach dem Aufdecken, gehaltene Taste nur einmal), Wischen (vorn nur aufdecken, zu kurz nichts, hinten bewerten), Details auf der Rückseite, Rückfall auf Karteikarten bei drei Einträgen, gemerkter Regler – in mobile-chromium und mobile-webkit. Events liegen nach zufälliger ID im Store; Tests vergleichen Ergebnisse deshalb ohne Reihenfolge. Gegenproben: Vergleich ohne NFC, Vorzug der Sektionen umgedreht, Quote ohne Deckel, Wiederholung als Karteikarte, Pfeile decken vorn auf, Event-Form fest auf Karteikarte – jeweils scheitern die passenden Tests. Ohne Schutz gegen doppeltes Aufdecken und ohne `repeat`-Prüfung bleiben die Tests grün: Nach einer Wischgeste feuert kein Klick, weil die Karte beim `pointerup` ersetzt wird, und gehaltene Pfeile treffen nach dem Bewerten auf die Vorderseite, wo sie nichts tun; beides bleibt als Absicherung. Mit `playwright-cli` (mobiles Chromium, 320 px, hell und dunkel, Beispielset) geprüft: kein horizontales Scrollen, Regler 44 px hoch und mit Pfeiltasten in 5er-Schritten bedienbar, Fokus auf der Frage, nach der Wahl auf „Weiter“, nach dem Aufdecken auf der Antwort; Markierung über Zeichen und Rahmen, nicht nur Farbe; Details unter den Schaltflächen; Konsole leer. Offen: Wischen und Multiple Choice auf iPhone und Android (Gerätecheck durch den Nutzer).
-- 🔲 **S-19** Fehlerwiederholung, Zwischenstand, Fortsetzen, Ergebnis, „Nur Fehler üben“ – FR-10, FR-12
+- ✅ **S-19** Fehlerwiederholung, Zwischenstand, Fortsetzen, Ergebnis, „Nur Fehler üben“ – FR-10, FR-12
+  Erledigt am 22. Oktober 2026. Nutzerentscheidungen (D-29): Fehlerkarten in Richtung und Form wie beim Fehler, Fehlersitzung mit `repeatOf`, die Zurück-Taste zeigt den Zwischenstand, ohne Antwort kein Zwischenstand. Selbst festgelegt: Im Zwischenstand bleibt die Sitzung `active` und der Update-Hinweis zurückgehalten; die Fehlersitzung merkt keine Einrichtung und übernimmt Sektionen, Richtung und Anteil; aus dem Zwischenstand endet die Ausgangssitzung erst, wenn die neue gespeichert ist. Domain testgetrieben in `practice.ts`: `missed` (nur Erstversuche, jede Karte einmal, Reihenfolge der Antworten) und `repeatMistakes` (Richtung und Form bleiben, neu gemischt, wieder Erstversuch). `validateRecords` prüft `repeatOf` als optionalen Text; Integrationstest: Eine Fehlersitzung lässt die gemerkte Einrichtung unverändert. `app/practice.ts`: Der Sitzungsablauf ist als `run()` herausgelöst, `repeatMistakes()` startet daraus die Fehlersitzung. Die Ansicht legt beim Zeigen der Karten einen Verlaufseintrag mit derselben Adresse an (`history.pushState`, kein `hashchange`); `popstate` zeigt den Zwischenstand, Vorwärts setzt fort. Gefunden durch den E2E-Test in Chromium: Zurück direkt nach einer Antwort kam vor deren Speicherung an und führte als „ohne Antwort“ aus der Sitzung; eine laufende Speicherung zählt jetzt mit, und der Zwischenstand wird danach mit dem neuen Stand gezeigt. E2E: Zwischenstand und Weiterlernen in derselben Sitzung, Zwischenstand → Bibliothek und Beenden ohne Antwort (`ended`), Zurück → Zwischenstand → Vorwärts → Zurück → Einrichtung und Zurück ohne Antwort, „Nur Fehler üben“ aus Ergebnis (Verweis, Sektionen, Anteil, Einrichtung unverändert) und Zwischenstand (Ausgangssitzung `ended`), E2E-05 mit Ergebnisliste und Wiederholung als Multiple Choice, E2E-14 mit Zwischenstand – in mobile-chromium und mobile-webkit, die Sitzungstests fünfmal wiederholt grün. Bestehende Tests beenden über den Helfer `endPractice`. Gegenproben: Fehler auch bei der Wiederholung merken, Fehlersitzung nur als Karteikarten, ohne Verlaufseintrag, Fehlersitzung mit gemerkter Einrichtung – jeweils scheitern die passenden Tests. Mit `playwright-cli` (mobiles Chromium, 320 px, hell und dunkel, Beispielset) geprüft: kein horizontales Scrollen in Zwischenstand und Ergebnis, Fokus auf „Zwischenstand“ bzw. „Geschafft“, Tab-Reihenfolge Weiterlernen → Nur Fehler üben → Bibliothek, Schaltflächen 44 px hoch, `lang` an Wort und Bedeutungen, Zurück vom Ergebnis zur Einrichtung, Konsole leer. Offen für den Gerätecheck: Zurück-Geste auf Android im Browser und als Home-Bildschirm-App.
 - 🔲 **S-20** Lernüberblick aus Events (testgetrieben) – FR-11, AK-17
 - 🔲 **S-21** Einstellungen, Hell/Dunkel, App-Version – FR-21, FR-25
 - 🔲 **S-22** Speicherfehler und Statusanzeige – FR-23, AK-26

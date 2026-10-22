@@ -4,6 +4,7 @@ import { expect, type Page, test } from "@playwright/test";
 import type { ReviewEvent, Session, StoredSet } from "../../src/domain/model";
 import {
   collectErrors,
+  endPractice,
   importSet,
   importText,
   libraryMessage,
@@ -123,7 +124,7 @@ test("Set löschen kündigt den Umfang an und löscht den Lernstand mit", async 
   await page.getByRole("button", { name: /Tippen zum Aufdecken/ }).click();
   await page.getByRole("button", { name: "Gewusst" }).click();
   await expect(page.getByText("1 von 3 geschafft")).toBeVisible();
-  await page.getByRole("button", { name: "Beenden" }).click();
+  await endPractice(page);
   await expect
     .poll(async () => (await readStore<ReviewEvent>(page, "reviewEvents")).length)
     .toBe(1);

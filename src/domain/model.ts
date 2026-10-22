@@ -81,4 +81,6 @@ export interface Session {
   endedAt?: string;
   status: SessionStatus;
   config: { direction: Direction | "mixed"; count: number; mcShare: number };
+  /** „Nur Fehler üben“: die Sitzung, deren Fehler hier wiederholt werden (D-29). */
+  repeatOf?: string;
 }

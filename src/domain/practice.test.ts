@@ -2,12 +2,14 @@ import { describe, expect, it } from "vitest";
 import type { StoredEntry } from "./model";
 import {
   answer,
+  type Card,
   cardFaces,
   currentCard,
   distractors,
   hasChoices,
   multipleChoice,
   type PracticeState,
+  repeatMistakes,
   sideText,
   startPractice,
 } from "./practice";
@@ -193,6 +195,54 @@ describe("answer", () => {
     const before: unknown = JSON.parse(JSON.stringify(state));
     reply(state, "incorrect");
     expect(state).toEqual(before);
+  });
+
+  it("merkt die beim Erstversuch falschen Karten in der Reihenfolge der Antworten", () => {
+    let state = start();
+    expect(state.missed).toEqual([]);
+    const [a, b, c] = ids(state);
+    state = reply(state, "incorrect"); // a
+    state = reply(state, "correct"); // b
+    state = reply(state, "incorrect"); // c
+    expect(state.missed).toEqual([
+      { entryId: a, direction: "termToMeaning", mode: "flashcard", firstAttempt: true },
+      { entryId: c, direction: "termToMeaning", mode: "flashcard", firstAttempt: true },
+    ]);
+    expect(state.missed.map((card) => card.entryId)).not.toContain(b);
+  });
+
+  it("merkt eine Karte nur einmal, auch wenn die Wiederholung wieder falsch ist", () => {
+    let state = startPractice(["a"], { direction: "termToMeaning" }, sequence(0.99));
+    state = reply(reply(reply(state, "incorrect"), "incorrect"), "correct");
+    expect(state.missed.map((card) => card.entryId)).toEqual(["a"]);
+  });
+});
+
+describe("repeatMistakes", () => {
+  const missed: Card[] = [
+    { entryId: "a", direction: "termToMeaning", mode: "flashcard", firstAttempt: true },
+    { entryId: "b", direction: "meaningToTerm", mode: "multipleChoice", firstAttempt: true },
+    { entryId: "c", direction: "termToMeaning", mode: "multipleChoice", firstAttempt: true },
+  ];
+
+  it("stellt jede Karte in Richtung und Form wie beim Fehler, neu gemischt", () => {
+    // Wie bei startPractice: [a, b, c] → [c, b, a] → [b, c, a].
+    const state = repeatMistakes(missed, sequence(0));
+    expect(state.queue).toEqual([missed[1], missed[2], missed[0]]);
+    expect(state).toMatchObject({ total: 3, done: 0, firstAttempts: 0, firstCorrect: 0 });
+    expect(state.missed).toEqual([]);
+  });
+
+  it("zählt jede Karte wieder als Erstversuch", () => {
+    const state = repeatMistakes([{ ...missed[0]!, firstAttempt: false }], sequence(0));
+    expect(state.queue[0]!.firstAttempt).toBe(true);
+  });
+
+  it("ändert die Eingabe nicht und kommt mit einer leeren Liste aus", () => {
+    const before: unknown = JSON.parse(JSON.stringify(missed));
+    repeatMistakes(missed, sequence(0.5));
+    expect(missed).toEqual(before);
+    expect(repeatMistakes([], sequence(0)).queue).toEqual([]);
   });
 });
 

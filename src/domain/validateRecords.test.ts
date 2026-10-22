@@ -104,6 +104,16 @@ describe("validateRecords", () => {
     expect(validateRecords(records({ sessions: [running] }))).toEqual([]);
   });
 
+  it("akzeptiert eine Fehlersitzung mit Verweis und prüft dessen Typ", () => {
+    const first = session("session00001", "set0000001");
+    const repeat = session("session00002", "set0000001", { repeatOf: "session00001" });
+    expect(validateRecords(records({ sessions: [first, repeat] }))).toEqual([]);
+    const broken = session("session00002", "set0000001", { repeatOf: 7 as never });
+    expect(validateRecords(records({ sessions: [first, broken] }))).toEqual([
+      "Lernsitzung 2: Die Angabe „repeatOf“ fehlt oder ist ungültig.",
+    ]);
+  });
+
   it("akzeptiert Antworten zu Einträgen, die es im Set nicht mehr gibt", () => {
     const old = event("event0000001", "session00001", "set0000001", { entryId: "gone01" });
     expect(validateRecords(records({ reviewEvents: [old] }))).toEqual([]);

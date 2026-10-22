@@ -93,6 +93,8 @@ const SESSION_FIELDS: Record<string, Check> = {
     (direction(value.direction) || value.direction === "mixed") &&
     count(value.count) &&
     number(value.mcShare),
+  // Zeigt auf eine Sitzung desselben Sets; beide werden nur zusammen gelöscht (D-25).
+  repeatOf: optional(text),
 };
 
 const EVENT_FIELDS: Record<string, Check> = {
