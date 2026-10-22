@@ -17,10 +17,11 @@
   -webkit-text-size-adjust: 100%;
 }
 
-/* Dunkles Schema bewusst ohne light-dark(): Vite rechnet es auf prefers-color-scheme herunter,
-   eine spätere manuelle Umschaltung (TDD 13.5) bräuchte dann Sonderwege. */
+/* Darstellung (TDD 13.5): ohne `data-theme` folgt die App dem Gerät, „light“ und „dark“ haben Vorrang.
+   Die dunklen Farben stehen deshalb zweimal und müssen gleich bleiben; ein E2E-Test vergleicht sie.
+   Bewusst ohne light-dark(): Vite rechnet es auf prefers-color-scheme herunter. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #121212;
     --fg: #ececec;
     --accent: #7fb0ff;
@@ -29,6 +30,25 @@
     --right: #6fd08c;
     --wrong: #ff8a80;
   }
+}
+
+:root[data-theme="dark"] {
+  --bg: #121212;
+  --fg: #ececec;
+  --accent: #7fb0ff;
+  --surface: #1e2229;
+  --border: #353b46;
+  --right: #6fd08c;
+  --wrong: #ff8a80;
+}
+
+/* Regler, Radioknöpfe und Scrollleisten folgen der gewählten Darstellung. */
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 *,
@@ -162,21 +182,24 @@ input[type="file"] {
   overflow-wrap: anywhere;
 }
 
-.setup fieldset {
+.setup fieldset,
+.settings fieldset {
   min-width: 0;
   margin: 1.5rem 0 0;
   padding: 0;
   border: none;
 }
 
-.setup legend {
+.setup legend,
+.settings legend {
   margin-bottom: 0.5rem;
   padding: 0;
   font-size: 1.125rem;
   font-weight: 600;
 }
 
-.setup input {
+.setup input,
+.settings input {
   width: 1.25rem;
   height: 1.25rem;
   margin: 0;
@@ -535,8 +558,9 @@ input[type="file"] {
   margin-top: 2rem;
 }
 
-/* Backup (TDD 11.3, 11.4) */
-.backup h2 {
+/* Backup (TDD 11.3, 11.4) und Einstellungen (TDD 13.5) */
+.backup h2,
+.settings h2 {
   margin-top: 2rem;
   font-size: 1.25rem;
 }

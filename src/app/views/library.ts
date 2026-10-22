@@ -61,6 +61,7 @@ export function libraryView(context: LibraryContext): Node {
     sets,
     more,
     h("p", null, h("a", { href: "#/backup" }, "Backup und Wiederherstellung")),
+    h("p", null, h("a", { href: "#/settings" }, "Einstellungen")),
     status,
     context.persistence === "not-granted" && request,
   );

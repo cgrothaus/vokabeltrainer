@@ -1,7 +1,7 @@
 // Backup lesen und wiederherstellen (TDD 11.3, 11.4). Geprüft und migriert wird vorher in
-// domain/backup.ts; hier geht es nur um konsistentes Lesen und atomares Ersetzen.
+// domain/backup.ts; hier geht es nur um konsistentes Lesen und atomares Ersetzen bzw. Leeren.
 import { BACKUP_STORES, type BackupFile, type CheckedBackup, createBackup } from "../domain/backup";
-import { putMeta } from "./meta";
+import { type MetaKey, putMeta } from "./meta";
 import type { StoreName } from "./schema";
 import { runTransaction } from "./transaction";
 
@@ -58,4 +58,18 @@ export async function restoreBackup(
     console.error("Backup nicht wiederhergestellt", error);
     return { ok: false, reason: "failed" };
   }
+}
+
+/**
+ * „Alle Daten löschen“ (TDD 10): leert in einer Transaktion alles, was ins Backup gehört, und vergisst
+ * das letzte Backup samt Erinnerung, weil es den neuen Bestand nicht mehr sichert. Die Anfrage nach
+ * dauerhaftem Speicher betrifft den Browser und bleibt vermerkt.
+ */
+export function clearAllData(db: IDBDatabase): Promise<void> {
+  return runTransaction(db, [...BACKUP_STORES, "meta"], "readwrite", (transaction) => {
+    for (const store of BACKUP_STORES) transaction.objectStore(store).clear();
+    const meta = transaction.objectStore("meta");
+    meta.delete("lastBackupAt" satisfies MetaKey);
+    meta.delete("backupReminderSnoozedUntil" satisfies MetaKey);
+  });
 }
