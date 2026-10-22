@@ -1,5 +1,5 @@
 // Gemeinsame Helfer der E2E-Tests. Die Vokabeln sind frei gewählter Grundwortschatz.
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 /** Drei Einträge; `rain`, `sun` und `autumn` mit ihren Bedeutungen. */
 export function setFile(title: string, id?: string): string {
@@ -83,4 +83,15 @@ export function readStore<T>(page: Page, store: string): Promise<T[]> {
       }),
     store,
   );
+}
+
+/** Wischt waagerecht über die Mitte des Elements (Pointer-Events wie mit der Maus). */
+export async function swipe(page: Page, target: Locator, dx: number): Promise<void> {
+  const box = (await target.boundingBox())!;
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + dx, y, { steps: 6 });
+  await page.mouse.up();
 }

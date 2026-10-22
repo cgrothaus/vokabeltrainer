@@ -1,5 +1,5 @@
-// Sitzung einrichten (S-17): Sektionen, Richtung und Anzahl bestimmen die Sitzung; die Einrichtung wird
-// pro Set gemerkt und mit dem Set gelöscht (TDD 12.1, FR-07, FR-08, FR-21, D-27).
+// Sitzung einrichten (S-17, S-18): Sektionen, Richtung, Anzahl und Anteil an Multiple Choice bestimmen die
+// Sitzung; die Einrichtung wird pro Set gemerkt und mit dem Set gelöscht (TDD 12.1, FR-07, FR-08, FR-21, D-27).
 import { expect, type Page, test } from "@playwright/test";
 import type { Session, StoredSet } from "../../src/domain/model";
 import { collectErrors, importText, readStore } from "./support";
@@ -58,8 +58,11 @@ const section = (page: Page, title: string) =>
   page.getByRole("checkbox", { name: new RegExp(`^${title}`) });
 const radio = (page: Page, name: string) => page.getByRole("radio", { name, exact: true });
 const startButton = (page: Page) => page.getByRole("button", { name: /lernen$/i });
+const mcShare = (page: Page) => page.getByRole("slider", { name: "Multiple Choice" });
 
-test("Sektion, Richtung und Anzahl bestimmen die Sitzung und bleiben gemerkt", async ({ page }) => {
+test("Sektion, Richtung, Anzahl und Anteil bestimmen die Sitzung und bleiben gemerkt", async ({
+  page,
+}) => {
   const errors = collectErrors(page);
   const set = await importTwoSections(page);
   await openSetup(page);
@@ -71,11 +74,15 @@ test("Sektion, Richtung und Anzahl bestimmen die Sitzung und bleiben gemerkt", a
   await expect(radio(page, "alle (20)")).toBeChecked();
   await expect(page.getByRole("radio")).toHaveCount(5);
   await expect(startButton(page)).toHaveText("20 Vokabeln lernen");
+  await expect(mcShare(page)).toHaveValue("25");
+  await expect(page.getByText("25 % (Rest: Karteikarten)")).toBeVisible();
 
   await section(page, "Farben").uncheck();
   await expect(page.getByText("12 Vokabeln ausgewählt.")).toBeVisible();
   await radio(page, "Deutsch → Englisch").check();
   await radio(page, "10").check();
+  await mcShare(page).fill("40");
+  await expect(page.getByText("40 % (Rest: Karteikarten)")).toBeVisible();
   await startButton(page).click();
 
   await expect(page.getByText("0 von 10 geschafft")).toBeVisible();
@@ -86,12 +93,17 @@ test("Sektion, Richtung und Anzahl bestimmen die Sitzung und bleiben gemerkt", a
   const [session] = await readStore<Session>(page, "sessions");
   expect(session).toMatchObject({
     sectionIds: [set.sections[1]!.id],
-    config: { direction: "meaningToTerm", count: 10, mcShare: 0 },
+    config: { direction: "meaningToTerm", count: 10, mcShare: 40 },
   });
   expect(await readStore(page, "settings")).toEqual([
     {
       key: `practice:${set.id}`,
-      value: { sections: [set.sections[1]!.id], direction: "meaningToTerm", count: 10 },
+      value: {
+        sections: [set.sections[1]!.id],
+        direction: "meaningToTerm",
+        count: 10,
+        mcShare: 40,
+      },
     },
   ]);
 
@@ -102,6 +114,7 @@ test("Sektion, Richtung und Anzahl bestimmen die Sitzung und bleiben gemerkt", a
   await expect(section(page, "Zahlen")).toBeChecked();
   await expect(radio(page, "Deutsch → Englisch")).toBeChecked();
   await expect(radio(page, "10")).toBeChecked();
+  await expect(mcShare(page)).toHaveValue("40");
   await expect(startButton(page)).toHaveText("10 Vokabeln lernen");
   expect(errors, "Fehler in der Konsole").toEqual([]);
 });

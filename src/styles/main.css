@@ -5,6 +5,8 @@
   --accent: #1f5fbf;
   --surface: #f1f4f9;
   --border: #d5dbe5;
+  --right: #1e7a3c;
+  --wrong: #b3261e;
   font-family:
     system-ui,
     -apple-system,
@@ -24,6 +26,8 @@
     --accent: #7fb0ff;
     --surface: #1e2229;
     --border: #353b46;
+    --right: #6fd08c;
+    --wrong: #ff8a80;
   }
 }
 
@@ -232,6 +236,24 @@ input[type="file"] {
   font-weight: 600;
 }
 
+/* Anteil an Multiple Choice: Regler in voller Breite, Wert darunter als Text. */
+.share {
+  margin-top: 1.5rem;
+}
+
+.share label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.setup .share input {
+  display: block;
+  width: 100%;
+  height: 44px;
+}
+
 .setup .selection {
   margin: 1.5rem 0 0.75rem;
 }
@@ -272,8 +294,14 @@ input[type="file"] {
   font-weight: 400;
   text-align: center;
   overflow-wrap: anywhere;
-  /* Vertikales Scrollen bleibt möglich; horizontales Wischen bekommt die Karte ab S-18. */
+  /* Vertikales Scrollen bleibt beim Browser, waagerechtes Wischen bekommt die Karte. */
   touch-action: pan-y;
+  user-select: none;
+}
+
+/* Die Fragekarte bei Multiple Choice ist kleiner, damit die Antworten ohne Scrollen sichtbar bleiben. */
+.card.question {
+  min-height: 8rem;
 }
 
 .card .prompt,
@@ -291,6 +319,65 @@ input[type="file"] {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.75rem;
+}
+
+/* Antworten bei Multiple Choice untereinander, in voller Breite. */
+.options {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.options .option {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--fg);
+  font-weight: 400;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+/* Nach der Wahl: Zeichen, Rahmen und Farbe; gesperrt, aber gut lesbar. */
+.options .option:disabled {
+  opacity: 1;
+}
+
+.options .right {
+  border: 2px solid var(--right);
+  font-weight: 600;
+}
+
+.options .wrong {
+  border: 2px dashed var(--wrong);
+}
+
+.options .right .mark {
+  color: var(--right);
+}
+
+.options .wrong .mark {
+  color: var(--wrong);
+}
+
+.practice .feedback {
+  margin: 0.75rem 0;
+  font-weight: 600;
+}
+
+.practice .feedback:empty {
+  margin: 0;
+}
+
+.practice .details {
+  margin-top: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.practice .details p {
+  margin: 0.25rem 0;
+}
+
+.practice .actions {
+  margin-top: 1rem;
 }
 
 .sets .title {

@@ -3,7 +3,7 @@
 **Stand:** 22. Oktober 2026  
 **App:** https://cgrothaus.github.io/vokabeltrainer/
 
-Danke, dass du mittestest! Die App ist noch ein Gerüst: Sie kann Vokabeln importieren, als Karteikarten abfragen und ein Backup speichern. Wir wollen herausfinden, ob dieser Weg auf deinem Handy von vorn bis hinten funktioniert – besonders der Schritt mit dem KI-Chat.
+Danke, dass du mittestest! Die App ist noch ein Gerüst: Sie kann Vokabeln importieren, als Karteikarten und Multiple Choice abfragen und ein Backup speichern. Wir wollen herausfinden, ob dieser Weg auf deinem Handy von vorn bis hinten funktioniert – besonders der Schritt mit dem KI-Chat.
 
 ## Überblick
 
@@ -44,7 +44,7 @@ Klappt es, zeigt eine **Vorschau** Titel, Sprachen und Sektionen mit der Zahl de
 
 ## 4. Lernen und sichern
 
-1. **Lernen:** In der Bibliothek beim Set auf „Lernen“ tippen. Danach Sektionen, Richtung (z. B. „Englisch → Deutsch“ oder „Gemischt“) und Anzahl wählen und unten auf „… Vokabeln lernen“ tippen; die App merkt sich die Auswahl pro Set. Karte antippen zum Aufdecken, dann „Gewusst“ oder „Nochmal“. „Nochmal“-Karten kommen später wieder.
+1. **Lernen:** In der Bibliothek beim Set auf „Lernen“ tippen. Danach Sektionen, Richtung (z. B. „Englisch → Deutsch“ oder „Gemischt“), Anzahl und den Anteil „Multiple Choice“ wählen und unten auf „… Vokabeln lernen“ tippen; die App merkt sich die Auswahl pro Set. Karteikarte antippen oder zur Seite wischen zum Aufdecken, dann „Gewusst“ oder „Nochmal“ – oder nach rechts (gewusst) bzw. links (nochmal) wischen. Bei Multiple Choice eine der vier Antworten antippen, dann „Weiter“. Falsch beantwortete Karten kommen später wieder.
    Ein Tipp auf den Titel öffnet das Set: Dort stehen alle Sektionen (antippen zum Aufklappen) mit den Angaben aus dem Chat – ein guter Ort, um zu prüfen, ob das Foto richtig gelesen wurde. Ganz unten lässt sich das Set löschen, samt dem Lernstand dazu.
 2. **Backup:** „Backup und Wiederherstellung“ → „Backup speichern“ → im Teilen-Menü z. B. „In Dateien sichern“. Notiere, wo die Datei gelandet ist.
 3. **Offline:** Flugmodus an, App vom Home-Bildschirm starten – sie sollte normal laufen.
@@ -54,9 +54,7 @@ Klappt es, zeigt eine **Vorschau** Titel, Sprachen und Sektionen mit der Zahl de
 
 Bitte nicht als Fehler melden – das kommt in späteren Meilensteinen:
 
-- Nur Karteikarten, noch kein Multiple Choice.
 - Sets lassen sich nicht bearbeiten, nur löschen und neu importieren.
-- Notizen, Beispielsätze und Grammatik aus der Datei werden noch nicht angezeigt.
 - Die Schaltfläche „Dauerhaften Speicher anfordern“ ist nur für unsere Messung da.
 
 ## Rückmeldung

@@ -2,6 +2,7 @@
 // der Einträge, Lernen und Löschen. Bearbeiten folgt mit M3 (S-30, S-31).
 import { setSize } from "../../domain/library";
 import type { Answer, StoredEntry, StoredSection, StoredSet } from "../../domain/model";
+import { entryDetails } from "../components/entryDetails";
 import { learnButton } from "../components/learnButton";
 import type { DeleteOutcome, DeletionScope } from "../deleteSet";
 import { type Child, h } from "../dom";
@@ -135,15 +136,6 @@ function entryView(entry: StoredEntry, set: StoredSet): Node {
     index > 0 && "; ",
     answer(meaning, set.meaningLanguage, "meaning"),
   ]);
-  const { grammar, examples = [] } = entry;
-  const grammarParts = grammar
-    ? [
-        grammar.partOfSpeech && `Wortart: ${grammar.partOfSpeech}`,
-        grammar.gender && `Genus: ${grammar.gender}`,
-        grammar.plural && `Plural: ${grammar.plural}`,
-        grammar.forms && `Formen: ${grammar.forms.join(", ")}`,
-      ].filter((part): part is string => !!part)
-    : [];
   return h(
     "li",
     null,
@@ -156,24 +148,7 @@ function entryView(entry: StoredEntry, set: StoredSet): Node {
       // Als Text, nicht nur als Farbe (TDD 13.4).
       entry.reviewStatus === "unchecked" && [" ", h("span", { class: "badge" }, "ungeprüft")],
     ),
-    grammarParts.length > 0 && h("p", { class: "extra" }, grammarParts.join(" · ")),
-    examples.length > 0 &&
-      h(
-        "ul",
-        { class: "examples", "aria-label": "Beispiele" },
-        examples.map((example) =>
-          h(
-            "li",
-            null,
-            h("span", { lang: set.termLanguage }, example.text),
-            example.translation && [
-              " – ",
-              h("span", { lang: set.meaningLanguage }, example.translation),
-            ],
-          ),
-        ),
-      ),
-    entry.notes && h("p", { class: "extra" }, `Notiz: ${entry.notes}`),
+    entryDetails(entry, set),
   );
 }
 

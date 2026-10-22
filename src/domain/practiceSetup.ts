@@ -1,4 +1,5 @@
-// Einrichtung einer Lernsitzung (TDD 12.1, D-27): Sektionen, Richtung und Anzahl in festen Stufen. Die
+// Einrichtung einer Lernsitzung (TDD 12.1, D-27): Sektionen, Richtung, Anzahl in festen Stufen und Anteil
+// an Multiple Choice. Die
 // zuletzt gewählte Einrichtung wird pro Set in `settings` gemerkt und beim Lesen tolerant geprüft, weil
 // sie auch aus einem Backup stammen kann.
 import type { Direction, StoredSet } from "./model";
@@ -8,11 +9,17 @@ export const COUNT_STEPS = [10, 20, 30] as const;
 
 export type CountChoice = (typeof COUNT_STEPS)[number] | "all";
 
+export const DEFAULT_MC_SHARE = 25;
+/** Schrittweite des Reglers in Prozent. */
+export const MC_SHARE_STEP = 5;
+
 export interface PracticeSetup {
   /** In der Reihenfolge des Sets. */
   readonly sectionIds: readonly string[];
   readonly direction: Direction | "mixed";
   readonly count: CountChoice;
+  /** Anteil an Multiple Choice in ganzen Prozent. */
+  readonly mcShare: number;
 }
 
 /** Gemerkte Form: „alle Sektionen“ bleibt „alle“, auch wenn später Sektionen hinzukommen. */
@@ -20,6 +27,7 @@ export interface StoredPracticeSetup {
   readonly sections: "all" | readonly string[];
   readonly direction: Direction | "mixed";
   readonly count: CountChoice;
+  readonly mcShare: number;
 }
 
 const DIRECTIONS: readonly unknown[] = ["termToMeaning", "meaningToTerm", "mixed"];
@@ -34,14 +42,21 @@ export function defaultSetup(set: StoredSet): PracticeSetup {
     sectionIds: set.sections.map((section) => section.id),
     direction: "termToMeaning",
     count: "all",
+    mcShare: DEFAULT_MC_SHARE,
   };
 }
+
+const isMcShare = (value: unknown): value is number =>
+  Number.isInteger(value) &&
+  (value as number) >= 0 &&
+  (value as number) <= 100 &&
+  (value as number) % MC_SHARE_STEP === 0;
 
 /** Unbrauchbare Teile ersetzt die Voreinstellung; fehlende Sektionen fallen weg, ohne Rest gelten alle. */
 export function restoreSetup(set: StoredSet, stored: unknown): PracticeSetup {
   const fallback = defaultSetup(set);
   if (typeof stored !== "object" || stored === null) return fallback;
-  const { sections, direction, count } = stored as Record<string, unknown>;
+  const { sections, direction, count, mcShare } = stored as Record<string, unknown>;
   const chosen = Array.isArray(sections) ? new Set<unknown>(sections) : null;
   const sectionIds = chosen
     ? fallback.sectionIds.filter((id) => chosen.has(id))
@@ -52,6 +67,7 @@ export function restoreSetup(set: StoredSet, stored: unknown): PracticeSetup {
       ? (direction as PracticeSetup["direction"])
       : fallback.direction,
     count: COUNTS.includes(count) ? (count as CountChoice) : fallback.count,
+    mcShare: isMcShare(mcShare) ? mcShare : fallback.mcShare,
   };
 }
 
@@ -61,6 +77,7 @@ export function storedSetup(set: StoredSet, setup: PracticeSetup): StoredPractic
     sections: all ? "all" : [...setup.sectionIds],
     direction: setup.direction,
     count: setup.count,
+    mcShare: setup.mcShare,
   };
 }
 
