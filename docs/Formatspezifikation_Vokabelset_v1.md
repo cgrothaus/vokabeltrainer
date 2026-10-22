@@ -2,7 +2,7 @@
 
 **Formatkennung:** `vokabeltrainer-set`  
 **Formatversion:** 1  
-**Dokumentstand:** 21. Oktober 2026 – Entwurf  
+**Dokumentstand:** 22. Oktober 2026 – Entwurf  
 **Bezug:** PRD 2.4 (FR-13–FR-20, FR-29, FR-30, FR-32, DF-01–DF-11), TDD v2
 
 Dieses Dokument beschreibt, wie eine Datei aufgebaut sein muss, damit der Vokabeltrainer sie importieren kann. Es richtet sich an drei Gruppen:
@@ -51,6 +51,8 @@ Ein neues Set braucht nur einen Titel, zwei Sprachen und Sektionen mit Einträge
 - `term` ist das Wort in der **Lernsprache** (hier Englisch).
 - `meanings` ist eine **Liste von Bedeutungen** in der **Bedeutungssprache** (hier Deutsch).
 - IDs werden bei neuen Sets **weggelassen**; die App vergibt sie beim Import.
+
+Ein ausführlicheres Beispiel mit Varianten, mehreren Bedeutungen, Grammatik und Beispielsätzen ist das **Beispielset der App** („Beispielset ausprobieren“ bei leerer Bibliothek). Es ist eine eigene Zusammenstellung aus allgemeinem Grundwortschatz und frei verwendbar unter CC0; beides steht auch in seinen Angaben `source` und `license`.
 
 ---
 
@@ -379,3 +381,4 @@ Prüfe das angehängte Vokabelset und korrigiere die Fehler.
 | 19. Oktober 2026 | Erster Entwurf für Formatversion 1 (Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer), auf Basis der Review-Entscheidungen vom 19. Oktober 2026 (`20261019_TDD_v1_Review_Notizen.md`, F-03 bis F-07). |
 | 21. Oktober 2026 | Präzisiert mit der vollständigen Validierung (S-12, TDD 2.12), Formatversion bleibt 1: JSON Schema liegt bei; leere optionale Felder werden entfernt statt abgelehnt (5.5, D-24); Form von `rev` und `sectionIds` (6, 7); `null` bei neuen Sets, Teil-Export nicht als neues Set (8.1); `null` nur bei optionalen Feldern (8.2); `meaning` neben `meanings`, vollständige Fehlerliste, Grenzen für alle Texte (8.4). Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer. |
 | 21. Oktober 2026 | Kurze Prompt-Vorlagen mit Link auf dieses Dokument statt der langen Vorlagen (11), nach bestandenem LLM-Test (S-15, TDD 15.7); die App veröffentlicht Spezifikation und Schema neben sich selbst. Formatversion bleibt 1. Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer. |
+| 22. Oktober 2026 | Hinweis auf das Beispielset der App mit Herkunft und Lizenz (1, FR-32, S-16). Formatversion bleibt 1. Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer. |

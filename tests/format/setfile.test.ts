@@ -1,8 +1,10 @@
 // Schemaabgleich (TAK-10, TDD 15.3): Validator und JSON Schema urteilen über alle Fixtures gleich.
+import { randomBytes } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import Ajv2020 from "ajv/dist/2020";
 import { describe, expect, it } from "vitest";
 import { extractJson } from "../../src/domain/extract";
+import { prepareNewSet } from "../../src/domain/importSet";
 import { KNOWN_FIELDS, validateSetFile } from "../../src/domain/validate";
 
 type Schema = { properties: Record<string, unknown>; $defs: Record<string, Schema> };
@@ -155,6 +157,66 @@ describe("Fixtures für Vokabelset-Dateien", () => {
       expect(result.validator).toMatchObject({ ok: false, errors: [error] });
       expect(result.schema, result.schemaErrors).toBe(true);
     });
+  });
+});
+
+describe("Beispielset (TDD 13.2, FR-32)", () => {
+  const text = readFileSync(new URL("../../src/content/beispielset.json", import.meta.url), "utf8");
+  const extracted = extractJson(text);
+  if (!extracted.ok) throw new Error(extracted.error);
+  const file = extracted.value as {
+    set: Record<string, unknown>;
+    sections: { title: string; entries: Record<string, unknown>[] }[];
+  } & Record<string, unknown>;
+  const entries = file.sections.flatMap((section) => section.entries);
+  const hasVariants = (answer: unknown) =>
+    typeof answer === "object" && answer !== null && "acceptedVariants" in answer;
+
+  it("ist ohne Warnungen gültig und als neues Set importierbar", () => {
+    expect(validateSetFile(file)).toEqual({ ok: true, file: expect.anything(), warnings: [] });
+    expect(schemaAccepts(file), ajv.errorsText(schemaAccepts.errors)).toBe(true);
+    const prepared = prepareNewSet(text, {
+      now: "2026-10-22T00:00:00.000Z",
+      randomBytes: (count) => new Uint8Array(randomBytes(count)),
+    });
+    expect(prepared).toMatchObject({ ok: true, warnings: [], trimmed: false });
+  });
+
+  it("nennt Sprachen, Lernstufe, Herkunft und Lizenz", () => {
+    expect(file.set).toMatchObject({
+      termLanguage: "en",
+      meaningLanguage: "de",
+      level: "Klasse 6",
+      source: "Eigene Zusammenstellung",
+      license: "CC0",
+    });
+  });
+
+  it("hat 3 bis 5 Sektionen mit je 10 bis 20 Einträgen und keine Kennungen", () => {
+    expect(file.sections.length).toBeGreaterThanOrEqual(3);
+    expect(file.sections.length).toBeLessThanOrEqual(5);
+    for (const section of file.sections) {
+      expect(section.entries.length, section.title).toBeGreaterThanOrEqual(10);
+      expect(section.entries.length, section.title).toBeLessThanOrEqual(20);
+    }
+    // Ohne IDs wie ein neu erstelltes Set; die App vergibt sie beim Laden (TDD 13.2).
+    expect(text).not.toMatch(/"(id|rev)"\s*:/);
+    expect(file).not.toHaveProperty("scope");
+  });
+
+  it("zeigt Varianten, mehrere Bedeutungen und optionale Angaben", () => {
+    const meanings = (entry: Record<string, unknown>) => entry.meanings as unknown[];
+    const grammar = (entry: Record<string, unknown>) =>
+      (entry.grammar ?? {}) as Record<string, unknown>;
+    const examples = entries.flatMap((entry) => (entry.examples ?? []) as unknown[]);
+    expect(entries.some((entry) => hasVariants(entry.term))).toBe(true);
+    expect(entries.some((entry) => meanings(entry).some(hasVariants))).toBe(true);
+    expect(entries.some((entry) => meanings(entry).length >= 2)).toBe(true);
+    expect(entries.some((entry) => "forms" in grammar(entry))).toBe(true);
+    expect(entries.some((entry) => "plural" in grammar(entry))).toBe(true);
+    expect(examples.some((example) => typeof example === "string")).toBe(true);
+    expect(examples.some((example) => typeof example === "object")).toBe(true);
+    expect(entries.some((entry) => "notes" in entry)).toBe(true);
   });
 });
 

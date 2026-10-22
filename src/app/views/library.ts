@@ -4,6 +4,7 @@ import type { PersistenceState } from "../../platform/persistence";
 import { learnButton } from "../components/learnButton";
 import { h } from "../dom";
 import { languageName } from "../languages";
+import type { SampleOutcome } from "../sampleSet";
 import { emptyLibrary } from "./emptyLibrary";
 
 export interface LibraryContext {
@@ -13,6 +14,8 @@ export interface LibraryContext {
   loadSets: () => Promise<StoredSet[]>;
   /** Legt die Sitzung an und wechselt zu ihr; lehnt ab, wenn das Speichern scheitert. */
   startPractice: (set: StoredSet) => Promise<void>;
+  /** Speichert das Beispielset (Empty State); bei Erfolg wechselt die App zur Set-Ansicht. */
+  loadSampleSet: () => Promise<SampleOutcome>;
   /** Meldung aus dem vorigen Schritt, z. B. nach Import oder Löschen; wird beim Abholen geleert. */
   takeMessage: () => string | null;
 }
@@ -77,7 +80,7 @@ async function showSets(container: HTMLElement, context: LibraryContext): Promis
   }
   // Ergibt sich aus dem Bestand, erscheint also auch nach dem Löschen des letzten Sets (TDD 13.1).
   if (sets.length === 0) {
-    container.replaceChildren(emptyLibrary());
+    container.replaceChildren(emptyLibrary(context.loadSampleSet));
     return true;
   }
   const problem = h("div", { role: "alert" });

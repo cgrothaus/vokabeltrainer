@@ -4,6 +4,7 @@ import { mountUpdateNotice, showUpdateNotice } from "./app/components/updateNoti
 import { deletionScope, removeSet } from "./app/deleteSet";
 import { loadSpec, newSetPrompt, shareSpec } from "./app/help";
 import { previewImport, saveImport } from "./app/importText";
+import { loadSampleSet } from "./app/sampleSet";
 import { beginPractice, currentPractice } from "./app/practice";
 import { startRouter } from "./app/router";
 import { backupView } from "./app/views/backup";
@@ -90,6 +91,15 @@ async function start(): Promise<void> {
       requestPersistence: askForPersistence,
       loadSets: () => listSets(db),
       startPractice,
+      loadSampleSet: async () => {
+        const outcome = await loadSampleSet(db);
+        if (outcome.ok) {
+          void askOnceAfterSave();
+          // Die Set-Ansicht zeigt den Inhalt und „Lernen“; die Bibliothek zeichnete `#/` nicht neu.
+          location.hash = `#/set/${encodeURIComponent(outcome.id)}`;
+        }
+        return outcome;
+      },
       takeMessage: () => {
         const taken = message;
         message = null;
