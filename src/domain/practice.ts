@@ -1,6 +1,6 @@
 // Ablauf einer Lernsitzung (TDD 12.2, 12.3), übernommen aus dem Prototyp: gemischte Warteschlange,
-// falsche Karten kommen nach drei anderen wieder. Der Zustand liegt nur im Arbeitsspeicher. Dazu die
-// Auswahl der Antworten für Multiple Choice (D-18).
+// falsche Karten kommen nach drei anderen wieder, „Nur Fehler üben“ stellt die Fehler erneut (D-29).
+// Der Zustand liegt nur im Arbeitsspeicher. Dazu die Auswahl der Antworten für Multiple Choice (D-18).
 import type { Direction, StoredEntry } from "./model";
 
 export type Mode = "flashcard" | "multipleChoice";
@@ -22,6 +22,8 @@ export interface PracticeState {
   readonly done: number;
   readonly firstAttempts: number;
   readonly firstCorrect: number;
+  /** Beim Erstversuch falsche Karten in der Reihenfolge der Antworten, so wie sie gestellt wurden. */
+  readonly missed: readonly Card[];
 }
 
 export type Result = "correct" | "incorrect";
@@ -82,7 +84,21 @@ export function startPractice(
     mode: chosen.has(card) ? "multipleChoice" : "flashcard",
     firstAttempt: true,
   }));
-  return { queue, total: queue.length, done: 0, firstAttempts: 0, firstCorrect: 0 };
+  return fresh(queue);
+}
+
+const fresh = (queue: readonly Card[]): PracticeState => ({
+  queue,
+  total: queue.length,
+  done: 0,
+  firstAttempts: 0,
+  firstCorrect: 0,
+  missed: [],
+});
+
+/** „Nur Fehler üben“ (D-29): jede Karte in Richtung und Form wie beim Fehler, neu gemischt. */
+export function repeatMistakes(missed: readonly Card[], random: () => number): PracticeState {
+  return fresh(shuffle(missed, random).map((card) => ({ ...card, firstAttempt: true })));
 }
 
 export function currentCard(state: PracticeState): Card | undefined {
@@ -106,6 +122,7 @@ export function answer(
       done: state.done + (result === "correct" ? 1 : 0),
       firstAttempts: state.firstAttempts + (card.firstAttempt ? 1 : 0),
       firstCorrect: state.firstCorrect + (card.firstAttempt && result === "correct" ? 1 : 0),
+      missed: card.firstAttempt && result === "incorrect" ? [...state.missed, card] : state.missed,
     },
     recorded: { ...card, result },
   };

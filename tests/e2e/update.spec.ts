@@ -109,7 +109,11 @@ test("E2E-14 Während einer Lernsitzung erscheint der Hinweis erst danach", asyn
       await page.getByRole("button", { name: "Gewusst" }).click();
       await expect(page.getByText(`${done} geschafft`)).toBeVisible();
     }
+    // Auch im Zwischenstand läuft die Sitzung noch.
+    await page.getByRole("button", { name: "Beenden" }).click();
+    await expect(page.getByRole("heading", { name: "Zwischenstand" })).toBeVisible();
     await expect(notice).toBeEmpty();
+    await page.getByRole("button", { name: "Weiterlernen (1 offen)" }).click();
     await page.getByRole("button", { name: /Tippen zum Aufdecken/ }).click();
     await page.getByRole("button", { name: "Gewusst" }).click();
     await expect(page.getByRole("heading", { name: "Geschafft" })).toBeVisible();

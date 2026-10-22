@@ -73,15 +73,142 @@ test("E2E-01 Import (Text) → Lernen → Neuladen → Daten da", async ({ page 
   expect(errors, "Fehler in der Konsole").toEqual([]);
 });
 
-test("Beenden schließt die Sitzung ab; gespeicherte Antworten bleiben", async ({ page }) => {
-  await startPractice(page, "Englisch – Beenden");
+const pause = (page: Page) => page.getByRole("heading", { name: "Zwischenstand" });
+const mistakes = (page: Page) => page.locator(".mistakes li");
+const statuses = async (page: Page) => (await sessions(page)).map((s) => s.status).sort();
+
+test("Beenden zeigt den Zwischenstand; Weiterlernen setzt dieselbe Sitzung fort", async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  await startPractice(page, "Englisch – Zwischenstand");
+  const missed = (await page.locator(".card .prompt").textContent())!;
+  await rate(page, "Nochmal");
   await rate(page, "Gewusst");
   await expect(page.getByText("1 von 3 geschafft")).toBeVisible();
-  await page.getByRole("button", { name: "Beenden" }).click();
 
+  await page.getByRole("button", { name: "Beenden" }).click();
+  await expect(pause(page)).toBeFocused();
+  await expect(page.getByText("1 von 2 beim ersten Mal gewusst.")).toBeVisible();
+  await expect(page.getByText("Noch offen: 2 von 3 Vokabeln.")).toBeVisible();
+  await expect(mistakes(page)).toHaveText([`${missed} – ${MEANINGS[missed]}`]);
+  await expect(mistakes(page).locator("span").first()).toHaveAttribute("lang", "en");
+  expect(await statuses(page)).toEqual(["active"]);
+
+  await page.getByRole("button", { name: "Weiterlernen (2 offen)" }).click();
+  await expect(page.getByText("1 von 3 geschafft")).toBeVisible();
+  await rate(page, "Gewusst");
+  await rate(page, "Gewusst");
+  await expect(page.getByRole("heading", { name: "Geschafft" })).toBeVisible();
+  await expect(page.getByText("2 von 3 beim ersten Mal gewusst.")).toBeVisible();
+  await expect(mistakes(page)).toHaveText([`${missed} – ${MEANINGS[missed]}`]);
+  await expect.poll(() => statuses(page)).toEqual(["completed"]);
+  expect(await events(page)).toHaveLength(4);
+  expect(errors, "Fehler in der Konsole").toEqual([]);
+});
+
+test("Zwischenstand → Bibliothek beendet die Sitzung; ohne Antwort führt Beenden gleich dorthin", async ({
+  page,
+}) => {
+  await startPractice(page, "Englisch – Beenden");
+  await rate(page, "Gewusst");
+  await page.getByRole("button", { name: "Beenden" }).click();
+  await expect(pause(page)).toBeVisible();
+  // Ohne Fehler keine Liste.
+  await expect(page.locator(".mistakes")).toHaveCount(0);
+  await page.getByRole("link", { name: "Zurück zur Bibliothek" }).click();
   await expect(librarySets(page)).toHaveText(["Englisch – Beenden 3 Einträge"]);
-  await expect.poll(async () => (await sessions(page)).map((s) => s.status)).toEqual(["ended"]);
+  await expect.poll(() => statuses(page)).toEqual(["ended"]);
   expect(await events(page)).toHaveLength(1);
+
+  await startLearning(page, "Englisch – Beenden");
+  await page.getByRole("button", { name: "Beenden" }).click();
+  await expect(librarySets(page)).toHaveText(["Englisch – Beenden 3 Einträge"]);
+  await expect.poll(() => statuses(page)).toEqual(["ended", "ended"]);
+});
+
+test("Zurück zeigt den Zwischenstand, ein zweites Zurück verlässt die Sitzung", async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  await startPractice(page, "Englisch – Zurück");
+  await rate(page, "Gewusst");
+  await page.goBack();
+  await expect(pause(page)).toBeVisible();
+  await expect(page).toHaveURL(/#\/practice$/);
+  expect(await statuses(page)).toEqual(["active"]);
+
+  // Vorwärts geht es weiter, Zurück wieder zum Zwischenstand.
+  await page.goForward();
+  await expect(page.getByText("1 von 3 geschafft")).toBeVisible();
+  await page.goBack();
+  await expect(pause(page)).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(/#\/learn\//);
+  await expect(page.getByRole("button", { name: "3 Vokabeln lernen" })).toBeVisible();
+  await expect.poll(() => statuses(page)).toEqual(["ended"]);
+
+  // Ohne Antwort gibt es keinen Zwischenstand.
+  await page.getByRole("button", { name: "3 Vokabeln lernen" }).click();
+  await expect(page.getByText("0 von 3 geschafft")).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(/#\/learn\//);
+  await expect.poll(() => statuses(page)).toEqual(["ended", "ended"]);
+  expect(errors, "Fehler in der Konsole").toEqual([]);
+});
+
+test("Nur Fehler üben: nur die Fehler, eigene Sitzung mit Verweis, Einrichtung unverändert", async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  await startPractice(page, "Englisch – Fehler");
+  const missed = (await page.locator(".card .prompt").textContent())!;
+  await rate(page, "Nochmal");
+  for (let i = 0; i < 3; i++) await rate(page, "Gewusst");
+  await expect(page.getByRole("heading", { name: "Geschafft" })).toBeVisible();
+  const settings = await readStore(page, "settings");
+
+  await page.getByRole("button", { name: "Nur Fehler üben (1)" }).click();
+  await expect(page.getByText("0 von 1 geschafft")).toBeVisible();
+  await expect(page.locator(".card .prompt")).toHaveText(missed);
+  await rate(page, "Gewusst");
+  await expect(page.getByRole("heading", { name: "Geschafft" })).toBeVisible();
+  await expect(page.getByText("1 von 1 beim ersten Mal gewusst.")).toBeVisible();
+  await expect(page.locator(".mistakes")).toHaveCount(0);
+
+  await expect.poll(() => statuses(page)).toEqual(["completed", "completed"]);
+  const all = await sessions(page);
+  const first = all.find((s) => !s.repeatOf)!;
+  const repeat = all.find((s) => s.repeatOf)!;
+  expect(repeat).toMatchObject({
+    repeatOf: first.id,
+    sectionIds: first.sectionIds,
+    config: { ...first.config, count: 1 },
+  });
+  const repeated = (await events(page)).filter((event) => event.sessionId === repeat.id);
+  expect(repeated).toMatchObject([{ direction: "termToMeaning", firstAttempt: true }]);
+  expect(await readStore(page, "settings")).toEqual(settings);
+  expect(errors, "Fehler in der Konsole").toEqual([]);
+});
+
+test("Nur Fehler üben aus dem Zwischenstand beendet die Ausgangssitzung", async ({ page }) => {
+  await startPractice(page, "Englisch – Fehler im Zwischenstand");
+  await rate(page, "Nochmal");
+  await page.getByRole("button", { name: "Beenden" }).click();
+  await page.getByRole("button", { name: "Nur Fehler üben (1)" }).click();
+  await expect(page.getByText("0 von 1 geschafft")).toBeVisible();
+  await expect
+    .poll(async () => (await sessions(page)).map((s) => [s.status, !!s.repeatOf]).sort())
+    .toEqual([
+      ["active", true],
+      ["ended", false],
+    ]);
+
+  // Zurück führt auch aus der Fehlersitzung zum Zwischenstand, sobald es eine Antwort gibt.
+  await rate(page, "Nochmal");
+  await page.goBack();
+  await expect(pause(page)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Weiterlernen (1 offen)" })).toBeVisible();
 });
 
 test("Neuladen beendet die Sitzung als unterbrochen", async ({ page }) => {

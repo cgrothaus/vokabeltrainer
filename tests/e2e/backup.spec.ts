@@ -5,6 +5,7 @@ import { readFile } from "node:fs/promises";
 import { type Browser, expect, type Page, test, type TestInfo } from "@playwright/test";
 import {
   collectErrors,
+  endPractice,
   importSet,
   librarySets,
   readStore,
@@ -82,7 +83,7 @@ test("E2E-02 Backup → frisches Gerät → Wiederherstellen ergibt denselben Be
   await page.getByRole("button", { name: /Tippen zum Aufdecken/ }).click();
   await page.getByRole("button", { name: "Gewusst" }).click();
   await expect(page.getByText("1 von 3 geschafft")).toBeVisible();
-  await page.getByRole("button", { name: "Beenden" }).click();
+  await endPractice(page);
 
   await page.getByRole("link", { name: "Backup und Wiederherstellung" }).click();
   await expect(page.getByText("Noch kein Backup gespeichert.")).toBeVisible();
