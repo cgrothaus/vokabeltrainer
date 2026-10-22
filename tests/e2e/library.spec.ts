@@ -91,7 +91,10 @@ test("Set-Ansicht zeigt Angaben, Sektionen und Einträge", async ({ page }) => {
     "Für die Probe",
     "geprüft",
   ]);
-  await expect(page.locator("summary")).toHaveText(["Tiere 2 Einträge", "Farben 1 Eintrag"]);
+  await expect(page.locator("summary")).toHaveText([
+    "Tiere 2 Einträge noch nicht gelernt",
+    "Farben 1 Eintrag noch nicht gelernt",
+  ]);
 
   // Sektionen sind zugeklappt, bis man sie öffnet.
   const cat = page.locator(".entries > li").first();

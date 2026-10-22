@@ -476,6 +476,16 @@ input[type="file"] {
   font-weight: 600;
 }
 
+/* Lernstand der Sektion als eigene Zeile unter Titel und Zahl, auch zugeklappt. */
+.section summary .stats {
+  display: block;
+  font-size: 0.9rem;
+}
+
+.overview p {
+  margin: 0.25rem 0;
+}
+
 .section summary .count,
 .variants,
 .extra {

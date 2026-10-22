@@ -25,6 +25,16 @@ export function recordAnswer(db: IDBDatabase, event: ReviewEvent): Promise<void>
   });
 }
 
+/** Alle Antworten eines Sets über den Index `setId`, Grundlage des Lernstands (TDD 12.6). */
+export async function listSetEvents(db: IDBDatabase, setId: string): Promise<ReviewEvent[]> {
+  let events: ReviewEvent[] = [];
+  await runTransaction(db, "reviewEvents", "readonly", (transaction) => {
+    const request = transaction.objectStore("reviewEvents").index("setId").getAll(setId);
+    request.onsuccess = () => (events = request.result as ReviewEvent[]);
+  });
+  return events;
+}
+
 /** Lesen und Schreiben in einer Transaktion; eine unbekannte Sitzung bricht ab. */
 export function finishSession(
   db: IDBDatabase,

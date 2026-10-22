@@ -3,6 +3,7 @@ import { checkBackup, lastBackupAt, prepareBackup, restore, saveBackup } from ".
 import { mountUpdateNotice, showUpdateNotice } from "./app/components/updateNotice";
 import { deletionScope, removeSet } from "./app/deleteSet";
 import { loadSpec, newSetPrompt, shareSpec } from "./app/help";
+import { loadOverview } from "./app/overview";
 import { previewImport, saveImport } from "./app/importText";
 import { loadSampleSet } from "./app/sampleSet";
 import { beginPractice, currentPractice, loadSetup } from "./app/practice";
@@ -117,6 +118,7 @@ async function start(): Promise<void> {
   const setPage = (_signal: AbortSignal, id: string) =>
     setView({
       loadSet: () => getSet(db, id),
+      loadOverview: (set) => loadOverview(db, set),
       deletionScope: (set) => deletionScope(db, set),
       removeSet: (set) => removeSet(db, set),
       onRemoved: (removed) => {
