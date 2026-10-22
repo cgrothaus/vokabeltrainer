@@ -28,18 +28,23 @@ export interface RecordedAnswer extends Card {
 /** Falsch beantwortete Karten werden an Position 4 wieder eingefügt (Index 3). */
 const REINSERT_AT = 3;
 
+/** Fisher-Yates; `random` liefert Werte in `[0, 1)`, z. B. `Math.random`. Die Eingabe bleibt unverändert. */
+export function shuffle<T>(items: readonly T[], random: () => number): T[] {
+  const order = [...items];
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [order[i], order[j]] = [order[j]!, order[i]!];
+  }
+  return order;
+}
+
 /** `random` liefert Werte in `[0, 1)`, z. B. `Math.random`; Tests übergeben eine feste Folge. */
 export function startPractice(
   entryIds: readonly string[],
   direction: Direction | "mixed",
   random: () => number,
 ): PracticeState {
-  const order = [...entryIds];
-  for (let i = order.length - 1; i > 0; i--) {
-    const j = Math.floor(random() * (i + 1));
-    [order[i], order[j]] = [order[j]!, order[i]!];
-  }
-  const queue = order.map((entryId): Card => ({
+  const queue = shuffle(entryIds, random).map((entryId): Card => ({
     entryId,
     direction:
       direction === "mixed" ? (random() < 0.5 ? "termToMeaning" : "meaningToTerm") : direction,

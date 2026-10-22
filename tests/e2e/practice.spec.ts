@@ -1,7 +1,14 @@
 // Minimale Lernsitzung (S-08): E2E-01 (AK-01, AK-09) und das Ende einer Sitzung (TDD 12.2, 12.5).
 import { expect, type Page, test } from "@playwright/test";
 import type { ReviewEvent, Session } from "../../src/domain/model";
-import { collectErrors, importSet, librarySets, MEANINGS, readStore } from "./support";
+import {
+  collectErrors,
+  importSet,
+  librarySets,
+  MEANINGS,
+  readStore,
+  startLearning,
+} from "./support";
 
 const card = (page: Page) => page.getByRole("button", { name: /Tippen zum Aufdecken/ });
 
@@ -15,7 +22,7 @@ async function rate(page: Page, button: "Nochmal" | "Gewusst"): Promise<void> {
 
 async function startPractice(page: Page, title: string): Promise<void> {
   await importSet(page, title);
-  await page.getByRole("button", { name: `${title} lernen` }).click();
+  await startLearning(page, title);
   await expect(page.getByText("0 von 3 geschafft")).toBeVisible();
 }
 

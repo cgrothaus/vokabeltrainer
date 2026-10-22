@@ -2,11 +2,20 @@
 // Transaktion und gilt erst nach `complete` als gespeichert (6.5). `add` statt `put`: Vorhandenes
 // wird nie überschrieben.
 import type { ReviewEvent, Session, SessionStatus } from "../domain/model";
+import type { StoreName } from "./schema";
+import { putSetting, type SettingRecord } from "./settings";
 import { runTransaction } from "./transaction";
 
-export function startSession(db: IDBDatabase, session: Session): Promise<void> {
-  return runTransaction(db, "sessions", "readwrite", (transaction) => {
+/** `remember` (die Einrichtung, TDD 12.1) wird nur zusammen mit der Sitzung gespeichert. */
+export function startSession(
+  db: IDBDatabase,
+  session: Session,
+  remember?: SettingRecord,
+): Promise<void> {
+  const stores: StoreName[] = remember ? ["sessions", "settings"] : ["sessions"];
+  return runTransaction(db, stores, "readwrite", (transaction) => {
     transaction.objectStore("sessions").add(session);
+    if (remember) putSetting(transaction, remember);
   });
 }
 

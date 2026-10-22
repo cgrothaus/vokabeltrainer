@@ -5,11 +5,12 @@ import { deletionScope, removeSet } from "./app/deleteSet";
 import { loadSpec, newSetPrompt, shareSpec } from "./app/help";
 import { previewImport, saveImport } from "./app/importText";
 import { loadSampleSet } from "./app/sampleSet";
-import { beginPractice, currentPractice } from "./app/practice";
+import { beginPractice, currentPractice, loadSetup } from "./app/practice";
 import { startRouter } from "./app/router";
 import { backupView } from "./app/views/backup";
 import { helpView } from "./app/views/help";
 import { importView } from "./app/views/import";
+import { learnView } from "./app/views/learn";
 import { libraryView } from "./app/views/library";
 import { notFoundView } from "./app/views/notFound";
 import { practiceView } from "./app/views/practice";
@@ -18,6 +19,7 @@ import { storageErrorView } from "./app/views/storageError";
 import { canReadClipboard, copyText, readClipboard } from "./platform/clipboard";
 import { persistenceState, requestPersistence } from "./platform/persistence";
 import type { StoredSet } from "./domain/model";
+import type { PracticeSetup } from "./domain/practiceSetup";
 import { registerServiceWorker } from "./platform/serviceWorker";
 import { type OpenOptions, type OpenResult, openDatabase } from "./storage/database";
 import { getMeta, setMeta } from "./storage/meta";
@@ -81,16 +83,11 @@ async function start(): Promise<void> {
   });
   // Meldung nach Import oder Löschen für die Bibliothek; lebt nur bis zum nächsten Anzeigen.
   let message: string | null = null;
-  const startPractice = async (set: StoredSet) => {
-    await beginPractice(db, set);
-    location.hash = "#/practice";
-  };
   const library = () =>
     libraryView({
       persistence,
       requestPersistence: askForPersistence,
       loadSets: () => listSets(db),
-      startPractice,
       loadSampleSet: async () => {
         const outcome = await loadSampleSet(db);
         if (outcome.ok) {
@@ -120,12 +117,20 @@ async function start(): Promise<void> {
   const setPage = (_signal: AbortSignal, id: string) =>
     setView({
       loadSet: () => getSet(db, id),
-      startPractice,
       deletionScope: (set) => deletionScope(db, set),
       removeSet: (set) => removeSet(db, set),
       onRemoved: (removed) => {
         message = removed;
         location.hash = "#/";
+      },
+    });
+  const learnPage = (_signal: AbortSignal, id: string) =>
+    learnView({
+      loadSet: () => getSet(db, id),
+      loadSetup: (set) => loadSetup(db, set),
+      startPractice: async (set: StoredSet, setup: PracticeSetup) => {
+        await beginPractice(db, set, setup);
+        location.hash = "#/practice";
       },
     });
   const practicePage = (signal: AbortSignal) => practiceView(currentPractice(), signal);
@@ -145,6 +150,7 @@ async function start(): Promise<void> {
       "/set/": setPage,
       "/import": importPage,
       "/help": helpPage,
+      "/learn/": learnPage,
       "/practice": practicePage,
       "/backup": backupPage,
     },

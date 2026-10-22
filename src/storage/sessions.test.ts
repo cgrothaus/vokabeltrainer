@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { ReviewEvent, Session } from "../domain/model";
 import { openDatabase } from "./database";
 import { finishSession, interruptActiveSessions, recordAnswer, startSession } from "./sessions";
+import { getSetting } from "./settings";
 import type { StoreName } from "./schema";
 import { runTransaction } from "./transaction";
 
@@ -71,6 +72,24 @@ describe("startSession und finishSession", () => {
     await startSession(db, session("s2345678abcd"));
     await expect(startSession(db, session("s2345678abcd", "ended"))).rejects.toThrow();
     expect(await readAll("sessions")).toEqual([session("s2345678abcd")]);
+  });
+
+  it("merkt die Einrichtung in derselben Transaktion und ersetzt eine frühere", async () => {
+    const setup = { sections: ["q7h3kd"], direction: "mixed", count: 10 };
+    await startSession(db, session("s2345678abcd"), { key: "practice:m4x8c2r9tw", value: setup });
+    expect(await getSetting(db, "practice:m4x8c2r9tw")).toEqual(setup);
+
+    const next = { sections: "all", direction: "termToMeaning", count: "all" };
+    await startSession(db, session("t2345678abcd"), { key: "practice:m4x8c2r9tw", value: next });
+    expect(await getSetting(db, "practice:m4x8c2r9tw")).toEqual(next);
+  });
+
+  it("merkt die Einrichtung nicht, wenn die Sitzung nicht gespeichert wird", async () => {
+    await startSession(db, session("s2345678abcd"));
+    await expect(
+      startSession(db, session("s2345678abcd"), { key: "practice:m4x8c2r9tw", value: {} }),
+    ).rejects.toThrow();
+    expect(await getSetting(db, "practice:m4x8c2r9tw")).toBeUndefined();
   });
 
   it("lehnt das Abschließen einer unbekannten Sitzung ab, ohne etwas anzulegen", async () => {

@@ -4,9 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BACKUP_STORES } from "../domain/backup";
 import type { ReviewEvent, Session, StoredSet } from "../domain/model";
 import { type StoreRecords, validateRecords } from "../domain/validateRecords";
+import { settingKey } from "../domain/practiceSetup";
 import { readBackup } from "./backup";
 import { openDatabase } from "./database";
 import { recordAnswer, startSession } from "./sessions";
+import { getSetting } from "./settings";
 import { addSet, countSetActivity, deleteSet, getSet, listSets } from "./sets";
 
 let db: IDBDatabase;
@@ -101,7 +103,11 @@ async function practise(setId: string, prefix: string, answers: number): Promise
     status: "completed",
     config: { direction: "termToMeaning", count: answers, mcShare: 0 },
   };
-  await startSession(db, session);
+  // Wie in der App: Die Einrichtung wird beim Start gemerkt.
+  await startSession(db, session, {
+    key: settingKey(setId),
+    value: { sections: "all", direction: "termToMeaning", count: "all" },
+  });
   for (let index = 0; index < answers; index++) {
     const event: ReviewEvent = {
       id: `${prefix}${index}`.padEnd(12, "e"),
@@ -132,7 +138,7 @@ describe("countSetActivity", () => {
 });
 
 describe("deleteSet", () => {
-  it("löscht das Set samt Sitzungen und Antworten; andere Sets und ihr Lernstand bleiben", async () => {
+  it("löscht das Set samt Sitzungen, Antworten und Einrichtung; andere Sets und ihr Lernstand bleiben", async () => {
     const other = storedSet("k2n7w4b8qp", "Anderes");
     await addSet(db, storedSet("m4x8c2r9tw"));
     await addSet(db, other);
@@ -144,6 +150,8 @@ describe("deleteSet", () => {
     expect(await listSets(db)).toEqual([other]);
     expect(await countSetActivity(db, "m4x8c2r9tw")).toEqual({ sessions: 0, events: 0 });
     expect(await countSetActivity(db, "k2n7w4b8qp")).toEqual({ sessions: 1, events: 1 });
+    expect(await getSetting(db, settingKey("m4x8c2r9tw"))).toBeUndefined();
+    expect(await getSetting(db, settingKey("k2n7w4b8qp"))).toBeDefined();
   });
 
   it("hinterlässt einen Bestand, den ein Backup ohne Fehler enthält", async () => {
@@ -164,6 +172,7 @@ describe("deleteSet", () => {
     expect(await deleteSet(db, "unbekannt")).toEqual({ ok: false, reason: "missing" });
     expect(await listSets(db)).toHaveLength(1);
     expect(await countSetActivity(db, "m4x8c2r9tw")).toEqual({ sessions: 1, events: 1 });
+    expect(await getSetting(db, settingKey("m4x8c2r9tw"))).toBeDefined();
   });
 
   it("meldet andere Fehler", async () => {
