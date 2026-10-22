@@ -5,8 +5,16 @@ import { entryRev } from "../domain/hash";
 import { createId, ID_LENGTH } from "../domain/ids";
 import type { ReviewEvent, Session, StoredEntry, StoredSet } from "../domain/model";
 import { answer, type PracticeState, type Result, startPractice } from "../domain/practice";
+import {
+  type PracticeSetup,
+  pickEntries,
+  restoreSetup,
+  settingKey,
+  storedSetup,
+} from "../domain/practiceSetup";
 import { randomBytes } from "../platform/random";
 import { finishSession, recordAnswer, startSession } from "../storage/sessions";
+import { getSetting } from "../storage/settings";
 
 export interface PracticeSession {
   readonly set: StoredSet;
@@ -26,21 +34,42 @@ export function currentPractice(): PracticeSession | null {
   return current;
 }
 
-/** Legt die Sitzung an; scheitert das Speichern, gibt es keine Sitzung. */
-export async function beginPractice(db: IDBDatabase, set: StoredSet): Promise<void> {
+/** Zuletzt gewählte Einrichtung des Sets (TDD 12.1); ist sie nicht lesbar, gilt die Voreinstellung. */
+export async function loadSetup(db: IDBDatabase, set: StoredSet): Promise<PracticeSetup> {
+  const stored = await getSetting(db, settingKey(set.id)).catch((error: unknown) => {
+    console.warn("Einrichtung nicht lesbar", error);
+    return undefined;
+  });
+  return restoreSetup(set, stored);
+}
+
+/**
+ * Legt die Sitzung an und merkt die Einrichtung in derselben Transaktion; scheitert das Speichern,
+ * gibt es keine Sitzung.
+ */
+export async function beginPractice(
+  db: IDBDatabase,
+  set: StoredSet,
+  setup: PracticeSetup,
+): Promise<void> {
+  const chosen = new Set(pickEntries(set, setup, Math.random));
   const entries = new Map(
-    set.sections.flatMap((section) => section.entries).map((entry) => [entry.id, entry]),
+    set.sections
+      .flatMap((section) => section.entries)
+      .filter((entry) => chosen.has(entry.id))
+      .map((entry) => [entry.id, entry]),
   );
-  let state = startPractice([...entries.keys()], "termToMeaning", Math.random);
+  let state = startPractice([...entries.keys()], setup.direction, Math.random);
   const session: Session = {
     id: createId(ID_LENGTH.session, randomBytes),
     setId: set.id,
-    sectionIds: set.sections.map((section) => section.id),
+    sectionIds: [...setup.sectionIds],
     startedAt: new Date().toISOString(),
     status: "active",
-    config: { direction: "termToMeaning", count: state.total, mcShare: 0 },
+    // Multiple Choice folgt mit S-18.
+    config: { direction: setup.direction, count: state.total, mcShare: 0 },
   };
-  await startSession(db, session);
+  await startSession(db, session, { key: settingKey(set.id), value: storedSetup(set, setup) });
 
   // Einmal pro Eintrag: Der Inhalt ändert sich während der Sitzung nicht.
   const revs = new Map([...entries].map(([id, entry]) => [id, entryRev(entry)]));

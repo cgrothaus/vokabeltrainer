@@ -55,6 +55,12 @@ export async function importText(page: Page, text: string, saved: string, base =
   await expect(libraryMessage(page)).toHaveText(saved);
 }
 
+/** „<Titel> lernen“ in Bibliothek oder Set-Ansicht, dann Start mit der vorbelegten Einrichtung. */
+export async function startLearning(page: Page, title: string): Promise<void> {
+  await page.getByRole("link", { name: `${title} lernen` }).click();
+  await page.getByRole("button", { name: /^\d+ Vokabeln? lernen$/ }).click();
+}
+
 /** Meldung oben in der Bibliothek, z. B. nach dem Import; die Hinweisleiste für Updates zählt nicht. */
 export const libraryMessage = (page: Page) => page.getByRole("main").getByRole("status");
 

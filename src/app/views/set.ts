@@ -10,7 +10,6 @@ import { languageName } from "../languages";
 export interface SetContext {
   /** `undefined`, wenn es das Set nicht gibt. */
   loadSet: () => Promise<StoredSet | undefined>;
-  startPractice: (set: StoredSet) => Promise<void>;
   deletionScope: (set: StoredSet) => Promise<DeletionScope>;
   removeSet: (set: StoredSet) => Promise<DeleteOutcome>;
   /** Nach dem Löschen: Meldung für die Bibliothek und Wechsel dorthin. */
@@ -60,7 +59,6 @@ export function setView(context: SetContext): Node {
 
 function content(set: StoredSet, context: SetContext): Child[] {
   const { entries } = setSize(set);
-  const problem = h("div", { role: "alert" });
   return [
     h("h1", { class: "set-title" }, set.title),
     h(
@@ -69,8 +67,7 @@ function content(set: StoredSet, context: SetContext): Child[] {
       `${languageName(set.termLanguage)} → ${languageName(set.meaningLanguage)} · ${count(entries, "Eintrag", "Einträge")}`,
     ),
     setDetails(set),
-    entries > 0 && h("div", { class: "actions" }, learnButton(set, context.startPractice, problem)),
-    problem,
+    entries > 0 && h("div", { class: "actions" }, learnButton(set)),
     h("h2", null, "Sektionen"),
     set.sections.length === 0
       ? h("p", null, "Dieses Set hat noch keine Sektionen.")

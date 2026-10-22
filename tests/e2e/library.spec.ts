@@ -2,7 +2,14 @@
 // Ankündigung des Umfangs (FR-01–FR-03, TDD 13.1, 10) sowie E2E-10 (TAK-03).
 import { expect, type Page, test } from "@playwright/test";
 import type { ReviewEvent, Session, StoredSet } from "../../src/domain/model";
-import { collectErrors, importSet, importText, libraryMessage, readStore } from "./support";
+import {
+  collectErrors,
+  importSet,
+  importText,
+  libraryMessage,
+  readStore,
+  startLearning,
+} from "./support";
 
 /** Französisch mit allen optionalen Angaben; frei gewählter Grundwortschatz. */
 const FRENCH = JSON.stringify({
@@ -60,7 +67,7 @@ test("Bibliothek gruppiert nach Lernsprache und zeigt die Lernstufe", async ({ p
 test("Set-Ansicht zeigt Angaben, Sektionen und Einträge", async ({ page }) => {
   const errors = collectErrors(page);
   await importFrench(page);
-  await page.getByRole("link", { name: "Französisch – Tiere und Farben" }).click();
+  await page.getByRole("link", { name: "Französisch – Tiere und Farben", exact: true }).click();
 
   await expect(page).toHaveURL(/#\/set\/[2-9a-hjkmnp-z]{10}$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
@@ -102,7 +109,7 @@ test("Set-Ansicht zeigt Angaben, Sektionen und Einträge", async ({ page }) => {
   await expect(page.getByText("rouge")).toBeHidden();
 
   // Lernen geht auch von hier aus.
-  await page.getByRole("button", { name: "Französisch – Tiere und Farben lernen" }).click();
+  await startLearning(page, "Französisch – Tiere und Farben");
   await expect(page.getByText("0 von 3 geschafft")).toBeVisible();
   expect(errors, "Fehler in der Konsole").toEqual([]);
 });
@@ -112,7 +119,7 @@ test("Set löschen kündigt den Umfang an und löscht den Lernstand mit", async 
   await importFrench(page);
   await importSet(page, "Englisch – Wetter");
   // Eine Antwort, dann beenden: ein Set mit Lernstand.
-  await page.getByRole("button", { name: "Englisch – Wetter lernen" }).click();
+  await startLearning(page, "Englisch – Wetter");
   await page.getByRole("button", { name: /Tippen zum Aufdecken/ }).click();
   await page.getByRole("button", { name: "Gewusst" }).click();
   await expect(page.getByText("1 von 3 geschafft")).toBeVisible();
@@ -121,7 +128,7 @@ test("Set löschen kündigt den Umfang an und löscht den Lernstand mit", async 
     .poll(async () => (await readStore<ReviewEvent>(page, "reviewEvents")).length)
     .toBe(1);
 
-  await page.getByRole("link", { name: "Englisch – Wetter" }).click();
+  await page.getByRole("link", { name: "Englisch – Wetter", exact: true }).click();
   const start = page.getByRole("button", { name: "Set löschen" });
   await start.click();
   await expect(
@@ -145,7 +152,7 @@ test("Set löschen kündigt den Umfang an und löscht den Lernstand mit", async 
   expect(await readStore<ReviewEvent>(page, "reviewEvents")).toEqual([]);
 
   // Ohne Lernstand nennt die Ankündigung nur den Inhalt; danach ist die Bibliothek leer.
-  await page.getByRole("link", { name: "Französisch – Tiere und Farben" }).click();
+  await page.getByRole("link", { name: "Französisch – Tiere und Farben", exact: true }).click();
   await start.click();
   await expect(
     page.getByText(
@@ -191,8 +198,8 @@ test("E2E-10 Markup in Daten erscheint als Text", async ({ page }) => {
     ],
   });
   await importText(page, file, `„${markup}“ mit 1 Eintrag gespeichert.`);
-  await expect(page.getByRole("link", { name: markup })).toBeVisible();
-  await page.getByRole("link", { name: markup }).click();
+  await expect(page.getByRole("link", { name: markup, exact: true })).toBeVisible();
+  await page.getByRole("link", { name: markup, exact: true }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(markup);
   await page.locator("summary").click();
   await expect(page.locator(".pair")).toHaveText(`${markup} – ${markup}`);

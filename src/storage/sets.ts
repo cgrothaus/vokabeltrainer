@@ -1,5 +1,7 @@
 // Sets speichern und lesen (TDD 6.1, 6.2, 6.5). Ein Set ist ein Dokument im Store `sets`.
 import type { StoredSet } from "../domain/model";
+import { settingKey } from "../domain/practiceSetup";
+import type { StoreName } from "./schema";
 import { runTransaction } from "./transaction";
 
 export type AddSetResult =
@@ -50,13 +52,14 @@ export async function countSetActivity(
 }
 
 /**
- * Löscht das Set mit seinen Sitzungen und Antworten in einer Transaktion (D-25): Verweise auf ein
- * fehlendes Set machten jedes spätere Backup ungültig (TDD 11.4).
+ * Löscht das Set mit seinen Sitzungen, Antworten und der gemerkten Einrichtung in einer Transaktion
+ * (D-25): Verweise auf ein fehlendes Set machten jedes spätere Backup ungültig (TDD 11.4).
  */
 export async function deleteSet(db: IDBDatabase, id: string): Promise<DeleteSetResult> {
   let missing = false;
   try {
-    await runTransaction(db, ["sets", "sessions", "reviewEvents"], "readwrite", (transaction) => {
+    const stores: StoreName[] = ["sets", "sessions", "reviewEvents", "settings"];
+    await runTransaction(db, stores, "readwrite", (transaction) => {
       const sets = transaction.objectStore("sets");
       const request = sets.getKey(id);
       request.onsuccess = () => {
@@ -65,6 +68,7 @@ export async function deleteSet(db: IDBDatabase, id: string): Promise<DeleteSetR
           return transaction.abort();
         }
         sets.delete(id);
+        transaction.objectStore("settings").delete(settingKey(id));
         for (const name of ["sessions", "reviewEvents"] as const) {
           const store = transaction.objectStore(name);
           const keys = store.index("setId").getAllKeys(id);

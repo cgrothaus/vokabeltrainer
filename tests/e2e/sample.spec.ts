@@ -2,7 +2,7 @@
 // Multiple Choice und Ergebnis ergänzt S-18.
 import { expect, test } from "@playwright/test";
 import type { StoredSet } from "../../src/domain/model";
-import { collectErrors, importSet, libraryMessage, readStore } from "./support";
+import { collectErrors, importSet, libraryMessage, readStore, startLearning } from "./support";
 
 const TITLE = "Englisch – Grundwortschatz (Beispielset)";
 
@@ -28,7 +28,7 @@ test("Empty State → Beispielset ausprobieren → Set-Ansicht → Lernen", asyn
     57,
   );
 
-  await page.getByRole("button", { name: `${TITLE} lernen` }).click();
+  await startLearning(page, TITLE);
   await expect(page.getByText("0 von 57 geschafft")).toBeVisible();
   expect(errors, "Fehler in der Konsole").toEqual([]);
 });
@@ -38,7 +38,7 @@ test("Beispielset gibt es nur bei leerer Bibliothek, nach dem Löschen wieder", 
   await importSet(page, "Englisch – Wetter");
   await expect(page.getByRole("button", { name: "Beispielset ausprobieren" })).toHaveCount(0);
 
-  await page.getByRole("link", { name: "Englisch – Wetter" }).click();
+  await page.getByRole("link", { name: "Englisch – Wetter", exact: true }).click();
   await page.getByRole("button", { name: "Set löschen" }).click();
   await page.getByRole("button", { name: "Set mit 3 Einträgen löschen" }).click();
   await expect(libraryMessage(page)).toHaveText("„Englisch – Wetter“ gelöscht.");

@@ -3,7 +3,14 @@
 // hängt sonst vom Betriebssystem ab (macOS lokal, Linux in der CI).
 import { readFile } from "node:fs/promises";
 import { type Browser, expect, type Page, test, type TestInfo } from "@playwright/test";
-import { collectErrors, importSet, librarySets, readStore, setFile } from "./support";
+import {
+  collectErrors,
+  importSet,
+  librarySets,
+  readStore,
+  setFile,
+  startLearning,
+} from "./support";
 
 const STORES = ["sets", "reviewEvents", "sessions", "settings"] as const;
 
@@ -71,7 +78,7 @@ test("E2E-02 Backup → frisches Gerät → Wiederherstellen ergibt denselben Be
   const errors = collectErrors(page);
   await withoutShare(page);
   await importSet(page, "Englisch – Wetter");
-  await page.getByRole("button", { name: "Englisch – Wetter lernen" }).click();
+  await startLearning(page, "Englisch – Wetter");
   await page.getByRole("button", { name: /Tippen zum Aufdecken/ }).click();
   await page.getByRole("button", { name: "Gewusst" }).click();
   await expect(page.getByText("1 von 3 geschafft")).toBeVisible();

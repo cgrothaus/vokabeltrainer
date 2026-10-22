@@ -12,8 +12,6 @@ export interface LibraryContext {
   /** Provisorisch für M0 (Messung in S-11), entfällt spätestens mit S-26. */
   requestPersistence: () => Promise<PersistenceState>;
   loadSets: () => Promise<StoredSet[]>;
-  /** Legt die Sitzung an und wechselt zu ihr; lehnt ab, wenn das Speichern scheitert. */
-  startPractice: (set: StoredSet) => Promise<void>;
   /** Speichert das Beispielset (Empty State); bei Erfolg wechselt die App zur Set-Ansicht. */
   loadSampleSet: () => Promise<SampleOutcome>;
   /** Meldung aus dem vorigen Schritt, z. B. nach Import oder Löschen; wird beim Abholen geleert. */
@@ -83,7 +81,6 @@ async function showSets(container: HTMLElement, context: LibraryContext): Promis
     container.replaceChildren(emptyLibrary(context.loadSampleSet));
     return true;
   }
-  const problem = h("div", { role: "alert" });
   container.replaceChildren(
     ...groupSets(sets, languageName)
       .map((group) => [
@@ -104,13 +101,12 @@ async function showSets(container: HTMLElement, context: LibraryContext): Promis
                 " ",
                 h("span", { class: "count" }, set.level ? `${set.level} · ${count}` : count),
               ),
-              entries > 0 && learnButton(set, context.startPractice, problem),
+              entries > 0 && learnButton(set),
             );
           }),
         ),
       ])
       .flat(),
-    problem,
   );
   return false;
 }

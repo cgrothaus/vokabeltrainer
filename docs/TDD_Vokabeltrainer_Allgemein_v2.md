@@ -1,6 +1,6 @@
 # TDD: Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.17 – Beispielset  
+**Version:** 2.18 – Sitzung einrichten  
 **Stand:** 22. Oktober 2026  
 **Bezug:** PRD 2.4 (`PRD_Vokabeltrainer_Allgemein_v2.md`), Formatspezifikation Version 1 (`Formatspezifikation_Vokabelset_v1.md`), Review-Notizen (`20261019_TDD_v1_Review_Notizen.md`)  
 **Status:** Entwurf; Grundlage für M0 (Walking Skeleton)  
@@ -63,7 +63,7 @@ Der Umsetzungsstand wird **ausschließlich** im Umsetzungsplan (Kapitel 21) mit 
 src/
 ├── main.ts              Start: Speicher öffnen, Service Worker registrieren, erste Ansicht
 ├── app/                 UI: Ansichten, Routing, Zustand
-│   ├── views/           Bibliothek, Set, Import, Hilfe, Lernen, Ergebnis, Editor, Backup, Einstellungen
+│   ├── views/           Bibliothek, Set, Import, Hilfe, Sitzung einrichten, Lernen, Ergebnis, Editor, Backup, Einstellungen
 │   ├── components/      wiederverwendbare UI-Bausteine (Dialog, Hinweis, Karte …)
 │   ├── dom.ts           kleiner DOM-Helfer (D-05)
 │   ├── router.ts        Hash-Routing
@@ -80,6 +80,7 @@ src/
 │   ├── duplicates.ts    Duplikaterkennung
 │   ├── library.ts       Bibliothek: Gruppierung nach Lernsprache, Sortierung, Umfang eines Sets
 │   ├── practice.ts      Sitzungswarteschlange, Multiple-Choice-Auswahl
+│   ├── practiceSetup.ts Einrichtung einer Sitzung: Auswahl, Stufen, gemerkte Werte prüfen
 │   ├── stats.ts         Lernstand und Überblick aus Events
 │   ├── exportFormat.ts  Set-Export
 │   ├── backup.ts        Backup-Hülle, Prüfen und Migrieren beim Wiederherstellen
@@ -100,7 +101,7 @@ Regeln:
 
 ### 3.2 Routing
 
-Hash-basiertes Routing (`#/`, `#/set/<id>`, `#/import`, `#/practice`, `#/backup`, `#/settings`). Es funktioniert in einer einzelnen HTML-Datei, unter jedem Pfad des Hostings und unterstützt die Zurück-Taste unter Android. Feste Routen haben einen Pfadteil; eine Route wie `/set/` nimmt genau einen weiteren, nicht leeren Pfadteil als Parameter (URL-kodiert). `#/set/` ohne ID und eine kaputte Kodierung führen zu „Seite nicht gefunden“, eine unbekannte ID zu „Set nicht gefunden“, jeweils mit Weg zurück zur Bibliothek.
+Hash-basiertes Routing (`#/`, `#/set/<id>`, `#/import`, `#/learn/<id>`, `#/practice`, `#/backup`, `#/settings`). Es funktioniert in einer einzelnen HTML-Datei, unter jedem Pfad des Hostings und unterstützt die Zurück-Taste unter Android. Feste Routen haben einen Pfadteil; eine Route wie `/set/` nimmt genau einen weiteren, nicht leeren Pfadteil als Parameter (URL-kodiert). `#/set/` ohne ID und eine kaputte Kodierung führen zu „Seite nicht gefunden“, eine unbekannte ID zu „Set nicht gefunden“, jeweils mit Weg zurück zur Bibliothek.
 
 ### 3.3 UI ohne Framework (D-05)
 
@@ -234,7 +235,7 @@ Datenmigrationen laufen nach dem Neuladen beim Öffnen der Datenbank (Kapitel 7)
 | `sets` | `id` | – | Ein Set als Dokument mit eingebetteten Sektionen und Einträgen |
 | `reviewEvents` | `id` | `setId`, `sessionId` | Eine Antwort pro Datensatz |
 | `sessions` | `id` | `setId` | Lernsitzungen |
-| `settings` | `key` | – | Präferenzen (im Backup enthalten) |
+| `settings` | `key` | – | Präferenzen (im Backup enthalten), z. B. `practice:<setId>` für die zuletzt gewählte Einrichtung einer Sitzung (12.1) |
 | `meta` | `key` | – | Interne Angaben, z. B. `lastBackupAt`, `persistRequested`, `backupReminderSnoozedUntil` |
 
 Ein Store `progress` für den Lernstand gibt es nicht (D-07, F-08). Lernstand und Überblick werden aus `reviewEvents` und `sessions` berechnet (Kapitel 12.6).
@@ -490,7 +491,7 @@ Ungültiges JSON, unbekannte Formatversion, Validierungsfehler, widersprüchlich
 
 ## 10. Bearbeitung in der App (FR-02–FR-04)
 
-- **Set:** Titel, Sprachen, optionale Angaben; neues leeres Set anlegen; Set löschen mit Angabe des Umfangs (Sektionen, Einträge, Zahl der Antworten und Lernsitzungen). Gelöscht werden in **einer** Transaktion das Set, seine Sitzungen und seine Review-Events (D-25); anders als beim Löschen einzelner Einträge bleibt keine Historie, weil Sitzungen und Events ohne Set jedes Backup ungültig machten (11.4). Die Ankündigung bietet vorher ein Backup an; die Schaltfläche nennt die Folge („Set mit 120 Einträgen löschen“). Löschen gibt es seit S-14 in der Set-Ansicht (13.1).
+- **Set:** Titel, Sprachen, optionale Angaben; neues leeres Set anlegen; Set löschen mit Angabe des Umfangs (Sektionen, Einträge, Zahl der Antworten und Lernsitzungen). Gelöscht werden in **einer** Transaktion das Set, seine Sitzungen, seine Review-Events und seine gemerkte Einrichtung (D-25, 12.1); anders als beim Löschen einzelner Einträge bleibt keine Historie, weil Sitzungen und Events ohne Set jedes Backup ungültig machten (11.4). Die Ankündigung bietet vorher ein Backup an; die Schaltfläche nennt die Folge („Set mit 120 Einträgen löschen“). Löschen gibt es seit S-14 in der Set-Ansicht (13.1).
 - **Sektionen:** anlegen, umbenennen, verschieben (Auf/Ab-Schaltflächen; Ziehen optional), löschen mit Bestätigung, wenn Einträge enthalten sind.
 - **Einträge:** anlegen, bearbeiten, verschieben, in eine andere Sektion verschieben, löschen.
 - Ein Eintrag wird in einem kompakten Formular bearbeitet: `term` mit Varianten, beliebig viele Bedeutungen mit Varianten, Notizen, Beispiele, Grammatik, Prüfstatus. Kein horizontales Scrollen (AK-12).
@@ -561,8 +562,11 @@ Es gibt kein Zusammenführen von Backups.
 
 ### 12.1 Sitzung einrichten (FR-07, FR-08)
 
-- Auswahl: ein Set, darin alle, einzelne oder mehrere Sektionen. Eine Sitzung gehört immer zu genau einem Set.
-- Einstellungen: Richtung (`termToMeaning`, `meaningToTerm`, `mixed`), Anzahl, Multiple-Choice-Anteil (Standard 25 %). Die zuletzt gewählten Werte werden je Set in `settings` gemerkt.
+- „Lernen“ in Bibliothek und Set-Ansicht öffnet die Einrichtung (`#/learn/<id>`, D-27); dort startet die Sitzung. Eine Sitzung gehört immer zu genau einem Set.
+- Auswahl: alle, einzelne oder mehrere Sektionen, mit „Alle“ und „Keine“; bei nur einer Sektion entfällt die Auswahl. Ohne gewählte Sektion ist der Start gesperrt.
+- Einstellungen: Richtung (`termToMeaning`, `meaningToTerm`, `mixed`, angezeigt mit Sprachnamen wie „Englisch → Deutsch“), Anzahl in festen Stufen 10, 20, 30 und „alle (n)“, Multiple-Choice-Anteil (Standard 25 %, Regler mit S-18; bis dahin `mcShare: 0`). Angeboten werden nur Stufen unter der Zahl der gewählten Einträge; eine gewählte Stufe, die bei kleinerer Auswahl wegfällt, erscheint als „alle“ und kehrt bei größerer Auswahl zurück. Ist die Anzahl kleiner als die Auswahl, werden die Einträge zufällig gezogen. Die Schaltfläche nennt die Folge („12 Vokabeln lernen“).
+- Voreinstellung beim ersten Mal: alle Sektionen, Lernsprache → Muttersprache, „alle“.
+- Die Einrichtung wird beim Start je Set unter `practice:<setId>` in `settings` gemerkt, in derselben Transaktion wie die neue Sitzung: `{ sections: "all" | string[], direction, count: 10 | 20 | 30 | "all" }`. „Alle Sektionen“ und „alle“ Einträge bleiben als solche gemerkt und wachsen mit dem Set. Beim Lesen prüft `domain/practiceSetup.ts` den Wert tolerant (er kann aus einem Backup stammen): Fehlende Sektionen fallen weg, bleibt keine übrig, gelten alle; Unbrauchbares ersetzt die Voreinstellung.
 
 ### 12.2 Ablauf (FR-10, FR-12)
 
@@ -727,6 +731,7 @@ Für diese Module werden Tests vor der Implementierung geschrieben:
 - `duplicates.ts`: Schwellenwert, Sprachpaar, Ausgabe;
 - `library.ts`: Gruppierung nach Lernsprache, Sortierung nach Lernstufe (numerisch, ohne Lernstufe zuletzt) und Titel, Umfang eines Sets;
 - `practice.ts`: Warteschlange, Wiedereinfügen, `firstAttempt`, Multiple-Choice-Auswahl und Rückfall auf Karteikarte;
+- `practiceSetup.ts`: Voreinstellung, gemerkte Einrichtung mit fehlenden oder unbrauchbaren Teilen, Stufen, zufällige Teilmenge nur aus den gewählten Sektionen;
 - `stats.ts`: Kennzahlen, gelöschte Einträge, verschobene Einträge;
 - `migrations/`: jede Migration mit Fixture vorher und nachher.
 
@@ -856,6 +861,7 @@ Ergebnisse (LLM-App, Modell, Datum, Befund) werden im Umsetzungsplan bei S-15 fe
 | D-24 | Leere optionale Felder einer Set-Datei werden beim Import stillschweigend entfernt; leere Pflichttexte und leere Listenelemente bleiben Fehler | 8.4, Formatspez. 5.5 | Nutzerentscheidung in S-12, 21. Oktober 2026 |
 | D-25 | Ein Set wird samt seinen Sitzungen und Review-Events in einer Transaktion gelöscht; die Ankündigung nennt Inhalt und Lernstand | 10, 11.4 | Nutzerentscheidung in S-14, 21. Oktober 2026 |
 | D-26 | Formatspezifikation und Schema werden unverändert neben der App veröffentlicht und vorab gespeichert; die Hilfe gibt KI-Chats eine Kurzvorlage mit Link darauf, das Teilen als Datei ist der Ausweichweg | 4.2, 5.2, 13.1, Formatspez. 11 | Nutzerentscheidung in S-15, 21. Oktober 2026 |
+| D-27 | „Lernen“ öffnet eine eigene Einrichtung; Anzahl in festen Stufen 10, 20, 30 und „alle“; Voreinstellung Lernsprache → Muttersprache; Regler für den Multiple-Choice-Anteil erst mit Multiple Choice | 12.1 | Nutzerentscheidung in S-17, 21. Oktober 2026 |
 
 ---
 
@@ -932,6 +938,7 @@ Geprüft am 18. bis 20. Oktober 2026.
 | 2.15 | 21. Oktober 2026 | Bibliothek, Set-Ansicht und Löschen (S-14): Routen mit Parameter (3.2), Set löschen samt Sitzungen und Events (10, D-25), Sortierung und Set-Ansicht (13.1), `library.ts` (3.1, 15.2), E2E-10 vorgezogen (15.4) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.16 | 21. Oktober 2026 | Empty State und Hilfe (S-15): Formatspezifikation und Schema neben der App veröffentlicht und vorab gespeichert (4.2, 5.2, D-26), Navigation zu vorab gespeicherten Dateien liefert die Datei (5.2), Hilfe mit Kurzvorlage, Teilen der Spezifikation und Formatbeispiel (13.1), `content/` (3.1), E2E-16 (15.4), LLM-Test bestanden und Vortest mit Unteragenten (15.7, O-09) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.17 | 22. Oktober 2026 | Beispielset (S-16): ohne IDs, Laden über den normalen Importweg und danach Set-Ansicht (13.2), Strukturtest als Fixture (15.3), Teil von E2E-05 (15.4) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.18 | 22. Oktober 2026 | Sitzung einrichten (S-17): eigene Ansicht `#/learn/<id>` (3.2, D-27), Stufen, Voreinstellung und gemerkte Einrichtung pro Set (12.1, 6.1), Löschen nimmt sie mit (10), `practiceSetup.ts` (3.1, 15.2) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 
 ---
 
@@ -996,9 +1003,10 @@ Ziel: Jeder riskante Teil läuft einmal von vorn bis hinten, in einfachster Form
   Offen für den Gerätecheck: „Vorlage kopieren“ und „Formatbeschreibung teilen“ in eine Chat-App auf iPhone und Android; nach dem Deploy `Content-Type` der Live-Datei (`charset=utf-8`) prüfen.
 - ✅ **S-16** Beispielset erstellen (13.2) – FR-32, AK-23  
   Erledigt am 22. Oktober 2026. `src/content/beispielset.json`: „Englisch – Grundwortschatz (Beispielset)“, Klasse 6, eigene Zusammenstellung, CC0, vier thematische Sektionen („In der Schule“ 15, „Freizeit und Sport“ 14, „Essen und Trinken“ 14, „Unterwegs“ 14 Einträge) mit Varianten bei Wort und Bedeutung (britisch/amerikanisch, Synonyme), mehreren Bedeutungen, Verbformen, Plural, Beispielen als Text und mit Übersetzung sowie Notizen; ohne Blick in den Prototyp zusammengestellt. Nutzerentscheidungen: Knopf als eigene Komponente (`components/sampleSetButton.ts`) im Empty State von S-15, direkt speichern ohne Vorschau, ohne IDs. Nach dem Laden öffnet die App die Set-Ansicht, weil ein Hashwechsel auf `#/` die schon gezeigte Bibliothek nicht neu zeichnet; die Anfrage nach dauerhaftem Speicher (6.6) läuft wie nach einem Import. Ablauf: Strukturtest zuerst (rot ohne Datei), dann Inhalt. Eine erste Umsetzung parallel zu S-15 wurde nach dessen Merge verworfen und auf dem neuen Stand neu aufgesetzt (S-15 änderte `vite.config.ts`, den Empty State und denselben Test). E2E: Empty State → Beispielset → Set-Ansicht mit Herkunft, Lizenz und vier Sektionen → Lernen (57 Karten); Knopf fehlt bei vorhandenem Set und erscheint nach dem Löschen des letzten Sets wieder – in mobile-chromium und mobile-webkit. Gegenproben: umbenanntes `plural` und andere Lizenz lassen drei Strukturtests scheitern, fehlender Wechsel zur Set-Ansicht den E2E-Test. Mit `playwright-cli` (mobiles Chromium, 320 px, hell und dunkel) geprüft: kein horizontales Scrollen in Empty State und aufgeklappter Set-Ansicht, Varianten, Bedeutungen, Grammatik, Beispiele und Notizen richtig dargestellt, `persistRequested` nach dem Laden in `meta`, Konsole leer. Wie beim Öffnen über die Liste setzt die Set-Ansicht keinen Fokus (Fokus danach auf `body`); für S-23 vormerken. Aufgefallen: Die Wortart erscheint so, wie sie im Set steht („Wortart: noun“), das Format sieht englische Werte vor.
-- 🔲 **S-17** Sitzung einrichten: Auswahl Sektionen, Richtung, Anzahl, Multiple-Choice-Anteil; gemerkte Einstellungen – FR-07, FR-08, FR-21
+- ✅ **S-17** Sitzung einrichten: Auswahl Sektionen, Richtung, Anzahl, Multiple-Choice-Anteil; gemerkte Einstellungen – FR-07, FR-08, FR-21  
+  Erledigt am 22. Oktober 2026. Nutzerentscheidungen (D-27): eigene Einrichtung `#/learn/<id>` statt Sofortstart, Anzahl in festen Stufen „10 · 20 · 30 · alle“ statt Regler, Voreinstellung Lernsprache → Muttersprache, Regler für den Multiple-Choice-Anteil erst mit S-18. Domain testgetrieben: `practiceSetup.ts` (Voreinstellung, tolerantes Lesen der gemerkten Einrichtung, „alle Sektionen“ wächst mit, Stufen und „alle“, zufällige Teilmenge); das Mischen ist dafür als `shuffle` aus `practice.ts` herausgelöst. Storage mit Integrationstests: `storage/settings.ts`, `startSession` merkt die Einrichtung in derselben Transaktion (scheitert die Sitzung, bleibt auch die Einrichtung ungespeichert), `deleteSet` löscht sie mit. „Lernen“ ist jetzt ein Link (`components/learnButton.ts`); die Ansicht `views/learn.ts` zeigt Sektionen mit Eintragszahl, Richtung und Anzahl als Radiogruppen, die Zahl der gewählten Vokabeln als Live-Status und eine Startschaltfläche mit der Folge. E2E (`learn.spec.ts`): Sektion, Richtung und Stufe bestimmen Sitzung, Karte und gemerkte Einrichtung, die nach dem Neuladen wieder vorbelegt ist; „Keine“ sperrt den Start, eine Stufe über der Auswahl erscheint als „alle“ und kehrt zurück; Löschen des Sets entfernt die Einrichtung; unbekanntes Set – in mobile-chromium und mobile-webkit. Bestehende Tests starten über den Helfer `startLearning`; Links auf Set-Titel brauchen jetzt `exact: true`, weil „<Titel> lernen“ als Link denselben Text enthält. Gegenproben: Teilmenge aus allen Sektionen, fehlende Sektionen nicht entfernt, Einrichtung beim Löschen nicht entfernt, Einrichtung in eigener Transaktion vor der Sitzung – jeweils scheitern die passenden Tests. Mit `playwright-cli` (mobiles Chromium, 320 px, hell und dunkel, Beispielset) geprüft: kein horizontales Scrollen auch bei langem Titel und Sektionsnamen ohne Trennstelle, Fokus nach dem Öffnen auf der Überschrift, Pfeiltasten wechseln Richtung und Anzahl ohne Fokusverlust, alle Ziele mindestens 44 px hoch, gewählter Zustand an Radioknopf und Rahmen erkennbar, Konsole leer.
 - 🔲 **S-18** Multiple Choice mit Kandidatenregeln (testgetrieben), Bedienwege Karteikarte – FR-09, AK-22  
-  Dazu Notiz, Beispiele und Grammatik eines Eintrags auf der Rückseite der Karteikarte zeigen (seit S-12 gespeichert).
+  Dazu Notiz, Beispiele und Grammatik eines Eintrags auf der Rückseite der Karteikarte zeigen (seit S-12 gespeichert) und den Regler für den Multiple-Choice-Anteil (Standard 25 %) in der Einrichtung ergänzen, gemerkt wie die übrigen Werte (12.1, D-27).
 - 🔲 **S-19** Fehlerwiederholung, Zwischenstand, Fortsetzen, Ergebnis, „Nur Fehler üben“ – FR-10, FR-12
 - 🔲 **S-20** Lernüberblick aus Events (testgetrieben) – FR-11, AK-17
 - 🔲 **S-21** Einstellungen, Hell/Dunkel, App-Version – FR-21, FR-25

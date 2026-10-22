@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { expect, type Page, type TestInfo, test } from "@playwright/test";
 import { preview } from "vite";
 import { precache } from "../../scripts/precache";
-import { importSet } from "./support";
+import { importSet, startLearning } from "./support";
 
 const dist = fileURLToPath(new URL("../../dist/", import.meta.url));
 
@@ -89,7 +89,7 @@ test("E2E-14 Während einer Lernsitzung erscheint der Hinweis erst danach", asyn
     await serviceWorkerReady(page);
     // Erst nach dem Neuladen steuert der Service Worker die Seite; vorher gilt nichts als Update.
     await page.goto(url);
-    await page.getByRole("button", { name: "Englisch – Update lernen" }).click();
+    await startLearning(page, "Englisch – Update");
     await expect(page.getByText("0 von 3 geschafft")).toBeVisible();
 
     // Die Prüfung beim Zurückkehren in den Vordergrund findet die neue Version mitten in der Sitzung.
