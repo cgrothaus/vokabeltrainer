@@ -1,7 +1,7 @@
 # TDD: Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.16 – Empty State, Hilfe und veröffentlichte Formatspezifikation  
-**Stand:** 21. Oktober 2026  
+**Version:** 2.17 – Beispielset  
+**Stand:** 22. Oktober 2026  
 **Bezug:** PRD 2.4 (`PRD_Vokabeltrainer_Allgemein_v2.md`), Formatspezifikation Version 1 (`Formatspezifikation_Vokabelset_v1.md`), Review-Notizen (`20261019_TDD_v1_Review_Notizen.md`)  
 **Status:** Entwurf; Grundlage für M0 (Walking Skeleton)  
 **Entstehung und Autorenschaft:** siehe Kapitel 20 (Änderungshistorie)
@@ -665,10 +665,12 @@ Kein Algorithmus für verteiltes Wiederholen in dieser Version. Die Events entha
 
 ### 13.2 Beispielset (FR-32)
 
-- Datei `src/content/beispielset.json` im Format der Formatspezifikation, beim Build eingebettet.
+- Datei `src/content/beispielset.json` im Format der Formatspezifikation, als Text eingebettet (`?raw`).
 - Inhalt: eigene Auswahl aus allgemeinem Grundwortschatz Englisch–Deutsch, Niveau etwa Klasse 6, 3–5 thematische Sektionen mit je 10–20 Einträgen. Enthält Varianten, mehrere Bedeutungen, Grammatik und Beispiele.
 - `source: "Eigene Zusammenstellung"`, `license: "CC0"`.
-- Wird über den normalen Importweg geladen (keine Sonderlogik) und dient zugleich als Testfixture.
+- Ohne IDs und `rev`, wie ein neu erstelltes Set; die App vergibt die IDs beim Laden. Zweimal geladen ergibt es also zwei Sets.
+- Wird über den normalen Importweg geladen (keine Sonderlogik): „Beispielset ausprobieren“ im Empty State (13.1) führt `previewImport` und `saveImport` ohne angezeigte Vorschau aus (`app/sampleSet.ts`) und öffnet danach die Set-Ansicht mit „Lernen“. Duplikate werden nicht gefragt, weil der Knopf nur bei leerer Bibliothek erscheint.
+- Dient zugleich als Testfixture: `tests/format/setfile.test.ts` prüft Gültigkeit ohne Warnungen und die Vorgaben aus FR-32 (15.3).
 - Keine Inhalte aus dem Prototyp oder aus Lehrwerken.
 
 ### 13.3 Kontextbezogene Hilfe (FR-28, AK-15)
@@ -743,7 +745,7 @@ tests/fixtures/
 └── perf/                               3.000 Einträge; 50.000 Events
 ```
 
-Das Beispielset (13.2) ist zugleich gültiges Fixture. Der Schemaabgleich (`tests/format/setfile.test.ts`, Vitest-Projekt `unit`) führt jedes Fixture durch `extractJson` und danach durch Validator und Schema. Für `invalid/` und `invalid-validator-only/` hält er pro Datei die erwartete Meldung fest (genau ein Fehler), für `valid/` und `llm/` die erwarteten Warnungen; ein Fixture ohne Erwartung lässt den Test scheitern. Ein weiterer Test vergleicht die Feldnamen jeder Ebene im Schema mit den Feldtabellen des Validators.
+Das Beispielset (13.2) ist zugleich gültiges Fixture; es liegt in `src/content/`, und ein eigener Abschnitt des Schemaabgleichs prüft es ohne Warnungen sowie Sprachen, Herkunft, Lizenz, Umfang und die geforderten Formatmöglichkeiten (FR-32). Der Schemaabgleich (`tests/format/setfile.test.ts`, Vitest-Projekt `unit`) führt jedes Fixture durch `extractJson` und danach durch Validator und Schema. Für `invalid/` und `invalid-validator-only/` hält er pro Datei die erwartete Meldung fest (genau ein Fehler), für `valid/` und `llm/` die erwarteten Warnungen; ein Fixture ohne Erwartung lässt den Test scheitern. Ein weiterer Test vergleicht die Feldnamen jeder Ebene im Schema mit den Feldtabellen des Validators.
 
 ### 15.4 End-to-End-Smoke-Tests
 
@@ -755,7 +757,7 @@ Projekte: `mobile-chromium` (Pixel-Emulation) und `mobile-webkit` (iPhone-Emulat
 | E2E-02 Backup → Daten löschen → Wiederherstellen | M0 | AK-10 |
 | E2E-03 Offline-Start nach erstem Laden | M0 | AK-21 |
 | E2E-04 Migration: alte DB per Init-Skript anlegen → App öffnen → Daten nutzbar | mit der ersten Erhöhung von `DB_VERSION` nach S-29 (7.4); bis dahin Integrationstests | AK-24 |
-| E2E-05 Empty State → Beispielset → Sitzung mit Multiple Choice → Ergebnis | M1 | AK-08, AK-14, AK-22 |
+| E2E-05 Empty State → Beispielset → Sitzung mit Multiple Choice → Ergebnis (bis „Lernen“ seit S-16 in `sample.spec.ts`; Multiple Choice und Ergebnis mit S-18, S-19) | M1 | AK-08, AK-14, AK-22, AK-23 |
 | E2E-06 Import mit Begleittext und Zusatzfeld (Datei) → Warnung sichtbar | M1 | AK-01 |
 | E2E-07 Bearbeiten → Neuladen → Änderung da | M3 | AK-03, AK-25 |
 | E2E-08 Teil-Export → Datei ändern → Aktualisieren; andere Sektionen unverändert | M4 | AK-04, AK-05 |
@@ -929,6 +931,7 @@ Geprüft am 18. bis 20. Oktober 2026.
 | 2.14 | 21. Oktober 2026 | Ergebnisse der Gerätechecks (S-11): `persist()` in Safari und Chrome (6.6), Teilen-Menü auf iOS und iPadOS, Download auf Android (11.2), geprüfte Versionen (4.3); D-17 und D-20 bestätigt; O-02, O-03, O-04 und O-08 abgeschlossen | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.15 | 21. Oktober 2026 | Bibliothek, Set-Ansicht und Löschen (S-14): Routen mit Parameter (3.2), Set löschen samt Sitzungen und Events (10, D-25), Sortierung und Set-Ansicht (13.1), `library.ts` (3.1, 15.2), E2E-10 vorgezogen (15.4) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.16 | 21. Oktober 2026 | Empty State und Hilfe (S-15): Formatspezifikation und Schema neben der App veröffentlicht und vorab gespeichert (4.2, 5.2, D-26), Navigation zu vorab gespeicherten Dateien liefert die Datei (5.2), Hilfe mit Kurzvorlage, Teilen der Spezifikation und Formatbeispiel (13.1), `content/` (3.1), E2E-16 (15.4), LLM-Test bestanden und Vortest mit Unteragenten (15.7, O-09) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.17 | 22. Oktober 2026 | Beispielset (S-16): ohne IDs, Laden über den normalen Importweg und danach Set-Ansicht (13.2), Strukturtest als Fixture (15.3), Teil von E2E-05 (15.4) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 
 ---
 
@@ -991,7 +994,8 @@ Ziel: Jeder riskante Teil läuft einmal von vorn bis hinten, in einfachster Form
 
   Umsetzung: Ein Plugin in `vite.config.ts` gibt Spezifikation und Schema aus `docs/` neben `index.html` aus; der Service Worker speichert sie vorab. Gefunden durch E2E-16: Der Service Worker beantwortete jede Navigation mit der App, ein geöffneter Link auf die Spezifikation zeigte also die App (jetzt die Datei), und `vite preview` liefert `.md` ohne Zeichensatz, sodass Umlaute falsch erschienen (Plugin setzt `charset=utf-8`). Empty State mit Satz zur App, „Erstes Vokabelset importieren“ und Hilfe-Link; die Aktionen unter der Liste erscheinen erst nach dem Laden und nur bei vorhandenen Sets. Hilfe (`#/help`) wie in 13.1; „Formatbeschreibung teilen“ als `.txt`, weil Chromium `.md` nicht teilt. Nutzerentscheidungen: Link bevorzugt, Teilen als Ausweichweg, Veröffentlichung neben der App statt Verweis auf das Repository, Vortest durch Unteragenten. Bewusst noch nicht: „Beispielset ausprobieren“ (S-16), „Leeres Set anlegen“ (S-31), Korrekturvorlage in der App (S-32). E2E-16 und drei weitere Tests (Kopieren scheitert, Datei offline und per Link, Hilfe aus Bibliothek und Import) in mobile-chromium und mobile-webkit. Gegenproben: Build ohne Plugin bricht ab, geänderte Vorlage in der Spezifikation lässt `tests/format/help.test.ts` scheitern, der alte Service Worker lässt den Link-Test scheitern. Mit `playwright-cli` (mobiles Chromium, 320 px, hell und dunkel) geprüft: kein horizontales Scrollen in Empty State, Hilfe (Beispiel aufgeklappt) und Import, Vorlage und Beispiel brechen um, Tab-Reihenfolge in der Hilfe logisch, Konsole leer.  
   Offen für den Gerätecheck: „Vorlage kopieren“ und „Formatbeschreibung teilen“ in eine Chat-App auf iPhone und Android; nach dem Deploy `Content-Type` der Live-Datei (`charset=utf-8`) prüfen.
-- 🔲 **S-16** Beispielset erstellen (13.2) – FR-32, AK-23
+- ✅ **S-16** Beispielset erstellen (13.2) – FR-32, AK-23  
+  Erledigt am 22. Oktober 2026. `src/content/beispielset.json`: „Englisch – Grundwortschatz (Beispielset)“, Klasse 6, eigene Zusammenstellung, CC0, vier thematische Sektionen („In der Schule“ 15, „Freizeit und Sport“ 14, „Essen und Trinken“ 14, „Unterwegs“ 14 Einträge) mit Varianten bei Wort und Bedeutung (britisch/amerikanisch, Synonyme), mehreren Bedeutungen, Verbformen, Plural, Beispielen als Text und mit Übersetzung sowie Notizen; ohne Blick in den Prototyp zusammengestellt. Nutzerentscheidungen: Knopf als eigene Komponente (`components/sampleSetButton.ts`) im Empty State von S-15, direkt speichern ohne Vorschau, ohne IDs. Nach dem Laden öffnet die App die Set-Ansicht, weil ein Hashwechsel auf `#/` die schon gezeigte Bibliothek nicht neu zeichnet; die Anfrage nach dauerhaftem Speicher (6.6) läuft wie nach einem Import. Ablauf: Strukturtest zuerst (rot ohne Datei), dann Inhalt. Eine erste Umsetzung parallel zu S-15 wurde nach dessen Merge verworfen und auf dem neuen Stand neu aufgesetzt (S-15 änderte `vite.config.ts`, den Empty State und denselben Test). E2E: Empty State → Beispielset → Set-Ansicht mit Herkunft, Lizenz und vier Sektionen → Lernen (57 Karten); Knopf fehlt bei vorhandenem Set und erscheint nach dem Löschen des letzten Sets wieder – in mobile-chromium und mobile-webkit. Gegenproben: umbenanntes `plural` und andere Lizenz lassen drei Strukturtests scheitern, fehlender Wechsel zur Set-Ansicht den E2E-Test. Mit `playwright-cli` (mobiles Chromium, 320 px, hell und dunkel) geprüft: kein horizontales Scrollen in Empty State und aufgeklappter Set-Ansicht, Varianten, Bedeutungen, Grammatik, Beispiele und Notizen richtig dargestellt, `persistRequested` nach dem Laden in `meta`, Konsole leer. Wie beim Öffnen über die Liste setzt die Set-Ansicht keinen Fokus (Fokus danach auf `body`); für S-23 vormerken. Aufgefallen: Die Wortart erscheint so, wie sie im Set steht („Wortart: noun“), das Format sieht englische Werte vor.
 - 🔲 **S-17** Sitzung einrichten: Auswahl Sektionen, Richtung, Anzahl, Multiple-Choice-Anteil; gemerkte Einstellungen – FR-07, FR-08, FR-21
 - 🔲 **S-18** Multiple Choice mit Kandidatenregeln (testgetrieben), Bedienwege Karteikarte – FR-09, AK-22  
   Dazu Notiz, Beispiele und Grammatik eines Eintrags auf der Rückseite der Karteikarte zeigen (seit S-12 gespeichert).

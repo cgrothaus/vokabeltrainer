@@ -1,0 +1,258 @@
+{
+  "format": "vokabeltrainer-set",
+  "formatVersion": 1,
+  "set": {
+    "title": "Englisch – Grundwortschatz (Beispielset)",
+    "termLanguage": "en",
+    "meaningLanguage": "de",
+    "level": "Klasse 6",
+    "source": "Eigene Zusammenstellung",
+    "license": "CC0",
+    "notes": "Beispielset zum Ausprobieren der App. Eigene Zusammenstellung aus allgemeinem Grundwortschatz, frei verwendbar (CC0).",
+    "reviewStatus": "checked"
+  },
+  "sections": [
+    {
+      "title": "In der Schule",
+      "entries": [
+        {
+          "term": "teacher",
+          "meanings": [{ "text": "Lehrer/-in", "acceptedVariants": ["Lehrer", "Lehrerin"] }]
+        },
+        {
+          "term": "child",
+          "meanings": ["Kind"],
+          "grammar": { "partOfSpeech": "noun", "plural": "children" }
+        },
+        {
+          "term": "classroom",
+          "meanings": [{ "text": "Klassenzimmer", "acceptedVariants": ["Klassenraum"] }]
+        },
+        {
+          "term": { "text": "rubber", "acceptedVariants": ["eraser"] },
+          "meanings": ["Radiergummi"],
+          "notes": "„rubber“ ist britisches, „eraser“ amerikanisches Englisch."
+        },
+        {
+          "term": "pencil case",
+          "meanings": [{ "text": "Federmäppchen", "acceptedVariants": ["Mäppchen", "Federmappe"] }]
+        },
+        { "term": "exercise book", "meanings": ["Heft"] },
+        {
+          "term": "homework",
+          "meanings": ["Hausaufgaben"],
+          "notes": "Im Englischen ohne Plural: „my homework“."
+        },
+        { "term": "timetable", "meanings": ["Stundenplan"] },
+        { "term": "break", "meanings": ["Pause"] },
+        { "term": "to learn", "meanings": ["lernen"] },
+        {
+          "term": "to explain",
+          "meanings": ["erklären"],
+          "examples": [
+            {
+              "text": "Can you explain the word, please?",
+              "translation": "Kannst du bitte das Wort erklären?"
+            }
+          ]
+        },
+        { "term": "easy", "meanings": [{ "text": "leicht", "acceptedVariants": ["einfach"] }] },
+        {
+          "term": "to forget",
+          "meanings": ["vergessen"],
+          "grammar": { "partOfSpeech": "verb", "forms": ["forget", "forgot", "forgotten"] },
+          "examples": [
+            {
+              "text": "Don't forget your homework.",
+              "translation": "Vergiss deine Hausaufgaben nicht."
+            }
+          ]
+        },
+        { "term": "ruler", "meanings": ["Lineal", "Herrscher/-in"] },
+        {
+          "term": "to spell",
+          "meanings": ["buchstabieren"],
+          "examples": [
+            {
+              "text": "How do you spell your name?",
+              "translation": "Wie buchstabiert man deinen Namen?"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Freizeit und Sport",
+      "entries": [
+        { "term": "free time", "meanings": ["Freizeit"] },
+        {
+          "term": "hobby",
+          "meanings": ["Hobby"],
+          "grammar": { "partOfSpeech": "noun", "plural": "hobbies" }
+        },
+        {
+          "term": { "text": "football", "acceptedVariants": ["soccer"] },
+          "meanings": ["Fußball"],
+          "notes": "„soccer“ sagt man vor allem in den USA."
+        },
+        { "term": "team", "meanings": [{ "text": "Mannschaft", "acceptedVariants": ["Team"] }] },
+        { "term": "to play", "meanings": ["spielen"] },
+        {
+          "term": "to win",
+          "meanings": ["gewinnen"],
+          "grammar": { "partOfSpeech": "verb", "forms": ["win", "won", "won"] }
+        },
+        {
+          "term": "to lose",
+          "meanings": ["verlieren"],
+          "grammar": { "partOfSpeech": "verb", "forms": ["lose", "lost", "lost"] }
+        },
+        {
+          "term": "to swim",
+          "meanings": ["schwimmen"],
+          "grammar": { "partOfSpeech": "verb", "forms": ["swim", "swam", "swum"] }
+        },
+        {
+          "term": { "text": "bike", "acceptedVariants": ["bicycle"] },
+          "meanings": [{ "text": "Fahrrad", "acceptedVariants": ["Rad"] }]
+        },
+        {
+          "term": "to meet",
+          "meanings": ["treffen", "kennenlernen"],
+          "grammar": { "partOfSpeech": "verb", "forms": ["meet", "met", "met"] },
+          "examples": ["Let's meet after school."]
+        },
+        {
+          "term": "match",
+          "meanings": [
+            { "text": "Spiel (Wettkampf)", "acceptedVariants": ["Spiel"] },
+            "Streichholz"
+          ]
+        },
+        {
+          "term": { "text": "to practise", "acceptedVariants": ["to practice"] },
+          "meanings": ["üben"],
+          "notes": "„to practice“ ist die amerikanische Schreibweise."
+        },
+        {
+          "term": "weekend",
+          "meanings": ["Wochenende"],
+          "examples": [
+            {
+              "text": "What did you do at the weekend?",
+              "translation": "Was hast du am Wochenende gemacht?"
+            }
+          ]
+        },
+        {
+          "term": "to miss",
+          "meanings": ["vermissen", "verpassen"],
+          "examples": [
+            { "text": "I miss my friends.", "translation": "Ich vermisse meine Freunde." }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Essen und Trinken",
+      "entries": [
+        { "term": "breakfast", "meanings": ["Frühstück"] },
+        { "term": "lunch", "meanings": ["Mittagessen"] },
+        { "term": "dinner", "meanings": ["Abendessen"] },
+        { "term": "apple", "meanings": ["Apfel"] },
+        { "term": "bread", "meanings": ["Brot"] },
+        { "term": "cheese", "meanings": ["Käse"] },
+        {
+          "term": "potato",
+          "meanings": ["Kartoffel"],
+          "grammar": { "partOfSpeech": "noun", "plural": "potatoes" }
+        },
+        {
+          "term": { "text": "biscuit", "acceptedVariants": ["cookie"] },
+          "meanings": ["Keks"],
+          "notes": "„cookie“ ist amerikanisches Englisch."
+        },
+        {
+          "term": "knife",
+          "meanings": ["Messer"],
+          "grammar": { "partOfSpeech": "noun", "plural": "knives" }
+        },
+        {
+          "term": "to eat",
+          "meanings": ["essen"],
+          "grammar": { "partOfSpeech": "verb", "forms": ["eat", "ate", "eaten"] }
+        },
+        {
+          "term": "to drink",
+          "meanings": ["trinken"],
+          "grammar": { "partOfSpeech": "verb", "forms": ["drink", "drank", "drunk"] }
+        },
+        {
+          "term": "hungry",
+          "meanings": ["hungrig"],
+          "examples": [{ "text": "I'm hungry.", "translation": "Ich habe Hunger." }]
+        },
+        {
+          "term": "delicious",
+          "meanings": [{ "text": "lecker", "acceptedVariants": ["köstlich"] }]
+        },
+        { "term": "to cook", "meanings": ["kochen"], "examples": ["My dad cooks on Sundays."] }
+      ]
+    },
+    {
+      "title": "Unterwegs",
+      "entries": [
+        { "term": "car", "meanings": [{ "text": "Auto", "acceptedVariants": ["Wagen"] }] },
+        {
+          "term": "bus",
+          "meanings": ["Bus"],
+          "grammar": { "partOfSpeech": "noun", "plural": "buses" }
+        },
+        { "term": "train", "meanings": ["Zug"] },
+        { "term": "station", "meanings": ["Bahnhof"] },
+        {
+          "term": { "text": "underground", "acceptedVariants": ["subway"] },
+          "meanings": ["U-Bahn"],
+          "notes": "„subway“ ist amerikanisches Englisch; die Londoner U-Bahn heißt „the Tube“."
+        },
+        {
+          "term": "ticket",
+          "meanings": [
+            { "text": "Fahrkarte", "acceptedVariants": ["Fahrschein"] },
+            "Eintrittskarte"
+          ]
+        },
+        {
+          "term": "to catch",
+          "meanings": ["fangen", "erwischen"],
+          "grammar": { "partOfSpeech": "verb", "forms": ["catch", "caught", "caught"] },
+          "examples": [
+            {
+              "text": "We caught the last bus.",
+              "translation": "Wir haben den letzten Bus erwischt."
+            }
+          ]
+        },
+        {
+          "term": "to go",
+          "meanings": ["gehen", "fahren"],
+          "grammar": { "partOfSpeech": "verb", "forms": ["go", "went", "gone"] }
+        },
+        {
+          "term": "to buy",
+          "meanings": ["kaufen"],
+          "grammar": { "partOfSpeech": "verb", "forms": ["buy", "bought", "bought"] }
+        },
+        { "term": "map", "meanings": ["Landkarte", "Stadtplan"] },
+        { "term": "left", "meanings": ["links"] },
+        { "term": "right", "meanings": ["rechts", "richtig"] },
+        { "term": "suitcase", "meanings": ["Koffer"] },
+        {
+          "term": "holiday",
+          "meanings": [{ "text": "Ferien", "acceptedVariants": ["Urlaub"] }],
+          "notes": "Amerikanisch sagt man „vacation“."
+        }
+      ]
+    }
+  ]
+}
