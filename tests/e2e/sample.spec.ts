@@ -24,10 +24,10 @@ test("Empty State → Beispielset ausprobieren → Set-Ansicht → Lernen", asyn
   await expect(page.getByText("Eigene Zusammenstellung", { exact: true })).toBeVisible();
   await expect(page.getByText("CC0", { exact: true })).toBeVisible();
   await expect(page.locator("summary")).toHaveText([
-    "In der Schule 15 Einträge",
-    "Freizeit und Sport 14 Einträge",
-    "Essen und Trinken 14 Einträge",
-    "Unterwegs 14 Einträge",
+    "In der Schule 15 Einträge noch nicht gelernt",
+    "Freizeit und Sport 14 Einträge noch nicht gelernt",
+    "Essen und Trinken 14 Einträge noch nicht gelernt",
+    "Unterwegs 14 Einträge noch nicht gelernt",
   ]);
   const [set] = await readStore<StoredSet>(page, "sets");
   expect(set).toMatchObject({ title: TITLE, source: "Eigene Zusammenstellung", license: "CC0" });

@@ -3,7 +3,13 @@ import { IDBFactory } from "fake-indexeddb";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { ReviewEvent, Session } from "../domain/model";
 import { openDatabase } from "./database";
-import { finishSession, interruptActiveSessions, recordAnswer, startSession } from "./sessions";
+import {
+  finishSession,
+  interruptActiveSessions,
+  listSetEvents,
+  recordAnswer,
+  startSession,
+} from "./sessions";
 import { getSetting } from "./settings";
 import type { StoreName } from "./schema";
 import { runTransaction } from "./transaction";
@@ -131,6 +137,17 @@ describe("recordAnswer", () => {
 
     db.close();
     await expect(recordAnswer(db, event("e3456789abcd"))).rejects.toThrow();
+  });
+});
+
+describe("listSetEvents", () => {
+  it("liefert alle Antworten eines Sets und keine anderen", async () => {
+    await recordAnswer(db, event("e1aaaaaaaaaa"));
+    await recordAnswer(db, event("e2aaaaaaaaaa", { setId: "k2n7w4b8qp" }));
+    await recordAnswer(db, event("e3aaaaaaaaaa", { sessionId: "s9876543wxyz" }));
+    const events = await listSetEvents(db, "m4x8c2r9tw");
+    expect(events.map((e) => e.id).sort()).toEqual(["e1aaaaaaaaaa", "e3aaaaaaaaaa"]);
+    expect(await listSetEvents(db, "unbekannt")).toEqual([]);
   });
 });
 

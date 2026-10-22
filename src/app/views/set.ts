@@ -1,7 +1,8 @@
-// Set-Ansicht (TDD 13.1, FR-02, FR-03): Angaben des Sets, Sektionen zum Aufklappen mit allen Angaben
-// der Einträge, Lernen und Löschen. Bearbeiten folgt mit M3 (S-30, S-31).
+// Set-Ansicht (TDD 13.1, FR-02, FR-03): Angaben des Sets, Lernstand (12.6), Sektionen zum Aufklappen
+// mit allen Angaben der Einträge, Lernen und Löschen. Bearbeiten folgt mit M3 (S-30, S-31).
 import { setSize } from "../../domain/library";
 import type { Answer, StoredEntry, StoredSection, StoredSet } from "../../domain/model";
+import { describeDay, type Overview, type SetStats } from "../../domain/stats";
 import { entryDetails } from "../components/entryDetails";
 import { learnButton } from "../components/learnButton";
 import type { DeleteOutcome, DeletionScope } from "../deleteSet";
@@ -11,6 +12,7 @@ import { languageName } from "../languages";
 export interface SetContext {
   /** `undefined`, wenn es das Set nicht gibt. */
   loadSet: () => Promise<StoredSet | undefined>;
+  loadOverview: (set: StoredSet) => Promise<SetStats>;
   deletionScope: (set: StoredSet) => Promise<DeletionScope>;
   removeSet: (set: StoredSet) => Promise<DeleteOutcome>;
   /** Nach dem Löschen: Meldung für die Bibliothek und Wechsel dorthin. */
@@ -18,6 +20,7 @@ export interface SetContext {
 }
 
 const NOT_LOADED = "Das Vokabelset konnte nicht geladen werden. Lade die Seite neu.";
+const NO_OVERVIEW = "Der Lernstand konnte nicht geladen werden.";
 const NO_SCOPE =
   "Der Umfang des Sets konnte nicht ermittelt werden. Lade die Seite neu und versuche es noch einmal.";
 
@@ -60,6 +63,25 @@ export function setView(context: SetContext): Node {
 
 function content(set: StoredSet, context: SetContext): Child[] {
   const { entries } = setSize(set);
+  const overview = h("div", { class: "overview" });
+  // Je Sektion eine Zeile im Titel, auch zugeklappt sichtbar; gefüllt, sobald der Lernstand da ist.
+  const sectionLines = new Map(
+    set.sections.map((section) => [section.id, h("span", { class: "stats" })]),
+  );
+  void context.loadOverview(set).then(
+    (stats) => {
+      const now = new Date();
+      overview.replaceChildren(...describeSet(stats.set, now));
+      for (const [id, line] of sectionLines) {
+        const section = stats.sections.get(id);
+        if (section) line.textContent = describeSection(section, now);
+      }
+    },
+    (error: unknown) => {
+      console.error("Lernstand nicht lesbar", error);
+      overview.replaceChildren(h("p", { role: "alert" }, NO_OVERVIEW));
+    },
+  );
   return [
     h("h1", { class: "set-title" }, set.title),
     h(
@@ -69,10 +91,12 @@ function content(set: StoredSet, context: SetContext): Child[] {
     ),
     setDetails(set),
     entries > 0 && h("div", { class: "actions" }, learnButton(set)),
+    h("h2", null, "Lernstand"),
+    overview,
     h("h2", null, "Sektionen"),
     set.sections.length === 0
       ? h("p", null, "Dieses Set hat noch keine Sektionen.")
-      : set.sections.map((section) => sectionView(section, set)),
+      : set.sections.map((section) => sectionView(section, set, sectionLines.get(section.id)!)),
     deletion(set, context),
     back(),
   ];
@@ -99,7 +123,41 @@ function setDetails(set: StoredSet): Node | null {
   );
 }
 
-function sectionView(section: StoredSection, set: StoredSet): Node {
+/** Erstversuchsquote in ganzen Prozent; ohne Erstversuch (nur aus fremden Daten denkbar) entfällt sie. */
+function rate(overview: Overview): string | null {
+  const recent = overview.recent;
+  if (!recent || recent.firstAttempts === 0) return null;
+  return `${Math.round((100 * recent.firstCorrect) / recent.firstAttempts)} %`;
+}
+
+/** Lernstand des ganzen Sets (TDD 12.6, AK-17). */
+function describeSet(overview: Overview, now: Date): Node[] {
+  if (overview.sessions === 0 || !overview.lastAt) {
+    return [h("p", null, "Mit diesem Set hast du noch nicht gelernt.")];
+  }
+  const sessions = `${count(overview.sessions, "Lernsitzung", "Lernsitzungen")} · zuletzt ${describeDay(overview.lastAt, now)}`;
+  const lines = [h("p", null, sessions)];
+  const percent = rate(overview);
+  if (percent) {
+    const recent = overview.recent!.sessions;
+    const which = recent === 1 ? "letzte Sitzung" : `letzte ${recent} Sitzungen`;
+    lines.push(h("p", null, `${percent} beim ersten Mal gewusst (${which})`));
+  }
+  return lines;
+}
+
+/** Kurzform für die Zeile im Sektionstitel. */
+function describeSection(overview: Overview, now: Date): string {
+  if (overview.sessions === 0 || !overview.lastAt) return "noch nicht gelernt";
+  const percent = rate(overview);
+  return [
+    count(overview.sessions, "Sitzung", "Sitzungen"),
+    `zuletzt ${describeDay(overview.lastAt, now)}`,
+    ...(percent ? [percent] : []),
+  ].join(" · ");
+}
+
+function sectionView(section: StoredSection, set: StoredSet, stats: HTMLElement): Node {
   return h(
     "details",
     { class: "section" },
@@ -109,6 +167,9 @@ function sectionView(section: StoredSection, set: StoredSet): Node {
       h("span", { class: "title" }, section.title),
       " ",
       h("span", { class: "count" }, count(section.entries.length, "Eintrag", "Einträge")),
+      // Leerzeichen trennt die Zeile im vorgelesenen Namen; optisch bricht sie ohnehin um.
+      " ",
+      stats,
     ),
     section.entries.length === 0
       ? h("p", null, "Diese Sektion hat noch keine Einträge.")
