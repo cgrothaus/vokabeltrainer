@@ -4,7 +4,7 @@
 import { MAX_IMPORT_SIZE } from "../../domain/importSet";
 import type { StoredSet } from "../../domain/model";
 import type { ClipboardResult } from "../../platform/clipboard";
-import { h } from "../dom";
+import { focusSoon, h } from "../dom";
 import type { ImportPreview, PreviewOutcome, SaveOutcome } from "../importText";
 import { languageName } from "../languages";
 
@@ -36,12 +36,6 @@ const CLIPBOARD = {
 const entries = (count: number) => (count === 1 ? "1 Eintrag" : `${count} Einträge`);
 const entriesDative = (count: number) => (count === 1 ? "1 Eintrag" : `${count} Einträgen`);
 const sections = (count: number) => (count === 1 ? "1 Sektion" : `${count} Sektionen`);
-
-/** Fokus auf die Vorschau oder eine Meldung, damit Screenreader sie vorlesen. */
-function focus(element: HTMLElement): void {
-  element.tabIndex = -1;
-  element.focus();
-}
 
 export function importView(context: ImportContext): Node {
   const text = h("textarea", {
@@ -196,7 +190,7 @@ export function importView(context: ImportContext): Node {
       ),
     );
     input.hidden = true;
-    focus(heading);
+    focusSoon(heading);
   };
 
   const check = async (read: () => Promise<string>) => {

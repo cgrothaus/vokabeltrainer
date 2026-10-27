@@ -3,7 +3,7 @@
 import { type BackupSummary, type CheckedBackup, MAX_BACKUP_SIZE } from "../../domain/backup";
 import type { Delivery } from "../../platform/deliverFile";
 import type { CheckOutcome, PreparedBackup, RestoreOutcome } from "../backup";
-import { h } from "../dom";
+import { focusSoon, h } from "../dom";
 import { failureMessage } from "../storageMessages";
 
 export interface BackupContext {
@@ -37,12 +37,6 @@ function describe(summary: BackupSummary): string {
   const sessions = count(summary.sessions, "Lernsitzung", "Lernsitzungen");
   const events = count(summary.events, "Antwort", "Antworten");
   return `Backup vom ${date(summary.exportedAt)}: ${sets}, ${sessions}, ${events}.`;
-}
-
-/** Fokus auf eine Meldung, damit Screenreader sie vorlesen und die Tastatur dort weitermacht. */
-function focus(element: HTMLElement): void {
-  element.tabIndex = -1;
-  element.focus();
 }
 
 export function backupView(context: BackupContext): Node {
@@ -200,7 +194,7 @@ function restoreSection(context: BackupContext, onRestored: () => void): Node {
           if (!outcome.ok) return showErrors([outcome.error]);
           const done = h("p", null, "Backup wiederhergestellt.");
           status.replaceChildren(done);
-          focus(done);
+          focusSoon(done);
           onRestored();
         },
       },
@@ -220,7 +214,7 @@ function restoreSection(context: BackupContext, onRestored: () => void): Node {
         h("div", { class: "actions" }, replace, cancel),
       ),
     );
-    focus(text);
+    focusSoon(text);
   };
 
   file.addEventListener("change", async () => {

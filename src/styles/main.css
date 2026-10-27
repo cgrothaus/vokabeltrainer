@@ -75,6 +75,21 @@ a {
   color: var(--accent);
 }
 
+/* Lange deutsche Wörter laufen bei großer Schrift sonst über den Rand (TDD 13.4). */
+h1,
+h2,
+h3,
+button,
+a.action {
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+
+/* Aufklappbare Titel sind Touch-Ziele wie Schaltflächen (TDD 13.4). */
+summary {
+  min-height: 44px;
+}
+
 button {
   min-height: 44px;
   padding: 0.5rem 1rem;
@@ -145,6 +160,13 @@ input[type="file"] {
 :focus-visible {
   outline: 3px solid var(--accent);
   outline-offset: 2px;
+}
+
+/* Überschriften bekommen den Fokus nur, damit Screenreader die Ansicht ansagen (TDD 13.4); bedienen
+   lässt sich an ihnen nichts, ein Rahmen würde nur irritieren. */
+h1:focus,
+h2:focus {
+  outline: none;
 }
 
 /* Fehlermeldungen: Rahmen und Überschrift statt nur Farbe (TDD 13.4). */

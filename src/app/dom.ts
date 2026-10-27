@@ -26,6 +26,17 @@ export function h<K extends keyof HTMLElementTagNameMap>(
   return el;
 }
 
+/**
+ * Fokus auf ein Element, sobald es eingehängt ist (TDD 13.4); Screenreader lesen es dann vor. Was von
+ * sich aus nicht fokussierbar ist (Überschrift, Meldung), bekommt `tabindex="-1"` und kommt so nicht
+ * in die Tab-Reihenfolge; Schaltflächen und Felder bleiben, wie sie sind.
+ */
+export function focusSoon(element: HTMLElement): void {
+  if (!element.hasAttribute("tabindex") && element.tabIndex < 0) element.tabIndex = -1;
+  if (element.isConnected) element.focus();
+  else queueMicrotask(() => element.isConnected && element.focus());
+}
+
 function append(parent: Node, children: Child[]): void {
   for (const child of children) {
     if (Array.isArray(child)) append(parent, child);

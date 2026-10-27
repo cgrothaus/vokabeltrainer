@@ -313,7 +313,7 @@ test("Rückseite zeigt Grammatik, Beispiele und Notiz", async ({ page }) => {
   const term = (await page.locator(".card .prompt").textContent())!;
   await card(page).click();
   const details = page.locator(".details");
-  await expect(details.getByText("Wortart: noun · Plural: " + term + "s")).toBeVisible();
+  await expect(details.getByText("Wortart: Nomen · Plural: " + term + "s")).toBeVisible();
   await expect(details.getByText(`My ${term} is new.`)).toHaveAttribute("lang", "en");
   await expect(details.getByText(`Notiz: Notiz zu ${term}`)).toBeVisible();
   expect(errors, "Fehler in der Konsole").toEqual([]);

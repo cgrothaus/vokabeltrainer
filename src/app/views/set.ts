@@ -6,7 +6,7 @@ import { describeDay, type Overview, type SetStats } from "../../domain/stats";
 import { entryDetails } from "../components/entryDetails";
 import { learnButton } from "../components/learnButton";
 import type { DeleteOutcome, DeletionScope } from "../deleteSet";
-import { type Child, h } from "../dom";
+import { type Child, focusSoon, h } from "../dom";
 import { languageName } from "../languages";
 
 export interface SetContext {
@@ -27,13 +27,6 @@ const NO_SCOPE =
 const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 const REVIEW_STATUS = { unchecked: "ungeprüft", checked: "geprüft" } as const;
-
-/** Fokus auf ein Element, sobald es eingehängt ist; Screenreader lesen es dann vor. */
-function focus(element: HTMLElement): void {
-  element.tabIndex = -1;
-  if (element.isConnected) element.focus();
-  else queueMicrotask(() => element.isConnected && element.focus());
-}
 
 const back = () => h("p", null, h("a", { href: "#/" }, "Zurück zur Bibliothek"));
 
@@ -292,7 +285,7 @@ function deletion(set: StoredSet, context: SetContext): Node {
         h("div", { class: "actions" }, remove, abort),
       ),
     );
-    focus(text);
+    focusSoon(text);
   };
 
   return h("div", { class: "delete" }, start, confirmation, errors);
