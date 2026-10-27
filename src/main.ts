@@ -1,5 +1,11 @@
 import "./styles/main.css";
 import { checkBackup, lastBackupAt, prepareBackup, restore, saveBackup } from "./app/backup";
+import {
+  clearStorageProblem,
+  mountStorageNotice,
+  reportStorageProblem,
+  reportStorageUnreachable,
+} from "./app/components/storageNotice";
 import { mountUpdateNotice, showUpdateNotice } from "./app/components/updateNotice";
 import { dataScope, removeAllData } from "./app/deleteAll";
 import { deletionScope, removeSet } from "./app/deleteSet";
@@ -26,6 +32,7 @@ import type { StoredSet } from "./domain/model";
 import type { PracticeSetup } from "./domain/practiceSetup";
 import type { Theme } from "./domain/theme";
 import { registerServiceWorker } from "./platform/serviceWorker";
+import { keepConnected } from "./storage/connection";
 import { type OpenOptions, type OpenResult, openDatabase } from "./storage/database";
 import { getMeta, setMeta } from "./storage/meta";
 import { interruptActiveSessions } from "./storage/sessions";
@@ -35,11 +42,17 @@ declare const __APP_VERSION__: string;
 
 const root = document.getElementById("app");
 const notice = document.getElementById("update-notice");
-if (!root || !notice) throw new Error("Element #app oder #update-notice fehlt");
+const storageNotice = document.getElementById("storage-notice");
+if (!root || !notice || !storageNotice)
+  throw new Error("Element #app, #update-notice oder #storage-notice fehlt");
 
 // Updates unabhängig vom Speicher anbieten: Eine neue Version kann ein Problem beim Öffnen beheben.
 mountUpdateNotice(notice);
 registerServiceWorker(showUpdateNotice);
+mountStorageNotice(storageNotice);
+
+/** Für Schreibvorgänge im Hintergrund, die keine eigene Meldung am Ort haben (D-32). */
+const SOMETHING_NOT_SAVED = "Gerade konnte etwas nicht gespeichert werden.";
 
 let stopRouter: (() => void) | null = null;
 
@@ -69,11 +82,22 @@ async function start(): Promise<void> {
   const result = await open();
   if (!result.ok) return show(storageErrorView(result));
   const { db } = result;
+  // Verliert der Browser die Verbindung, öffnet der nächste Zugriff sie neu (TDD 6.5, D-32).
+  keepConnected(db, {
+    reopen: open,
+    onReopenFailed: (failed) => {
+      if (failed.reason === "newer-version" || failed.reason === "migration-failed")
+        show(storageErrorView(failed));
+      else reportStorageUnreachable();
+    },
+    onSaved: clearStorageProblem,
+  });
   let persistence = await persistenceState();
   const askForPersistence = async () => {
     persistence = await requestPersistence();
     await setMeta(db, "persistRequested", true).catch((error: unknown) => {
       console.warn("Anfrage nach dauerhaftem Speicher nicht vermerkt", error);
+      reportStorageProblem(error, SOMETHING_NOT_SAVED);
     });
     return persistence;
   };
@@ -85,6 +109,7 @@ async function start(): Promise<void> {
   // Vor dem Routing abwarten, sonst träfe es eine gerade neu begonnene Sitzung (TDD 12.5).
   await interruptActiveSessions(db).catch((error: unknown) => {
     console.warn("Unterbrochene Sitzungen nicht vermerkt", error);
+    reportStorageProblem(error, SOMETHING_NOT_SAVED);
   });
   // Vor der ersten Ansicht (TDD 13.5); bis die Datenbank offen ist, gilt die Darstellung des Geräts.
   let theme: Theme = await loadTheme(db);

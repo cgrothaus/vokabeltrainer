@@ -4,6 +4,7 @@ import { type BackupSummary, type CheckedBackup, MAX_BACKUP_SIZE } from "../../d
 import type { Delivery } from "../../platform/deliverFile";
 import type { CheckOutcome, PreparedBackup, RestoreOutcome } from "../backup";
 import { h } from "../dom";
+import { failureMessage } from "../storageMessages";
 
 export interface BackupContext {
   prepareBackup: () => Promise<PreparedBackup>;
@@ -17,12 +18,11 @@ export interface BackupContext {
 /** So viele Fehler werden einzeln gezeigt. */
 const SHOWN_ERRORS = 10;
 
-const NOT_PREPARED =
-  "Das Backup konnte nicht vorbereitet werden. Lade die Seite neu und versuche es noch einmal.";
 const NOT_SAVED =
   "Das Backup konnte nicht gespeichert werden. Lade die Seite neu und versuche es noch einmal.";
 const TOO_LARGE = "Die Datei ist zu groß für ein Backup des Vokabeltrainers.";
 const UNREADABLE = "Die Datei konnte nicht gelesen werden. Wähle sie noch einmal aus.";
+const LAST_UNKNOWN = "Wann zuletzt ein Backup gespeichert wurde, ließ sich nicht lesen.";
 
 const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
@@ -62,6 +62,7 @@ function saveSection(context: BackupContext): { section: Node; refresh: () => vo
   let prepared: PreparedBackup | null = null;
   const last = h("p");
   const status = h("div", { "aria-live": "polite" });
+  const problem = h("div", { role: "alert" });
   const save = h(
     "button",
     {
@@ -71,6 +72,7 @@ function saveSection(context: BackupContext): { section: Node; refresh: () => vo
         if (!prepared) return;
         save.disabled = true;
         status.replaceChildren();
+        problem.replaceChildren();
         try {
           const delivery = await context.saveBackup(prepared);
           status.replaceChildren(
@@ -83,7 +85,7 @@ function saveSection(context: BackupContext): { section: Node; refresh: () => vo
           void showLast();
         } catch (error) {
           console.error("Backup nicht gespeichert", error);
-          status.replaceChildren(h("p", null, NOT_SAVED));
+          problem.replaceChildren(h("p", null, NOT_SAVED));
         } finally {
           save.disabled = false;
         }
@@ -93,7 +95,14 @@ function saveSection(context: BackupContext): { section: Node; refresh: () => vo
   );
 
   const showLast = async () => {
-    const at = await context.lastBackupAt().catch(() => undefined);
+    let at: string | undefined;
+    try {
+      at = await context.lastBackupAt();
+    } catch (error) {
+      console.error("Zeitpunkt des letzten Backups nicht lesbar", error);
+      last.textContent = LAST_UNKNOWN;
+      return;
+    }
     last.textContent = at ? `Letztes Backup: ${dateTime(at)}` : "Noch kein Backup gespeichert.";
   };
 
@@ -107,7 +116,8 @@ function saveSection(context: BackupContext): { section: Node; refresh: () => vo
     } catch (error) {
       console.error("Backup nicht vorbereitet", error);
       save.textContent = "Backup speichern";
-      status.replaceChildren(h("p", null, NOT_PREPARED));
+      const message = failureMessage(error, "Das Backup konnte nicht vorbereitet werden.");
+      problem.replaceChildren(h("p", null, message));
     }
   };
 
@@ -129,6 +139,7 @@ function saveSection(context: BackupContext): { section: Node; refresh: () => vo
     last,
     save,
     status,
+    problem,
   );
   return { section, refresh };
 }

@@ -9,10 +9,7 @@ import { onSwipe } from "../components/swipe";
 import { setUpdateBlocked } from "../components/updateNotice";
 import { h } from "../dom";
 import type { PracticeSession, Question } from "../practice";
-
-const NOT_SAVED = "Die Antwort konnte nicht gespeichert werden. Du kannst trotzdem weiterlernen.";
-const NOT_STARTED =
-  "Die Lernsitzung konnte nicht gestartet werden. Lade die Seite neu und versuche es noch einmal.";
+import { failureMessage } from "../storageMessages";
 
 /** Markiert den zusätzlichen Verlaufseintrag, auf dem die Karten liegen. */
 const CARDS = "practice-cards";
@@ -131,7 +128,7 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
       const saved = await practice.answer(result);
       saving = false;
       if (signal.aborted) return false;
-      problem.textContent = saved ? "" : NOT_SAVED;
+      problem.textContent = saved.ok ? "" : saved.error;
       // Inzwischen zum Zwischenstand gewechselt: mit dem neuen Stand zeigen, statt vorzurücken.
       if (shown !== at && screen === "pause") {
         if (practice.finished) showResult();
@@ -273,9 +270,24 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
     else showFlashcard();
   };
 
-  const quota = () => {
+  const quota = (): Node[] => {
     const { firstCorrect, firstAttempts } = practice.state;
-    return h("p", null, `${firstCorrect} von ${firstAttempts} beim ersten Mal gewusst.`);
+    const { unsaved } = practice;
+    return [
+      h("p", null, `${firstCorrect} von ${firstAttempts} beim ersten Mal gewusst.`),
+      // Ehrlich bleiben (AK-26, D-32): Was nicht gespeichert ist, fehlt im Lernstand.
+      ...(unsaved === 0
+        ? []
+        : [
+            h(
+              "p",
+              null,
+              unsaved === 1
+                ? "1 Antwort wurde nicht gespeichert und zählt nicht zum Lernstand."
+                : `${unsaved} Antworten wurden nicht gespeichert und zählen nicht zum Lernstand.`,
+            ),
+          ]),
+    ];
   };
   const toLibrary = () =>
     h("p", null, h("a", { href: "#/", class: "action" }, "Zurück zur Bibliothek"));
@@ -292,7 +304,7 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
       } catch (error) {
         console.error("Lernsitzung nicht gestartet", error);
         if (!signal.aborted) {
-          problem.textContent = NOT_STARTED;
+          problem.textContent = failureMessage(error, "Die Lernsitzung wurde nicht gestartet.");
           repeat.disabled = false;
         }
         return;
@@ -333,6 +345,8 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
   /** Zwischenstand (FR-12): Die Sitzung läuft weiter, bis sie verlassen wird. */
   const showPause = () => {
     const { queue, total } = practice.state;
+    // Nicht gespeicherte Antworten nennt der Zwischenstand selbst.
+    problem.textContent = "";
     const heading = h("h1", { tabindex: -1 }, "Zwischenstand");
     const resume = h(
       "button",
@@ -348,7 +362,7 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
     show(
       "pause",
       heading,
-      quota(),
+      ...quota(),
       h("p", null, `Noch offen: ${queue.length} von ${total} Vokabeln.`),
       h("div", { class: "actions" }, resume),
       ...mistakes(false),
@@ -360,8 +374,9 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
 
   const showResult = () => {
     setUpdateBlocked(false);
+    problem.textContent = "";
     const heading = h("h1", { tabindex: -1 }, "Geschafft");
-    show("result", heading, quota(), ...mistakes(true), problem, toLibrary());
+    show("result", heading, ...quota(), ...mistakes(true), problem, toLibrary());
     focus(heading);
   };
 

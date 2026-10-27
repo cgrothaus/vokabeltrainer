@@ -78,10 +78,10 @@ describe("addSet", () => {
     expect(await addSet(full, storedSet("a"))).toEqual({ ok: false, reason: "quota" });
   });
 
-  it("meldet andere Fehler und speichert nichts", async () => {
+  it("meldet eine verlorene Verbindung und speichert nichts", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     db.close();
-    expect(await addSet(db, storedSet("a"))).toEqual({ ok: false, reason: "failed" });
+    expect(await addSet(db, storedSet("a"))).toEqual({ ok: false, reason: "connection" });
     expect(error).toHaveBeenCalled();
   });
 });
@@ -175,10 +175,20 @@ describe("deleteSet", () => {
     expect(await getSetting(db, settingKey("m4x8c2r9tw"))).toBeDefined();
   });
 
-  it("meldet andere Fehler", async () => {
+  it("meldet eine verlorene Verbindung", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     db.close();
-    expect(await deleteSet(db, "m4x8c2r9tw")).toEqual({ ok: false, reason: "failed" });
+    expect(await deleteSet(db, "m4x8c2r9tw")).toEqual({ ok: false, reason: "connection" });
     expect(error).toHaveBeenCalled();
+  });
+
+  it("meldet einen vollen Speicher", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const full = {
+      transaction: () => {
+        throw new DOMException("Speicher voll", "QuotaExceededError");
+      },
+    } as unknown as IDBDatabase;
+    expect(await deleteSet(full, "m4x8c2r9tw")).toEqual({ ok: false, reason: "quota" });
   });
 });

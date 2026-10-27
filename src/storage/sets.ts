@@ -1,13 +1,14 @@
 // Sets speichern und lesen (TDD 6.1, 6.2, 6.5). Ein Set ist ein Dokument im Store `sets`.
 import type { StoredSet } from "../domain/model";
 import { settingKey } from "../domain/practiceSetup";
+import { type StorageFailure, storageFailure } from "./errors";
 import type { StoreName } from "./schema";
 import { runTransaction } from "./transaction";
 
 export type AddSetResult =
   | { ok: true }
   /** `exists`: Es gibt schon ein Set mit dieser ID; es bleibt unverändert. */
-  | { ok: false; reason: "exists" | "quota" | "failed" };
+  | { ok: false; reason: "exists" | StorageFailure };
 
 /** Legt ein neues Set an. `add` statt `put`: Ein vorhandenes Set wird nie überschrieben. */
 export async function addSet(db: IDBDatabase, set: StoredSet): Promise<AddSetResult> {
@@ -17,11 +18,10 @@ export async function addSet(db: IDBDatabase, set: StoredSet): Promise<AddSetRes
     });
     return { ok: true };
   } catch (error) {
-    const name = (error as { name?: unknown } | null)?.name;
-    if (name === "ConstraintError") return { ok: false, reason: "exists" };
-    if (name === "QuotaExceededError") return { ok: false, reason: "quota" };
+    if ((error as { name?: unknown } | null)?.name === "ConstraintError")
+      return { ok: false, reason: "exists" };
     console.error("Set nicht gespeichert", error);
-    return { ok: false, reason: "failed" };
+    return { ok: false, reason: storageFailure(error) };
   }
 }
 
@@ -34,7 +34,7 @@ export async function getSet(db: IDBDatabase, id: string): Promise<StoredSet | u
   return set;
 }
 
-export type DeleteSetResult = { ok: true } | { ok: false; reason: "missing" | "failed" };
+export type DeleteSetResult = { ok: true } | { ok: false; reason: "missing" | StorageFailure };
 
 /** Lernstand eines Sets für die Ankündigung vor dem Löschen (FR-02). */
 export async function countSetActivity(
@@ -82,7 +82,7 @@ export async function deleteSet(db: IDBDatabase, id: string): Promise<DeleteSetR
   } catch (error) {
     if (missing) return { ok: false, reason: "missing" };
     console.error("Set nicht gelöscht", error);
-    return { ok: false, reason: "failed" };
+    return { ok: false, reason: storageFailure(error) };
   }
 }
 

@@ -178,6 +178,20 @@ describe("restoreBackup", () => {
     expect(await readStores(db, BACKUP_STORES)).toEqual(before);
     expect(await getMeta(db, "lastBackupAt")).toBe("2026-10-01T08:00:00.000Z");
   });
+
+  it("unterscheidet vollen Speicher und verlorene Verbindung", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    await fill(db);
+    const backup = check(await readBackup(db, "test", "2026-10-20T20:00:00.000Z"));
+    const full = {
+      transaction: () => {
+        throw new DOMException("Speicher voll", "QuotaExceededError");
+      },
+    } as unknown as IDBDatabase;
+    expect(await restoreBackup(full, backup)).toEqual({ ok: false, reason: "quota" });
+    db.close();
+    expect(await restoreBackup(db, backup)).toEqual({ ok: false, reason: "connection" });
+  });
 });
 
 describe("clearAllData", () => {

@@ -65,6 +65,8 @@ const emptyBackup = JSON.stringify({
   data: { sets: [], reviewEvents: [], sessions: [], settings: [] },
 });
 
+const restoreRegion = (page: Page) => page.getByRole("region", { name: "Backup wiederherstellen" });
+
 const chooseBackup = (page: Page, content: string) =>
   page.getByLabel("Backup-Datei auswählen").setInputFiles({
     name: "Vokabeltrainer-Backup_2026-10-20.json",
@@ -155,13 +157,13 @@ test("Vokabelset statt Backup und Abbrechen ändern nichts", async ({ page }) =>
   await page.goto("./#/backup");
 
   await chooseBackup(page, setFile("Englisch – Falsch"));
-  await expect(page.getByRole("alert")).toContainText(
+  await expect(restoreRegion(page).getByRole("alert")).toContainText(
     "Das ist ein Vokabelset, kein Backup. Ein Vokabelset wird importiert, nicht wiederhergestellt.",
   );
   await expect(page.getByRole("button", { name: "Alle Daten ersetzen" })).toHaveCount(0);
 
   await chooseBackup(page, emptyBackup);
-  await expect(page.getByRole("alert")).toBeEmpty();
+  await expect(restoreRegion(page).getByRole("alert")).toBeEmpty();
   await expect(
     page.getByText(
       "Backup vom 20. Oktober 2026: 0 Sets mit 0 Einträgen, 0 Lernsitzungen, 0 Antworten.",

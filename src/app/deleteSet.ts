@@ -3,6 +3,7 @@
 import { setSize } from "../domain/library";
 import type { StoredSet } from "../domain/model";
 import { countSetActivity, deleteSet } from "../storage/sets";
+import { storageMessage } from "./storageMessages";
 
 export interface DeletionScope {
   sections: number;
@@ -13,11 +14,8 @@ export interface DeletionScope {
 
 export type DeleteOutcome = { ok: true } | { ok: false; error: string };
 
-const ERRORS = {
-  missing: "Dieses Set gibt es nicht mehr. Vielleicht wurde es in einem anderen Fenster gelöscht.",
-  failed:
-    "Das Set konnte nicht gelöscht werden; es ist unverändert. Lade die Seite neu und versuche es noch einmal.",
-} as const;
+const MISSING =
+  "Dieses Set gibt es nicht mehr. Vielleicht wurde es in einem anderen Fenster gelöscht.";
 
 export async function deletionScope(db: IDBDatabase, set: StoredSet): Promise<DeletionScope> {
   return { ...setSize(set), ...(await countSetActivity(db, set.id)) };
@@ -26,5 +24,10 @@ export async function deletionScope(db: IDBDatabase, set: StoredSet): Promise<De
 /** Gelöscht ist das Set erst, wenn die Transaktion abgeschlossen ist (TDD 6.5). */
 export async function removeSet(db: IDBDatabase, set: StoredSet): Promise<DeleteOutcome> {
   const result = await deleteSet(db, set.id);
-  return result.ok ? result : { ok: false, error: ERRORS[result.reason] };
+  if (result.ok) return result;
+  const error =
+    result.reason === "missing"
+      ? MISSING
+      : storageMessage(result.reason, "Das Set wurde nicht gelöscht; es ist unverändert.");
+  return { ok: false, error };
 }

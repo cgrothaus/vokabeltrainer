@@ -2,11 +2,9 @@
 // `data-theme` an <html>. Ohne Attribut folgt das CSS dem Gerät.
 import { readTheme, type Theme, THEME_KEY } from "../domain/theme";
 import { getSetting, setSetting } from "../storage/settings";
+import { failureMessage } from "./storageMessages";
 
 export type SaveThemeOutcome = { ok: true } | { ok: false; error: string };
-
-const NOT_SAVED =
-  "Die Darstellung konnte nicht gespeichert werden. Sie gilt nur, bis du die App schließt.";
 
 /** Ist der Wert nicht lesbar, folgt die App dem Gerät; das Lernen hängt nicht davon ab. */
 export async function loadTheme(db: IDBDatabase): Promise<Theme> {
@@ -24,7 +22,13 @@ export async function saveTheme(db: IDBDatabase, theme: Theme): Promise<SaveThem
     return { ok: true };
   } catch (error) {
     console.error("Darstellung nicht gespeichert", error);
-    return { ok: false, error: NOT_SAVED };
+    return {
+      ok: false,
+      error: failureMessage(
+        error,
+        "Die Darstellung wurde nicht gespeichert; sie gilt nur, bis du die App schließt.",
+      ),
+    };
   }
 }
 
