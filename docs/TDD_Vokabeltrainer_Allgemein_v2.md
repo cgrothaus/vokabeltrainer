@@ -1,7 +1,7 @@
 # TDD: Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.23 – Speicherfehler  
-**Stand:** 22. Oktober 2026  
+**Version:** 2.24 – Performance-Messung  
+**Stand:** 27. Oktober 2026  
 **Bezug:** PRD 2.4 (`PRD_Vokabeltrainer_Allgemein_v2.md`), Formatspezifikation Version 1 (`Formatspezifikation_Vokabelset_v1.md`), Review-Notizen (`20261019_TDD_v1_Review_Notizen.md`)  
 **Status:** Entwurf; Grundlage für M0 (Walking Skeleton)  
 **Entstehung und Autorenschaft:** siehe Kapitel 20 (Änderungshistorie)
@@ -90,6 +90,7 @@ src/
 ├── storage/             IndexedDB: Öffnen, Upgrade, Verbindung halten, Fehler einordnen, Repositories, Backup
 ├── platform/            Browserfunktionen: Service Worker, persist(), Datei liefern, Zwischenablage
 ├── content/             mitgelieferte Inhalte: Hilfetexte mit Formatbeispiel und Vorlage, Beispielset
+├── dev/                 nur im Dev-Server: Performance-Messung `?perf` mit erzeugten Daten (15.6), nicht im Build
 ├── styles/              CSS
 └── sw/sw.ts             Service Worker (eigener Build)
 ```
@@ -659,7 +660,7 @@ interface Session {
 - Sitzungen mit `repeatOf` („Nur Fehler üben“) zählen wie jede andere Sitzung (D-30).
 - Antworten zu Einträgen, die nicht mehr existieren, werden ganz ignoriert, auch für Zahl und Datum der Sitzungen.
 - Anzeige in der Set-Ansicht (13.1): „3 Lernsitzungen · zuletzt gestern“ und „78 % beim ersten Mal gewusst (letzte 3 Sitzungen)“, ohne Sitzung „Mit diesem Set hast du noch nicht gelernt.“; je Sektion „2 Sitzungen · zuletzt am 18. Okt. · 80 %“ bzw. „noch nicht gelernt“. Datum in Ortszeit als „heute“, „gestern“ oder „am 18. Okt.“, mit Jahr außerhalb des laufenden Jahres (`describeDay`); Quote in ganzen Prozent.
-- Mengengerüst: etwa 11.000 Events pro Jahr bei täglicher Nutzung. Die Berechnung für ein Set mit 50.000 Events muss auf einem Mittelklasse-Smartphone unter 200 ms bleiben (TAK-15). Wird das verfehlt, kommt ein neu aufbaubarer Cache hinzu, der nicht ins Backup gehört.
+- Mengengerüst: etwa 11.000 Events pro Jahr bei täglicher Nutzung. Ein Set mit 50.000 Events (rund viereinhalb Jahre) ist der Prüffall für TAK-15 (15.6): Die Set-Ansicht ist sofort bedienbar, der Lernstand wird nachgeladen und erscheint nach höchstens 1 s; das Berechnen, das die Seite blockiert, bleibt unter 200 ms. Den größten Teil der Zeit kostet das Lesen der Events aus IndexedDB (S-24). Damit es nicht bei jedem Öffnen der Set-Ansicht anfällt, behält die App das Ergebnis pro Set im Arbeitsspeicher, solange sie offen ist, und hält es bei neuen Antworten aktuell (S-38, D-33). Ein gespeicherter, neu aufbaubarer Cache, der nicht ins Backup gehört, bleibt vorgemerkt, falls echte Bestände die Grenze erreichen.
 
 ### 12.7 Vorbereitung späterer Didaktik
 
@@ -788,11 +789,12 @@ tests/fixtures/
 ├── setfile/v1/invalid-validator-only/  Regeln, die das Schema nicht ausdrücken kann (8.3), z. B. doppelte IDs
 ├── setfile/v1/llm/                     typische LLM-Ausgaben als Text: Codeblock, Begleittext, Zusatzfelder, "meaning"
 ├── db/                                 gespeicherte Stände pro DB_VERSION (ab erster Auslieferung)
-├── backup/                             Backups pro dataVersion
-└── perf/                               3.000 Einträge; 50.000 Events
+└── backup/                             Backups pro dataVersion
 ```
 
 Das Beispielset (13.2) ist zugleich gültiges Fixture; es liegt in `src/content/`, und ein eigener Abschnitt des Schemaabgleichs prüft es ohne Warnungen sowie Sprachen, Herkunft, Lizenz, Umfang und die geforderten Formatmöglichkeiten (FR-32). Der Schemaabgleich (`tests/format/setfile.test.ts`, Vitest-Projekt `unit`) führt jedes Fixture durch `extractJson` und danach durch Validator und Schema. Für `invalid/` und `invalid-validator-only/` hält er pro Datei die erwartete Meldung fest (genau ein Fehler), für `valid/` und `llm/` die erwarteten Warnungen; ein Fixture ohne Erwartung lässt den Test scheitern. Ein weiterer Test vergleicht die Feldnamen jeder Ebene im Schema mit den Feldtabellen des Validators.
+
+Die Daten für die Performance-Messung (15.6) werden nicht eingecheckt, weil 50.000 Events rund 10 MB wären: `src/dev/perfData.ts` erzeugt sie mit fester Zufallsfolge, `perfData.test.ts` prüft sie gegen `prepareNewSet` (ohne Warnungen) und `validateRecords`.
 
 ### 15.4 End-to-End-Smoke-Tests
 
@@ -837,7 +839,12 @@ Ergebnisse werden im Umsetzungsplan beim jeweiligen Arbeitspaket kurz festgehalt
 
 ### 15.6 Performance
 
-Fixtures aus 15.3: Import von 3.000 Einträgen (Validierung, Diff, Commit) ohne spürbares Einfrieren (unter 1 s auf einem Mittelklasse-Smartphone); Lernüberblick über 50.000 Events unter 200 ms (TAK-15). Gemessen erstmals in M1 auf echtem Gerät.
+Grenzen auf einem Mittelklasse-Smartphone (TAK-15, D-33), bewertet wird jeweils der langsamste von fünf Läufen:
+
+- Import eines neuen Sets mit 3.000 Einträgen (Vorschau mit Prüfung und Duplikatsuche, Speichern) unter 1 s. Der Abgleich mit einem vorhandenen Set (Diff, M4) wird mit S-34 bis S-36 nachgemessen.
+- Lernüberblick eines Sets mit 50.000 Events: Die Set-Ansicht ist sofort bedienbar; der Lernstand erscheint nach höchstens 1 s (Lesen aus IndexedDB und Berechnen), das Berechnen allein, das die Seite blockiert, dauert unter 200 ms.
+
+Gemessen wird mit dem Dev-Schalter `?perf` (nur `npm run dev`, nicht im Build; die Build-Prüfung stellt das sicher). Er erzeugt die Daten aus 15.3 in einer eigenen Datenbank `vokabeltrainer-perf`, misst über die echten Wege der App (`previewImport`, `saveImport`, `listSetEvents`, `computeStats`) und löscht die Datenbank danach. Auf dem Gerät über `npx vite --host` im selben WLAN aufrufen; ohne HTTPS ist die Zwischenablage gesperrt, das Ergebnis wird dann markiert. Erstmessung und Werte: S-24 (Kap. 21).
 
 ### 15.7 LLM-Tauglichkeit der Formatspezifikation (AK-13, DF-02)
 
@@ -871,7 +878,7 @@ Ergebnisse (LLM-App, Modell, Datum, Befund) werden im Umsetzungsplan bei S-15 fe
 | TAK-12 | Eine neue App-Version wird während einer Sitzung oder Bearbeitung nicht aktiviert. | E2E-11, E2E-14 (Sitzung), manuell |
 | TAK-13 | Alle in 15.2 genannten Module haben Unit-Tests für die dort genannten Fälle. | Review |
 | TAK-14 | Deployment erfolgt nur nach grüner CI. | Workflow-Konfiguration |
-| TAK-15 | Performancegrenzen aus 15.6 werden auf einem echten Mittelklasse-Smartphone eingehalten. | Manuelle Messung |
+| TAK-15 | Performancegrenzen aus 15.6 werden auf einem echten Mittelklasse-Smartphone eingehalten. | Manuelle Messung mit `?perf` (15.6) |
 | TAK-16 | Die Konfliktentscheidung folgt exakt Tabelle 9.5. | Unit-Tests (tabellengetrieben) |
 
 ---
@@ -912,6 +919,7 @@ Ergebnisse (LLM-App, Modell, Datum, Befund) werden im Umsetzungsplan bei S-15 fe
 | D-30 | Lernüberblick in der Set-Ansicht: Absatz für das Set, je Sektion eine Zeile im Aufklapptitel; nur aus Events berechnet (Sitzung zählt mit mindestens einer Antwort, auch „Nur Fehler üben“); Kennzahlen pro Eintrag berechnet, aber noch nicht angezeigt | 12.6, 13.1 | Nutzerentscheidung in S-20, 22. Oktober 2026 |
 | D-31 | Einstellungen als eigene Ansicht, erreichbar unter der Bibliotheksliste; Darstellung nur in IndexedDB, das kurze Aufblitzen der Gerätefarbe beim Start wird hingenommen; „Alle Daten löschen“ und der Weg zum Backup in den Einstellungen; keine globale Standardrichtung, FR-21 gilt über die gemerkte Einrichtung pro Set (D-27) | 10, 13.5, 13.6 | Nutzerentscheidung in S-21, 22. Oktober 2026 |
 | D-32 | Speicherfehler: Hintergrund-Schreibvorgänge ohne eigene Meldung melden sich über eine ruhige Leiste, die der nächste erfolgreiche Schreibvorgang entfernt; nicht gespeicherte Antworten unterbrechen die Sitzung nicht, Zwischenstand und Ergebnis nennen sie; eine verlorene Datenbankverbindung wird beim nächsten Zugriff automatisch neu geöffnet | 6.5, 12.2, 12.4, 13.1 | Nutzerentscheidung in S-22, 22. Oktober 2026 |
+| D-33 | Performance: Messung über den Dev-Schalter `?perf` mit erzeugten statt eingecheckten Daten, bewertet wird der langsamste von fünf Läufen; der Lernüberblick bei 50.000 Events darf bis zu 1 s brauchen, solange die Set-Ansicht sofort bedienbar ist und das blockierende Berechnen unter 200 ms bleibt (statt 200 ms insgesamt); das Ergebnis bleibt pro Set im Arbeitsspeicher (S-38), ein gespeicherter Cache ist nur vorgemerkt | 12.6, 15.3, 15.6 | Nutzerentscheidung in S-24 nach der Messung auf dem Galaxy A34, 22. Oktober 2026 |
 
 ---
 
@@ -924,7 +932,7 @@ Ergebnisse (LLM-App, Modell, Datum, Befund) werden im Umsetzungsplan bei S-15 fe
 | O-03 | Dateiauslieferung auf iOS in der installierten App (D-17, T-22) | Geprüft am 21. Oktober 2026 (S-11): Teilen-Menü auf iPhone und iPad, Download auf Android (11.2) |
 | O-04 | Mindestversionen der Zielbrowser (D-20) | Geprüft am 21. Oktober 2026 (S-11) mit iOS 27, iPadOS 26 und Android 16; ältere Versionen ungeprüft (4.3) |
 | O-05 | Bewertung inhaltlicher Änderungen für den Lernstand (R-04) | Daten über `entryRev` vorbereitet; Entscheidung mit späterer Didaktik |
-| O-06 | Wachstum der Review-Events über Jahre | Messung TAK-15; bei Bedarf Cache oder Archivierung mit Backup-Konzept |
+| O-06 | Wachstum der Review-Events über Jahre | Messung TAK-15 (S-24): Bei 50.000 Events in einem Set erscheint der Lernstand nach bis zu 0,9 s, vor allem wegen des Lesens; Ergebnis im Arbeitsspeicher (S-38); bei Bedarf gespeicherter Cache oder Archivierung mit Backup-Konzept |
 | O-07 | Schwellenwert der Duplikaterkennung (0,8) | Mit Beispielsets und echten Daten in M1 prüfen |
 | O-08 | iOS graut im Dateiwähler Dateien aus, deren Typ nicht zu `accept` passt; ob `.json` mit `accept=".json,application/json,text/plain"` wählbar ist, ist nicht belegt (Quellen 26, 27) | Geprüft am 21. Oktober 2026 (S-11): auf iPhone und iPad wählbar, `accept` bleibt |
 | O-09 | Reicht die Formatspezifikation allein, damit ein LLM aus Fotos oder einer Wortliste ein gültiges Set erzeugt oder ein exportiertes Set korrigiert (AK-13)? | Geklärt am 21. Oktober 2026 (S-15): ja für neue Sets (Nutzertest mit Foto und Link, Vortest mit drei Modellen) und für die Korrektur im Vortest; Vorlagen auf einen Link verkürzt. Korrektur mit LLM-Apps und echtem Export prüfen, sobald es den Set-Export gibt (S-32) |
@@ -994,6 +1002,7 @@ Geprüft am 18. bis 20. Oktober 2026.
 | 2.21 | 22. Oktober 2026 | Lernüberblick (S-20): Zählregeln für Sitzungen, letzte Sitzung und Erstversuchsquote, „Nur Fehler üben“ zählt mit, Anzeige und Datumsform (12.6, D-30), Lernstand in der Set-Ansicht (13.1), Testfälle `stats.ts` (15.2) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.22 | 22. Oktober 2026 | Einstellungen (S-21): Darstellung über `data-theme` mit `color-scheme` und `theme-color` (13.5, D-31), Ansicht Einstellungen (13.6), „Alle Daten löschen“ (10), Links unter der Bibliothek (13.1), `theme` in `settings` (6.1), `theme.ts` (3.1, 15.2), E2E-17 und E2E-18 (15.4) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.23 | 22. Oktober 2026 | Speicherfehler (S-22): Fehler einordnen, Meldungen aus Ursache, Folge und nächstem Schritt, verlorene Verbindung beim nächsten Zugriff neu öffnen, Speicherhinweis für Hintergrund-Schreibvorgänge (6.5, D-32), nicht gespeicherte Antworten in Zwischenstand und Ergebnis (12.2, 12.4), Sitzungsende (12.5), Hinweisleisten (13.1), Module (3.1), Testfälle (15.2), E2E-19 (15.4) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.24 | 27. Oktober 2026 | Performance-Messung (S-24): Grenzen für Import und Lernüberblick neu gefasst – Lernstand nach höchstens 1 s, Berechnen unter 200 ms, langsamster von fünf Läufen (12.6, 15.6, D-33); Messung per Dev-Schalter `?perf` (3.1, 15.6, TAK-15); erzeugte statt eingecheckte Messdaten (15.3); O-06; neues Paket S-38 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 
 ---
 
@@ -1073,7 +1082,10 @@ Ziel: Jeder riskante Teil läuft einmal von vorn bis hinten, in einfachster Form
   Erledigt am 22. Oktober 2026. Nutzerentscheidungen (D-32): „Statusanzeige“ ist ein Speicherhinweis als ruhige Leiste, nur für Schreibvorgänge ohne eigene Meldung am Ort und bei nicht erreichbarem Speicher; eine nicht gespeicherte Antwort unterbricht die Sitzung nicht, Zwischenstand und Ergebnis nennen sie; eine verlorene Verbindung wird automatisch neu geöffnet; begonnen erst nach dem Merge von S-21. Selbst festgelegt: drei Fälle (voll, Verbindung verloren, sonstige), Meldungen aus Ursache, Folge und nächstem Schritt (`app/storageMessages.ts`), Speicherhinweis mit „Ausblenden“ über dem Update-Hinweis, neu verbunden nur, solange die Transaktion noch nicht begonnen hat. Testgetrieben: `storage/errors.ts`; `storage/connection.ts` mit Integrationstests (`forceCloseDatabase` aus `fake-indexeddb` für das `close`-Ereignis). `addSet`, `deleteSet` und `restoreBackup` liefern den Fall statt eigener Namensprüfungen; Import, Beispielset, Lernstart, „Nur Fehler üben“, Antworten, Wiederherstellen, Set löschen, „Alle Daten löschen“ und Darstellung melden über `storageMessages.ts`. Bisher nur in der Konsole und jetzt im Speicherhinweis: Sitzungsende, Zeitpunkt des Backups, Anfrage nach dauerhaftem Speicher, unterbrochene Sitzungen beim Start. Der Lesefehler der Bibliothek und Fehler beim Speichern eines Backups stehen jetzt in `role="alert"`; ein nicht lesbarer Backup-Zeitpunkt erscheint nicht mehr als „Noch kein Backup gespeichert.“, und eine abgelehnte Zusage beim Beispielset wird abgefangen. E2E-19 (`storageFailure.spec.ts`) in mobile-chromium und mobile-webkit, fünfmal wiederholt grün; der Speicher wird per Init-Skript gestört (`breakableStorage` in `support.ts`). Bestehende Tests suchen den Update-Hinweis jetzt über `#update-notice` und Meldungen der Wiederherstellung in deren Abschnitt, weil es zwei Statusleisten und in der Backup-Ansicht zwei Fehlerbereiche gibt. Erkenntnisse: Wirft eine Schreibanfrage erst im Erfolgsrückruf eines Lesens (Sitzungsende, Set löschen), bricht der Browser mit eigenem `AbortError` ab, die Meldung ist dann die allgemeine; ein echt voller Speicher kommt beim Abschluss über `transaction.error` und wird als „voll“ gemeldet. Geprüft in Chromium mit `Storage.overrideQuotaForOrigin` (CDP), als eigener Test in E2E-19: Chromium lässt kleine Schreibvorgänge trotz Kontingent durch und zeigt es in `estimate()` nicht, deshalb ein Set mit 2.000 Einträgen. `fake-indexeddb` lässt laufende Transaktionen beim erzwungenen Schließen noch abschließen; eine mitten in der Transaktion verlorene Verbindung ist im Test ein geworfener `UnknownError`. Gegenproben: Wiederholung auch nach begonnener Transaktion, Zugriff über das alte statt das aktuelle Verbindungsobjekt, Neuverbinden nach `versionchange`, Ergebnis ohne nicht gespeicherte Antworten, Hinweis bleibt nach erfolgreichem Schreiben, Einordnung ohne „voll“, App ohne `keepConnected` – jeweils scheitern die passenden Tests. Mit `playwright-cli` (mobiles Chromium, 320 px, hell und dunkel) geprüft: Speicherhinweis lesbar, kein horizontales Scrollen, mit dem Update-Hinweis untereinander ohne Überdeckung, der Inhalt bekommt darunter Platz, Knöpfe 44 px hoch, „Ausblenden“ leert die Leiste. Offen für den Gerätecheck: iPhone als Home-Bildschirm-App länger im Hintergrund lassen und danach weiterlernen; erwartet wird Weiterarbeiten ohne Meldung.
 - 🔲 **S-23** Mobile- und Barrierearmut-Durchsicht, E2E-05, E2E-06, E2E-10 – FR-24, FR-27, NFR-09–NFR-13  
   E2E-06 besteht seit S-12, E2E-10 seit S-14.
-- 🔲 **S-24** Performance-Messung (15.6) – TAK-15
+- ✅ **S-24** Performance-Messung (15.6) – TAK-15  
+  Erledigt am 27. Oktober 2026. Messdaten testgetrieben: `src/dev/perfData.ts` erzeugt mit fester Zufallsfolge ein Set mit 3.000 erfundenen Kunstwörtern in 20 Sektionen (Kurz- und Langform, Varianten, mehrere Bedeutungen, Grammatik, Beispiele, Notizen) und 2.457 Sitzungen mit genau 50.000 Antworten über rund viereinhalb Jahre (Wiederholungen nach Fehlern, „Nur Fehler üben“, Multiple Choice, beide Richtungen); geprüft gegen `prepareNewSet` ohne Warnungen und gegen `validateRecords`. Messseite `?perf` (`src/dev/perf.ts`) nur im Dev-Server; die Build-Prüfung stellt sicher, dass weder sie noch `?testmigration` im Artefakt stehen. Gegenproben: Erstversuch bei jeder Antwort, Schalter ohne `import.meta.env.DEV` – jeweils scheitert der passende Test. Messwerte, jeweils langsamster von fünf Läufen: Mac mit Playwright-Chromium (mobil) Import 93 ms, Lernstand bis 497 ms (Lesen 418–463 ms, Berechnen 32–41 ms); dasselbe mit CPU-Drosselung ×4 Import 262 ms, Lernstand bis 876 ms (Lesen 587–737 ms, Berechnen 131–141 ms); Playwright-WebKit Import 61 ms, Lernstand bis 792 ms (Lesen 671–732 ms, Berechnen 31–60 ms). **Galaxy A34, Firefox 158:** Import 88 ms (Vorschau 60 ms, Speichern 28 ms), erneute Prüfung mit Duplikathinweis 67 ms; Lernstand 413–885 ms (Lesen 329–795 ms, der erste Lauf kalt; Berechnen 79–101 ms). Die ursprüngliche Grenze von 200 ms für den Lernüberblick war damit überall verfehlt, fast nur wegen des Lesens aus IndexedDB; die Set-Ansicht blieb dabei bedienbar, nur der Lernstand erschien später. Nutzerentscheidungen (D-33): Grenze neu gefasst (sofort bedienbar, Lernstand nach höchstens 1 s, Berechnen unter 200 ms) – auf dem A34 erfüllt; das Ergebnis pro Set im Arbeitsspeicher behalten (S-38); Chrome auf dem A34 nicht zusätzlich gemessen. Beim Messen aufgefallen: Über `http://` im WLAN ist die Zwischenablage gesperrt, die Seite meldet das; das Schreiben der 50.000 Antworten in einer Transaktion dauerte auf dem A34 rund 14 s (nur Vorbereitung, kein Weg der App).
+- 🔲 **S-38** Lernstand pro Set im Arbeitsspeicher behalten (12.6, D-33) – TAK-15  
+  Aus S-24: Bisher liest jedes Öffnen der Set-Ansicht alle Antworten des Sets neu. Ergebnis pro Set nach dem ersten Laden behalten und bei neuen Antworten fortschreiben; beim Löschen eines Sets, Wiederherstellen eines Backups und „Alle Daten löschen“ verwerfen. Keine Schemaänderung, nichts im Backup.
 
 ### M2 – Daten sichern
 

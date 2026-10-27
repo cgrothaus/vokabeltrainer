@@ -79,6 +79,11 @@ async function open(): Promise<OpenResult> {
 }
 
 async function start(): Promise<void> {
+  // Performance-Messung (TDD 15.6): eigene Datenbank, ohne die App zu starten.
+  if (import.meta.env.DEV && new URLSearchParams(location.search).has("perf")) {
+    const { perfView } = await import("./dev/perf");
+    return show(perfView());
+  }
   const result = await open();
   if (!result.ok) return show(storageErrorView(result));
   const { db } = result;

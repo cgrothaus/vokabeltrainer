@@ -50,6 +50,12 @@ describe("Build-Ausgabe", () => {
       expect(existsSync(new URL(href!, dist)), `${href} fehlt`).toBe(true);
     }
   });
+
+  test("enthält keine Dev-Schalter (Test-Migration, Performance-Messung)", () => {
+    // Die Datenbanknamen stehen nur im Code hinter `import.meta.env.DEV`.
+    expect(html).not.toContain("vokabeltrainer-testmigration");
+    expect(html).not.toContain("vokabeltrainer-perf");
+  });
 });
 
 describe("Web-App-Manifest", () => {
