@@ -10,7 +10,7 @@ import {
   type PracticeSetup,
   selectedEntryCount,
 } from "../../domain/practiceSetup";
-import { h } from "../dom";
+import { focusSoon, h } from "../dom";
 import { languageName } from "../languages";
 import { failureMessage } from "../storageMessages";
 
@@ -27,13 +27,6 @@ const NOT_LOADED = "Das Vokabelset konnte nicht geladen werden. Lade die Seite n
 const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 const back = () => h("p", null, h("a", { href: "#/" }, "Zurück zur Bibliothek"));
-
-/** Fokus auf die Überschrift, sobald sie eingehängt ist; Screenreader lesen dann den Titel vor. */
-function focus(element: HTMLElement): void {
-  element.tabIndex = -1;
-  if (element.isConnected) element.focus();
-  else queueMicrotask(() => element.isConnected && element.focus());
-}
 
 export function learnView(context: LearnContext): Node {
   const main = h("main", { class: "setup" });
@@ -235,7 +228,7 @@ function form(set: StoredSet, initial: PracticeSetup, context: LearnContext): No
   update();
 
   const heading = h("h1", { class: "set-title" }, set.title);
-  focus(heading);
+  focusSoon(heading);
   return [
     heading,
     h("p", { class: "languages" }, "Lernsitzung einrichten"),

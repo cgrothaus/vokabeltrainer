@@ -102,7 +102,7 @@ test("Set-Ansicht zeigt Angaben, Sektionen und Einträge", async ({ page }) => {
   await page.getByText("Tiere 2 Einträge").click();
   await expect(cat.locator(".pair")).toHaveText("le chat – die Katze ungeprüft");
   await expect(cat.locator(".pair [lang=fr]")).toHaveText("le chat");
-  await expect(cat.getByText("Wortart: noun · Genus: m · Plural: les chats")).toBeVisible();
+  await expect(cat.getByText("Wortart: Nomen · Genus: maskulin · Plural: les chats")).toBeVisible();
   await expect(cat.getByRole("list", { name: "Beispiele" })).toHaveText(
     "Le chat dort. – Die Katze schläft.",
   );

@@ -7,7 +7,7 @@ import { cardFaces, currentCard, type Result, sideText } from "../../domain/prac
 import { entryDetails, hasDetails } from "../components/entryDetails";
 import { onSwipe } from "../components/swipe";
 import { setUpdateBlocked } from "../components/updateNotice";
-import { h } from "../dom";
+import { focusSoon, h } from "../dom";
 import type { PracticeSession, Question } from "../practice";
 import { failureMessage } from "../storageMessages";
 
@@ -37,12 +37,6 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
   const { set } = practice;
   const main = h("main", { class: "practice" });
   const problem = h("div", { role: "alert" });
-  const focus = (element: HTMLElement) => {
-    // Beim ersten Anzeigen hängt der Router die Ansicht erst nach der Rückgabe ein.
-    if (element.isConnected) element.focus();
-    else queueMicrotask(() => element.isConnected && element.focus());
-  };
-
   // Tastenkürzel der gerade gezeigten Karte; liefert `true`, wenn die Taste etwas ausgelöst hat.
   let onKey: ((event: KeyboardEvent) => boolean) | null = null;
   document.addEventListener(
@@ -193,7 +187,7 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
           return true;
         };
         // Fokus auf die Antwort, nicht auf eine Schaltfläche: Ein gehaltenes Enter bewertet so nicht.
-        focus(side);
+        focusSoon(side);
       };
 
       const front = h(
@@ -210,7 +204,7 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
         reveal();
         return true;
       };
-      focus(front);
+      focusSoon(front);
     };
 
     const showChoice = (question: Extract<Question, { mode: "multipleChoice" }>) => {
@@ -238,7 +232,7 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
         if (!(await save(right ? "correct" : "incorrect"))) return;
         const next = h("button", { type: "button", onclick: proceed }, "Weiter");
         after.replaceChildren(...details(entry), h("div", { class: "actions" }, next));
-        focus(next);
+        focusSoon(next);
       };
       const options = question.options.map((option, index) =>
         h(
@@ -262,7 +256,7 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
         after,
         problem,
       );
-      focus(prompt);
+      focusSoon(prompt);
     };
 
     const question = practice.question();
@@ -369,7 +363,7 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
       problem,
       toLibrary(),
     );
-    focus(heading);
+    focusSoon(heading);
   };
 
   const showResult = () => {
@@ -377,7 +371,7 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
     problem.textContent = "";
     const heading = h("h1", { tabindex: -1 }, "Geschafft");
     show("result", heading, ...quota(), ...mistakes(true), problem, toLibrary());
-    focus(heading);
+    focusSoon(heading);
   };
 
   enterCards();

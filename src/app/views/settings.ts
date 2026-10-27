@@ -3,7 +3,7 @@
 import type { RecordCounts } from "../../domain/backup";
 import type { Theme } from "../../domain/theme";
 import type { DeleteAllOutcome } from "../deleteAll";
-import { h } from "../dom";
+import { focusSoon, h } from "../dom";
 import type { SaveThemeOutcome } from "../theme";
 
 export interface SettingsContext {
@@ -28,16 +28,9 @@ const NO_SCOPE =
 
 const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
-/** Fokus setzen, sobald das Element eingehängt ist; Screenreader lesen es dann vor. */
-function focus(element: HTMLElement): void {
-  element.tabIndex = -1;
-  if (element.isConnected) element.focus();
-  else queueMicrotask(() => element.isConnected && element.focus());
-}
-
 export function settingsView(context: SettingsContext): Node {
   const heading = h("h1", null, "Einstellungen");
-  focus(heading);
+  focusSoon(heading);
   return h(
     "main",
     { class: "settings" },
@@ -181,7 +174,7 @@ function deletion(context: SettingsContext): Node {
         h("div", { class: "actions" }, remove, abort),
       ),
     );
-    focus(text);
+    focusSoon(text);
   };
 
   return h("div", null, start, confirmation, errors);

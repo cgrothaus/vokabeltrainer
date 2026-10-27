@@ -3,12 +3,32 @@
 import type { StoredEntry, StoredSet } from "../../domain/model";
 import { type Child, h } from "../dom";
 
+// Die Formatspezifikation (5.4) nennt englische Beispielwerte; bekannte erscheinen deutsch, alle
+// anderen so, wie sie im Set stehen (TDD 13.1).
+const PARTS_OF_SPEECH: Record<string, string> = {
+  noun: "Nomen",
+  verb: "Verb",
+  adjective: "Adjektiv",
+  adverb: "Adverb",
+  pronoun: "Pronomen",
+  preposition: "Präposition",
+  conjunction: "Konjunktion",
+  interjection: "Interjektion",
+  article: "Artikel",
+  numeral: "Zahlwort",
+  phrase: "Wendung",
+};
+const GENDERS: Record<string, string> = { m: "maskulin", f: "feminin", n: "neutrum" };
+
+const translate = (table: Record<string, string>, value: string) =>
+  table[value.toLowerCase()] ?? value;
+
 export function entryDetails(entry: StoredEntry, set: StoredSet): Child[] {
   const { grammar, examples = [] } = entry;
   const grammarParts = grammar
     ? [
-        grammar.partOfSpeech && `Wortart: ${grammar.partOfSpeech}`,
-        grammar.gender && `Genus: ${grammar.gender}`,
+        grammar.partOfSpeech && `Wortart: ${translate(PARTS_OF_SPEECH, grammar.partOfSpeech)}`,
+        grammar.gender && `Genus: ${translate(GENDERS, grammar.gender)}`,
         grammar.plural && `Plural: ${grammar.plural}`,
         grammar.forms && `Formen: ${grammar.forms.join(", ")}`,
       ].filter((part): part is string => !!part)
