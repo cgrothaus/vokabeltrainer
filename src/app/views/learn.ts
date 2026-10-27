@@ -12,6 +12,7 @@ import {
 } from "../../domain/practiceSetup";
 import { h } from "../dom";
 import { languageName } from "../languages";
+import { failureMessage } from "../storageMessages";
 
 export interface LearnContext {
   /** `undefined`, wenn es das Set nicht gibt. */
@@ -22,8 +23,6 @@ export interface LearnContext {
 }
 
 const NOT_LOADED = "Das Vokabelset konnte nicht geladen werden. Lade die Seite neu.";
-const NOT_STARTED =
-  "Die Lernsitzung konnte nicht gestartet werden. Lade die Seite neu und versuche es noch einmal.";
 
 const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
@@ -251,7 +250,7 @@ function form(set: StoredSet, initial: PracticeSetup, context: LearnContext): No
             await context.startPractice(set, setup());
           } catch (error) {
             console.error("Sitzung nicht gestartet", error);
-            problem.textContent = NOT_STARTED;
+            problem.textContent = failureMessage(error, "Die Lernsitzung wurde nicht gestartet.");
             start.disabled = false;
           }
         },

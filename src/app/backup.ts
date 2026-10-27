@@ -12,6 +12,8 @@ import { type Delivery, deliverFile } from "../platform/deliverFile";
 import { readBackup, restoreBackup } from "../storage/backup";
 import { getMeta, setMeta } from "../storage/meta";
 import { DB_VERSION } from "../storage/schema";
+import { reportStorageProblem } from "./components/storageNotice";
+import { storageMessage } from "./storageMessages";
 
 export interface PreparedBackup {
   blob: Blob;
@@ -26,13 +28,6 @@ export type RestoreOutcome = { ok: true } | { ok: false; error: string };
 
 const UNREADABLE =
   "Die Datei enthält kein lesbares Backup. Wähle die Backup-Datei des Vokabeltrainers aus.";
-
-const RESTORE_ERRORS = {
-  quota:
-    "Der Speicher auf diesem Gerät ist voll. Das Backup wurde nicht wiederhergestellt; deine bisherigen Daten sind unverändert.",
-  failed:
-    "Das Backup konnte nicht wiederhergestellt werden; deine bisherigen Daten sind unverändert. Lade die Seite neu und versuche es noch einmal.",
-} as const;
 
 /**
  * Liest den Bestand schon vor dem Tippen auf „Backup speichern“: Das Teilen-Menü öffnet sich nur
@@ -54,6 +49,10 @@ export async function saveBackup(db: IDBDatabase, prepared: PreparedBackup): Pro
     await setMeta(db, "lastBackupAt", prepared.exportedAt).catch((error: unknown) => {
       // Die Datei ist trotzdem gespeichert; nur die Erinnerung (S-27) kennt den Zeitpunkt nicht.
       console.warn("Zeitpunkt des Backups nicht vermerkt", error);
+      reportStorageProblem(
+        error,
+        "Das Backup ist gespeichert, aber die App konnte sich das Datum nicht merken.",
+      );
     });
   }
   return delivery;
@@ -73,5 +72,10 @@ export function checkBackup(text: string): CheckOutcome {
 
 export async function restore(db: IDBDatabase, backup: CheckedBackup): Promise<RestoreOutcome> {
   const result = await restoreBackup(db, backup);
-  return result.ok ? result : { ok: false, error: RESTORE_ERRORS[result.reason] };
+  if (result.ok) return result;
+  const error = storageMessage(
+    result.reason,
+    "Das Backup wurde nicht wiederhergestellt; deine bisherigen Daten sind unverändert.",
+  );
+  return { ok: false, error };
 }

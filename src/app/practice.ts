@@ -25,6 +25,8 @@ import {
 import { randomBytes } from "../platform/random";
 import { finishSession, recordAnswer, startSession } from "../storage/sessions";
 import { getSetting } from "../storage/settings";
+import { reportStorageProblem } from "./components/storageNotice";
+import { failureMessage } from "./storageMessages";
 
 /** Wie die aktuelle Karte gestellt wird (TDD 12.3). */
 export type Question =
@@ -35,6 +37,8 @@ export type Question =
       readonly correct: number;
     };
 
+export type AnswerOutcome = { ok: true } | { ok: false; error: string };
+
 export interface PracticeSession {
   readonly set: StoredSet;
   readonly state: PracticeState;
@@ -43,8 +47,10 @@ export interface PracticeSession {
   /** Alle Karten gewusst; die Sitzung ist als abgeschlossen gespeichert oder wird es gerade. */
   readonly finished: boolean;
   entry(id: string): StoredEntry;
-  /** Speichert die Antwort und rückt danach vor; `false`, wenn das Speichern scheiterte. */
-  answer(result: Result): Promise<boolean>;
+  /** Speichert die Antwort und rückt danach vor, auch wenn das Speichern scheiterte (TDD 12.4). */
+  answer(result: Result): Promise<AnswerOutcome>;
+  /** Antworten, die nicht gespeichert wurden; sie fehlen im Lernstand (D-32). */
+  readonly unsaved: number;
   /** Vorzeitiges Ende, z. B. beim Verlassen der Ansicht. */
   end(): void;
   /**
@@ -63,6 +69,8 @@ interface Material {
   readonly preferred: readonly StoredEntry[];
   readonly rest: readonly StoredEntry[];
 }
+
+const CONTINUE = "Du kannst trotzdem weiterlernen.";
 
 let current: PracticeSession | null = null;
 
@@ -133,6 +141,7 @@ function run(
   const { set, entries, revs, preferred, rest } = material;
   let state = initial;
   let finished = false;
+  let unsaved = 0;
   let ended = false;
   let asked: { state: PracticeState; question: Question } | null = null;
   const question = (): Question => {
@@ -154,6 +163,7 @@ function run(
     finishSession(db, session.id, status, new Date().toISOString()).catch((error: unknown) => {
       // Beim nächsten Start wird die Sitzung als unterbrochen vermerkt.
       console.warn("Ende der Sitzung nicht gespeichert", error);
+      reportStorageProblem(error, "Das Ende der Lernsitzung wurde nicht gespeichert.");
     });
 
   const practice: PracticeSession = {
@@ -163,6 +173,9 @@ function run(
     },
     get finished() {
       return finished;
+    },
+    get unsaved() {
+      return unsaved;
     },
     entry: (id) => entries.get(id)!,
     question,
@@ -181,12 +194,14 @@ function run(
         result,
         firstAttempt: next.recorded.firstAttempt,
       };
-      let saved = true;
+      let outcome: AnswerOutcome = { ok: true };
       try {
         await recordAnswer(db, event);
       } catch (error) {
         console.error("Antwort nicht gespeichert", error);
-        saved = false;
+        unsaved++;
+        const consequence = "Die Antwort wurde nicht gespeichert.";
+        outcome = { ok: false, error: failureMessage(error, consequence, CONTINUE) };
       }
       // Auch ohne gespeicherte Antwort geht die Sitzung weiter (TDD 12.4).
       state = next.state;
@@ -194,7 +209,7 @@ function run(
         finished = true;
         void close("completed");
       }
-      return saved;
+      return outcome;
     },
     end() {
       if (current === practice) current = null;

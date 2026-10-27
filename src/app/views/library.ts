@@ -5,6 +5,7 @@ import { learnButton } from "../components/learnButton";
 import { h } from "../dom";
 import { languageName } from "../languages";
 import type { SampleOutcome } from "../sampleSet";
+import { failureMessage } from "../storageMessages";
 import { emptyLibrary } from "./emptyLibrary";
 
 export interface LibraryContext {
@@ -74,7 +75,8 @@ async function showSets(container: HTMLElement, context: LibraryContext): Promis
     sets = await context.loadSets();
   } catch (error) {
     console.error("Sets nicht lesbar", error);
-    container.replaceChildren(h("p", null, "Die Vokabelsets konnten nicht geladen werden."));
+    const message = failureMessage(error, "Die Vokabelsets konnten nicht geladen werden.");
+    container.replaceChildren(h("p", { role: "alert" }, message));
     return false;
   }
   // Ergibt sich aus dem Bestand, erscheint also auch nach dem Löschen des letzten Sets (TDD 13.1).

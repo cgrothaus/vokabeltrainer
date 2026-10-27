@@ -3,11 +3,9 @@
 import { BACKUP_STORES, type RecordCounts, summarizeRecords } from "../domain/backup";
 import type { StoreRecords } from "../domain/validateRecords";
 import { clearAllData, readStores } from "../storage/backup";
+import { failureMessage } from "./storageMessages";
 
 export type DeleteAllOutcome = { ok: true } | { ok: false; error: string };
-
-const NOT_DELETED =
-  "Die Daten konnten nicht gelöscht werden; sie sind unverändert. Lade die Seite neu und versuche es noch einmal.";
 
 export async function dataScope(db: IDBDatabase): Promise<RecordCounts> {
   // Der eigene Bestand entspricht dem Datenmodell; geprüft wird er erst beim Wiederherstellen.
@@ -21,6 +19,9 @@ export async function removeAllData(db: IDBDatabase): Promise<DeleteAllOutcome> 
     return { ok: true };
   } catch (error) {
     console.error("Daten nicht gelöscht", error);
-    return { ok: false, error: NOT_DELETED };
+    return {
+      ok: false,
+      error: failureMessage(error, "Die Daten wurden nicht gelöscht; sie sind unverändert."),
+    };
   }
 }

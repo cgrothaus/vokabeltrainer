@@ -1,11 +1,12 @@
 // Backup lesen und wiederherstellen (TDD 11.3, 11.4). Geprüft und migriert wird vorher in
 // domain/backup.ts; hier geht es nur um konsistentes Lesen und atomares Ersetzen bzw. Leeren.
 import { BACKUP_STORES, type BackupFile, type CheckedBackup, createBackup } from "../domain/backup";
+import { type StorageFailure, storageFailure } from "./errors";
 import { type MetaKey, putMeta } from "./meta";
 import type { StoreName } from "./schema";
 import { runTransaction } from "./transaction";
 
-export type RestoreResult = { ok: true } | { ok: false; reason: "quota" | "failed" };
+export type RestoreResult = { ok: true } | { ok: false; reason: StorageFailure };
 
 /** Liest alle `stores` roh in einer Read-only-Transaktion: ein in sich stimmiger Stand (TDD 11.3). */
 export async function readStores(
@@ -53,10 +54,8 @@ export async function restoreBackup(
     });
     return { ok: true };
   } catch (error) {
-    if ((error as { name?: unknown } | null)?.name === "QuotaExceededError")
-      return { ok: false, reason: "quota" };
     console.error("Backup nicht wiederhergestellt", error);
-    return { ok: false, reason: "failed" };
+    return { ok: false, reason: storageFailure(error) };
   }
 }
 

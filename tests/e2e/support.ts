@@ -91,6 +91,57 @@ export function readStore<T>(page: Page, store: string): Promise<T[]> {
   );
 }
 
+interface StorageSwitches {
+  __failWrites?: { name: string; store?: string };
+  __loseConnection?: boolean;
+}
+
+/**
+ * Macht den Speicher der Seite störbar (AK-26): Mit `failWrites` werfen `add`, `put`, `delete` und
+ * `clear` den angegebenen Fehler, auf Wunsch nur für einen Store; mit `loseConnection` schließt der
+ * nächste Zugriff erst die Verbindung, wie wenn der Browser sie verloren hätte. Vor `goto` aufrufen.
+ */
+export async function breakableStorage(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const switches = window as unknown as StorageSwitches;
+    for (const method of ["add", "put", "delete", "clear"] as const) {
+      const original = IDBObjectStore.prototype[method] as (...args: unknown[]) => IDBRequest;
+      Object.defineProperty(IDBObjectStore.prototype, method, {
+        value: function (this: IDBObjectStore, ...args: unknown[]) {
+          const failure = switches.__failWrites;
+          if (failure && (!failure.store || failure.store === this.name))
+            throw new DOMException("Speicherfehler (Test)", failure.name);
+          return original.apply(this, args);
+        },
+      });
+    }
+    const transaction = IDBDatabase.prototype.transaction;
+    IDBDatabase.prototype.transaction = function (this: IDBDatabase, ...args) {
+      if (switches.__loseConnection) {
+        switches.__loseConnection = false;
+        this.close();
+      }
+      return transaction.apply(this, args);
+    };
+  });
+}
+
+/** `null` beendet die Störung. */
+export function failWrites(page: Page, name: string | null, store?: string): Promise<void> {
+  return page.evaluate(
+    ([name, store]) => {
+      (window as unknown as StorageSwitches).__failWrites = name ? { name, store } : undefined;
+    },
+    [name, store] as const,
+  );
+}
+
+export function loseConnection(page: Page): Promise<void> {
+  return page.evaluate(() => {
+    (window as unknown as StorageSwitches).__loseConnection = true;
+  });
+}
+
 /** Wischt waagerecht über die Mitte des Elements (Pointer-Events wie mit der Maus). */
 export async function swipe(page: Page, target: Locator, dx: number): Promise<void> {
   const box = (await target.boundingBox())!;

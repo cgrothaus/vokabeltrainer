@@ -57,7 +57,7 @@ test("Neue Version wird erst nach Bestätigung aktiv", async ({ page }, testInfo
   await withCopiedApp(testInfo, async (url, dir) => {
     const oldText = "Noch keine Vokabelsets";
     const newText = "Die neue Version ist aktiv.";
-    const notice = page.getByRole("status");
+    const notice = page.locator("#update-notice");
 
     await page.goto(url);
     await expect(page.getByText(oldText)).toBeVisible();
@@ -84,7 +84,7 @@ test("E2E-14 Während einer Lernsitzung erscheint der Hinweis erst danach", asyn
   page,
 }, testInfo) => {
   await withCopiedApp(testInfo, async (url, dir) => {
-    const notice = page.getByRole("status");
+    const notice = page.locator("#update-notice");
     await importSet(page, "Englisch – Update", url);
     await serviceWorkerReady(page);
     // Erst nach dem Neuladen steuert der Service Worker die Seite; vorher gilt nichts als Update.
