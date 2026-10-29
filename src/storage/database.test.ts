@@ -3,8 +3,14 @@ import { IDBFactory } from "fake-indexeddb";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { failingTestMigration, testMigration } from "../domain/migrations/testMigration";
 import { type OpenOptions, type OpenResult, openDatabase } from "./database";
+import { readPreMigrationCopy, savePreMigrationCopy } from "./preMigrationCopy";
 import { DB_NAME } from "./schema";
 import { testSchema } from "./testMigration";
+
+vi.mock("./preMigrationCopy", async (importOriginal) => {
+  const original = await importOriginal<typeof import("./preMigrationCopy")>();
+  return { ...original, savePreMigrationCopy: vi.fn(original.savePreMigrationCopy) };
+});
 
 const v2: Partial<OpenOptions> = { version: 2, schema: testSchema, migrations: [testMigration] };
 const open = (options: Partial<OpenOptions> = {}) =>
@@ -145,6 +151,93 @@ describe("Migration (TAK-08)", () => {
     await seed({ sets: [sets[0]] });
     const result = await open({ ...v2, migrations: [] });
     expect(result).toMatchObject({ ok: false, reason: "migration-failed" });
+  });
+});
+
+describe("Sicherungskopie vor Migrationen (TDD 7.3)", () => {
+  const databaseNames = async () => (await indexedDB.databases()).map((info) => info.name).sort();
+  const metaKeys = async (db: IDBDatabase) =>
+    (await readAll(db, "meta")).map((record) => (record as { key: string }).key);
+
+  it("sichert den alten Stand, bevor Datensätze umgewandelt werden", async () => {
+    const settings = [{ key: "theme", value: "dark" }];
+    await seed({
+      sets: sets.slice(0, 2),
+      settings,
+      meta: [{ key: "persistRequested", value: true }],
+    });
+    const db = expectOk(await open(v2));
+
+    expect(await readAll(db, "sets")).toEqual([
+      { id: "a", name: "Erstes" },
+      { id: "b", name: "Zweites" },
+    ]);
+    const copy = await readPreMigrationCopy(DB_NAME);
+    expect(copy).toMatchObject({
+      format: "vokabeltrainer-backup",
+      dataVersion: 1,
+      appVersion: "test",
+      data: { sets: sets.slice(0, 2), reviewEvents: [], sessions: [], settings },
+    });
+    expect(copy?.data).not.toHaveProperty("meta");
+    // In derselben Transaktion wie die Migration vermerkt, für die Frist von 14 Tagen.
+    expect(await readAll(db, "meta")).toContainEqual({
+      key: "preMigrationCopyAt",
+      value: copy?.exportedAt,
+    });
+    db.close();
+  });
+
+  it("ersetzt die Kopie einer früheren Migration", async () => {
+    await savePreMigrationCopy(DB_NAME, {
+      format: "vokabeltrainer-backup",
+      formatVersion: 1,
+      dataVersion: 1,
+      appVersion: "alt",
+      exportedAt: "2026-01-01T00:00:00.000Z",
+      data: { sets: [], reviewEvents: [], sessions: [], settings: [] },
+    });
+    await seed({ sets: [sets[0]] });
+    expectOk(await open(v2)).close();
+    expect(await readPreMigrationCopy(DB_NAME)).toMatchObject({
+      appVersion: "test",
+      data: { sets: [sets[0]] },
+    });
+  });
+
+  it("braucht für ein rein strukturelles Upgrade keine Kopie", async () => {
+    await seed({ sets: [sets[0]] });
+    const db = expectOk(await open({ ...v2, migrations: [{ version: 2, stores: {} }] }));
+    expect(await readAll(db, "sets")).toEqual([sets[0]]);
+    expect(await databaseNames()).toEqual([DB_NAME]);
+    expect(await metaKeys(db)).toEqual([]);
+    db.close();
+  });
+
+  it("legt bei Einrichtung und normalem Öffnen keine Kopie an", async () => {
+    expectOk(await open()).close();
+    await seed({ sets: [sets[0]] });
+    expect(await databaseNames()).toEqual([DB_NAME]);
+  });
+
+  it("lässt nach einer gescheiterten Migration keine Kopie zurück", async () => {
+    await seed({ sets });
+    const result = await open({ ...v2, migrations: [failingTestMigration] });
+    expect(result).toMatchObject({ ok: false, reason: "migration-failed" });
+    expect(await databaseNames()).toEqual([DB_NAME]);
+  });
+
+  it("migriert trotzdem, wenn sich die Kopie nicht anlegen lässt", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.mocked(savePreMigrationCopy).mockRejectedValueOnce(
+      new DOMException("Speicher voll", "QuotaExceededError"),
+    );
+    await seed({ sets: [sets[0]] });
+    const db = expectOk(await open(v2));
+    expect(await readAll(db, "sets")).toEqual([{ id: "a", name: "Erstes" }]);
+    expect(await metaKeys(db)).toEqual([]);
+    expect(warn).toHaveBeenCalledOnce();
+    db.close();
   });
 });
 
