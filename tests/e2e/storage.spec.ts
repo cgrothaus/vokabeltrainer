@@ -7,7 +7,7 @@ test("E2E-12 Neuere Datenbankversion: App gibt die Verbindung frei und bittet um
 }) => {
   await page.goto("./");
   // Die Bibliothek erscheint erst, wenn die Datenbank offen ist.
-  await expect(page.getByText(/dauerhaft/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Noch keine Vokabelsets" })).toBeVisible();
 
   // Wie eine neuere App-Version in einem anderen Tab: Das Upgrade gelingt nur, wenn die App loslässt.
   await page.evaluate(

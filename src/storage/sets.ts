@@ -86,6 +86,16 @@ export async function deleteSet(db: IDBDatabase, id: string): Promise<DeleteSetR
   }
 }
 
+/** Zahl der Sets, z. B. für den Speicherschutz beim Start (TDD 6.6). */
+export async function countSets(db: IDBDatabase): Promise<number> {
+  let count = 0;
+  await runTransaction(db, "sets", "readonly", (transaction) => {
+    const request = transaction.objectStore("sets").count();
+    request.onsuccess = () => (count = request.result);
+  });
+  return count;
+}
+
 /** Alle Sets in der Reihenfolge ihrer IDs; die Bibliothek sortiert selbst. */
 export async function listSets(db: IDBDatabase): Promise<StoredSet[]> {
   let sets: StoredSet[] = [];

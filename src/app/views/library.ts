@@ -1,7 +1,8 @@
 import type { StoredSet } from "../../domain/model";
 import { groupSets, setSize } from "../../domain/library";
-import type { PersistenceState } from "../../platform/persistence";
+import type { ProtectionNotice } from "../../domain/storageProtection";
 import { learnButton } from "../components/learnButton";
+import { protectionHint } from "../components/protectionHint";
 import { h } from "../dom";
 import { languageName } from "../languages";
 import type { SampleOutcome } from "../sampleSet";
@@ -9,9 +10,8 @@ import { failureMessage } from "../storageMessages";
 import { emptyLibrary } from "./emptyLibrary";
 
 export interface LibraryContext {
-  persistence: PersistenceState;
-  /** Provisorisch für M0 (Messung in S-11), entfällt spätestens mit S-26. */
-  requestPersistence: () => Promise<PersistenceState>;
+  /** Welcher Speicherschutz-Hinweis passt (TDD 6.6); hängt davon ab, ob Sets vorhanden sind. */
+  protection: (hasSets: boolean) => ProtectionNotice;
   loadSets: () => Promise<StoredSet[]>;
   /** Speichert das Beispielset (Empty State); bei Erfolg wechselt die App zur Set-Ansicht. */
   loadSampleSet: () => Promise<SampleOutcome>;
@@ -19,28 +19,9 @@ export interface LibraryContext {
   takeMessage: () => string | null;
 }
 
-const persistenceText: Record<PersistenceState, string> = {
-  granted: "Deine Daten sind auf diesem Gerät dauerhaft geschützt.",
-  "not-granted": "Deine Daten sind auf diesem Gerät nicht dauerhaft geschützt.",
-  unsupported: "Dieser Browser kann deine Daten nicht dauerhaft schützen.",
-};
-
 export function libraryView(context: LibraryContext): Node {
-  const status = h("p", { "aria-live": "polite" }, persistenceText[context.persistence]);
-  const request = h(
-    "button",
-    {
-      type: "button",
-      onclick: async () => {
-        request.disabled = true;
-        const state = await context.requestPersistence();
-        status.textContent = persistenceText[state];
-        if (state === "granted") request.remove();
-        else request.disabled = false;
-      },
-    },
-    "Dauerhaften Speicher anfordern",
-  );
+  // Hinweise über der Liste (TDD 13.1); sie hängen vom Bestand ab und erscheinen nach dem Laden.
+  const hints = h("div", { class: "hints" });
   const sets = h("section", { "aria-label": "Vokabelsets" });
   // Erst nach dem Laden zeigen: Bei leerer Bibliothek bietet der Empty State dieselben Wege an.
   const more = h(
@@ -49,7 +30,11 @@ export function libraryView(context: LibraryContext): Node {
     h("p", null, h("a", { href: "#/import", class: "action" }, "Vokabelset importieren")),
     h("p", null, h("a", { href: "#/help" }, "Wie bekomme ich ein Vokabelset?")),
   );
-  void showSets(sets, context).then((empty) => (more.hidden = empty));
+  void showSets(sets, context).then((empty) => {
+    more.hidden = empty;
+    const hint = protectionHint(context.protection(!empty), !empty);
+    if (hint) hints.replaceChildren(hint);
+  });
   const text = context.takeMessage();
   const message = text && h("p", { role: "status", class: "message", tabindex: "-1" }, text);
   // Fokus auf die Meldung, sobald die Ansicht eingehängt ist, damit Screenreader sie vorlesen.
@@ -59,12 +44,11 @@ export function libraryView(context: LibraryContext): Node {
     null,
     h("h1", null, "Vokabeltrainer"),
     message,
+    hints,
     sets,
     more,
     h("p", null, h("a", { href: "#/backup" }, "Backup und Wiederherstellung")),
     h("p", null, h("a", { href: "#/settings" }, "Einstellungen")),
-    status,
-    context.persistence === "not-granted" && request,
   );
 }
 

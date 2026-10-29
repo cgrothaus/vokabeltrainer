@@ -1,6 +1,6 @@
 # TDD: Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.29 – Sicherungskopie vor Migrationen  
+**Version:** 2.30 – Speicherschutz-Hinweise  
 **Stand:** 29. Oktober 2026  
 **Bezug:** PRD 2.5 (`PRD_Vokabeltrainer_Allgemein_v2.md`), Formatspezifikation Version 1 (`Formatspezifikation_Vokabelset_v1.md`), Review-Notizen (`20261019_TDD_v1_Review_Notizen.md`)  
 **Status:** Entwurf; Grundlage für M0 (Walking Skeleton)  
@@ -83,12 +83,13 @@ src/
 │   ├── practiceSetup.ts Einrichtung einer Sitzung: Auswahl, Stufen, gemerkte Werte prüfen
 │   ├── stats.ts         Lernstand und Überblick aus Events
 │   ├── theme.ts         Darstellung: erlaubte Werte, gespeicherten Wert tolerant lesen
+│   ├── storageProtection.ts Speicherschutz: welcher Hinweis zum Gerät passt
 │   ├── exportFormat.ts  Set-Export
 │   ├── backup.ts        Backup-Hülle, Prüfen und Migrieren beim Wiederherstellen
 │   ├── validateRecords.ts gespeicherte Datensätze prüfen (Backup, später DB-Fixtures)
 │   └── migrations/      Migrationen von Datensätzen und Dateiformaten
 ├── storage/             IndexedDB: Öffnen, Upgrade, Verbindung halten, Fehler einordnen, Repositories, Backup
-├── platform/            Browserfunktionen: Service Worker, persist(), Datei liefern, Zwischenablage
+├── platform/            Browserfunktionen: Service Worker, persist(), Gerät (installiert, iOS), Datei liefern, Zwischenablage
 ├── content/             mitgelieferte Inhalte: Hilfetexte mit Formatbeispiel und Vorlage, Beispielset
 ├── dev/                 nur im Dev-Server: Performance-Messung `?perf` mit erzeugten Daten (15.6), nicht im Build
 ├── styles/              CSS
@@ -326,10 +327,14 @@ interface Answer {
 
 ### 6.6 Speicherschutz (FR-22, FR-31, R-01)
 
-- **Dauerhafter Speicher:** Nach dem ersten erfolgreichen Speichern eines Sets ruft die App `navigator.storage.persist()` auf und merkt sich in `meta`, dass die Anfrage gestellt wurde. Bei jedem Start fragt sie `navigator.storage.persisted()` ab.
-- **Hinweis bei nicht gewährtem Speicher:** In der Bibliothek erscheint ein ruhiger Hinweis „Deine Daten sind auf diesem Gerät nicht dauerhaft geschützt“ mit einer Handlungsempfehlung:
-  - auf iOS/iPadOS ohne Installation: kurze Anleitung „Teilen → Zum Home-Bildschirm“,
-  - sonst: regelmäßige Backups.
+- **Dauerhafter Speicher:** Nach dem ersten erfolgreichen Speichern eines Sets und nach dem ersten erfolgreichen Wiederherstellen ruft die App `navigator.storage.persist()` auf und merkt sich in `meta`, dass die Anfrage gestellt wurde. Bei jedem Start fragt sie `navigator.storage.persisted()` ab. Läuft sie installiert, sind Sets vorhanden und ist der Speicher nicht gewährt, fragt sie bei jedem Start erneut (D-38): Installierten Apps gewähren Chrome und Safari den Speicher ohne Rückfrage. Im Browser-Tab bleibt es bei der einen Anfrage, weil Firefox dort jedes Mal nachfragen würde.
+- **Getrennter Speicher auf iOS:** Die App auf dem Home-Bildschirm hat einen eigenen Speicher und sieht die Daten aus dem Safari-Tab nicht. Wer im Tab angefangen hat, zieht per Backup um; das Wiederherstellen dort löst die Anfrage nach dauerhaftem Speicher aus.
+- **Hinweis in der Bibliothek** (`domain/storageProtection.ts`, D-38), als ruhiger Kasten über der Liste bzw. über dem Empty State, nicht schließbar:
+  - Speicher gewährt: kein Hinweis.
+  - iOS/iPadOS im Browser, nicht installiert: „Im Browser kann iOS deine Daten löschen, wenn du die App einige Tage nicht nutzt. Auf dem Home-Bildschirm bleiben sie erhalten.“ Darunter aufklappbar „So kommt die App auf den Home-Bildschirm“ mit den Schritten „Teilen“ (je nach Ansicht hinter „…“) → „Zum Home-Bildschirm“ → „Hinzufügen“ und „App über das neue Symbol öffnen“. Sind Sets vorhanden, rahmen „Backup speichern“ und „dort wiederherstellen“ die Schritte ein. Erscheint schon im Empty State, damit der Umzug gar nicht erst nötig wird.
+  - Sonst nicht gewährt oder nicht unterstützt, Sets vorhanden: „Deine Daten sind auf diesem Gerät nicht dauerhaft geschützt. Speichere deshalb regelmäßig ein Backup.“ mit Link zur Backup-Ansicht.
+  - Ohne Sets sonst kein Hinweis.
+  Den Stand selbst nennen die Einstellungen (13.6).
 - **Backup-Erinnerung:** Gibt es Sets oder Review-Events und liegt `meta.lastBackupAt` mehr als 14 Tage zurück oder fehlt, zeigt die Bibliothek einen Hinweis mit der Aktion „Backup speichern“ und „Später“ (zurückstellen um 3 Tage über `meta.backupReminderSnoozedUntil`). Während einer Sitzung erscheint der Hinweis nie.
 - In M0 gemessen (S-11): Safari gewährt `persist()` im Tab nicht, als Home-Bildschirm-App schon; Chrome auf Android gewährt es schon im Browser. Auf iOS ist „Teilen → Zum Home-Bildschirm“ damit der entscheidende Schutz.
 
@@ -747,7 +752,7 @@ Helles und dunkles Farbschema über CSS-Variablen in `:root`; Standard folgt `pr
 Ansicht `#/settings`, erreichbar unter der Bibliotheksliste (13.1), mit dem Fokus auf der Überschrift:
 
 - **Darstellung** (13.5) als Radiogruppe;
-- **Daten:** Link „Backup und Wiederherstellung“ (11) und „Alle Daten löschen“ (10);
+- **Daten:** der Stand des Speicherschutzes als Satz (dauerhaft geschützt, nicht geschützt oder vom Browser nicht unterstützt, 6.6), Link „Backup und Wiederherstellung“ (11) und „Alle Daten löschen“ (10);
 - **Über die App:** die App-Version (4.2).
 
 Eine globale Standardrichtung gibt es nicht: Die Richtung merkt sich die Einrichtung pro Set (12.1, D-27), Voreinstellung ist Lernsprache → Muttersprache (D-31).
@@ -793,6 +798,7 @@ Für diese Module werden Tests vor der Implementierung geschrieben:
 - `practiceSetup.ts`: Voreinstellung, gemerkte Einrichtung mit fehlenden oder unbrauchbaren Teilen, Stufen, zufällige Teilmenge nur aus den gewählten Sektionen;
 - `stats.ts`: Kennzahlen, gelöschte Einträge, verschobene Einträge, letzte fünf Sitzungen nach letzter Antwort, nur Erstversuche in der Quote, Datumsangabe;
 - `theme.ts`: erlaubte Werte, Unbekanntes als `system`;
+- `storageProtection.ts`: Hinweis je nach Speicherschutz, iOS, Installation und vorhandenen Sets (6.6);
 - `storage/errors.ts`: voller Speicher, verlorene Verbindung, alles Übrige; dazu Integrationstests für `storage/connection.ts` (neu verbinden auch über das alte Verbindungsobjekt, nach `close`, einmal für gleichzeitige Zugriffe, keine Wiederholung einer begonnenen Transaktion, gescheitertes Öffnen, nicht nach `versionchange`, Rückmeldung erfolgreicher Schreibvorgänge);
 - `backup.ts`: Umfang eines Bestands (`summarizeRecords`) für Backup-Vorschau und „Alle Daten löschen“;
 - `migrations/`: jede Migration mit Fixture vorher und nachher.
@@ -840,8 +846,9 @@ Projekte: `mobile-chromium` (Pixel-Emulation) und `mobile-webkit` (iPhone-Emulat
 | E2E-17 Darstellung: „Dunkel“ bei hellem Gerät ergibt dieselben Farben wie ein dunkles Gerät (beide Blöcke gleich), `color-scheme` und `theme-color` folgen, die Wahl bleibt nach dem Neuladen; „Hell“ bei dunklem Gerät; „Wie auf dem Gerät“ folgt einem Wechsel sofort; ein wiederhergestelltes Backup bringt seine Darstellung mit | M1 | FR-21, FR-25, AK-10 |
 | E2E-18 Alle Daten löschen: Ankündigung mit Umfang, „Abbrechen“ ändert nichts, danach leere Bibliothek mit Meldung, alle Stores des Backups leer, `persistRequested` bleibt, Darstellung wieder wie auf dem Gerät | M1 | FR-06, TDD 10 |
 | E2E-19 Speicherfehler (`storageFailure.spec.ts`; Speicher per Init-Skript gestört, in Chromium zusätzlich echt voll über das Kontingent): Import, Wiederherstellen und Löschen melden den Fehler und ändern nichts; eine nicht gespeicherte Antwort zeigt einen Hinweis, die Sitzung läuft weiter, das Ergebnis nennt sie; ein nicht gespeichertes Sitzungsende zeigt den Speicherhinweis bis zum nächsten erfolgreichen Schreibvorgang; nach verlorener Verbindung speichern Import und laufende Sitzung ohne Meldung weiter | M1 | AK-26, FR-23, 6.5 |
-| E2E-20 Durchsicht (`a11y.spec.ts`): 24 Zustände aller Ansichten bei 320 px, hell und dunkel, ohne Verstöße von axe (WCAG 2.2 AA), ohne horizontales Scrollen auch bei 200 % Schrift, Ziele ab 44 × 44 außer Links im Fließtext, genau eine `h1`; nach Seitenwechseln Fokus auf der Überschrift und Seitentitel mit der Ansicht | M1 | FR-24, NFR-09–NFR-13, AK-12 |
+| E2E-20 Durchsicht (`a11y.spec.ts`): 26 Zustände aller Ansichten bei 320 px, hell und dunkel, ohne Verstöße von axe (WCAG 2.2 AA), ohne horizontales Scrollen auch bei 200 % Schrift, Ziele ab 44 × 44 außer Links im Fließtext, genau eine `h1`; nach Seitenwechseln Fokus auf der Überschrift und Seitentitel mit der Ansicht | M1 | FR-24, NFR-09–NFR-13, AK-12 |
 | E2E-21 Wiederherstellen auf einem Gerät mit Daten (`backup.spec.ts`): Warnung mit dem Umfang auf dem Gerät, „Abbrechen“ ändert nichts, „Vorher Backup speichern“ liefert den Bestand aus und setzt `lastBackupAt`, danach ersetzt „Alle Daten ersetzen“ alles; auf einem leeren Gerät (E2E-02) keine Warnung | M2 | AK-10, FR-19 |
+| E2E-22 Speicherschutz (`protection.spec.ts`; Gerät und `persist()` per Init-Skript gespielt): iOS im Browser zeigt die Anleitung schon im Empty State, mit Sets samt Umzug per Backup; sonst ohne Sets kein Hinweis, mit Sets der Hinweis auf Backups; gewährter Speicher ohne Hinweis; die Einstellungen nennen den Stand; installiert wird beim Start erneut angefragt, im Tab nicht; nach dem Wiederherstellen in der frisch installierten App wird angefragt | M2 | AK-20, FR-31 |
 
 Playwright-WebKit entspricht nicht Safari auf iOS. Speicherlöschung, Installation, `persist()` und Teilen-Menü werden manuell geprüft (15.5).
 
@@ -850,7 +857,7 @@ Playwright-WebKit entspricht nicht Safari auf iOS. Speicherlöschung, Installati
 Pro Meilenstein auf einem echten iPhone (Safari und installierte App) und einem echten Android-Gerät (Chrome):
 
 - Installation auf dem Home-Bildschirm, Start offline;
-- Ergebnis von `persist()` / `persisted()` im Browser und als installierte App;
+- Ergebnis von `persist()` / `persisted()` im Browser und als installierte App; Speicherschutz-Hinweis passend dazu; auf iOS: getrennter Speicher von Tab und Home-Bildschirm-App, Umzug per Backup;
 - Import per Einfügen aus einer LLM-App und per Dateiauswahl;
 - Backup über das Teilen-Menü in „Dateien“ speichern und wiederherstellen;
 - Karteikarte per Tippen, Wischen und Schaltflächen; kein Konflikt mit Scrollen;
@@ -945,6 +952,7 @@ Ergebnisse (LLM-App, Modell, Datum, Befund) werden im Umsetzungsplan bei S-15 fe
 | D-35 | Formatspezifikation als ausgeliefertes, eigenständiges Dokument: ohne Verweise auf PRD, TDD und deren Nummern, beschreibt Zweck, Ablauf und Bedeutung der Felder statt Anweisungen; Kapitel 11 beschreibt nur den Ablauf, die Prompt-Vorlagen stehen nur in der App. Ein Set entspricht einer Lektion oder ähnlich großen Lerneinheit, nicht einem ganzen Lehrwerk; Sektionen folgen den größeren Zwischenüberschriften; Lautschrift wird weggelassen | 8, 13.1, 15.7, Formatspez. 3.1, 4, 5.6, 10, 11 | Nutzerentscheidung in S-39, 29. Oktober 2026 (Vorlage nur in der App, Kapitel 11 als Ablaufbeschreibung); Lautschrift selbst festgelegt |
 | D-36 | Wiederherstellen nur per Datei, nicht per eingefügtem Text; vor dem Ersetzen warnt die App nur, wenn auf dem Gerät Sets liegen, und bietet dann an, vorher ein Backup zu speichern, ohne das Ersetzen davon abhängig zu machen | 11.4 | Nutzerentscheidung bei der Planung von S-25, 29. Oktober 2026: Backups sind schnell mehrere MB groß und kommen über das Teilen-Menü als Datei |
 | D-37 | Sicherungskopie vor Migrationen: als Backup des alten Stands, 14 Tage aufbewahrt statt nur bis zum nächsten Start, ohne Weg in der Oberfläche; scheitert sie, wird trotzdem migriert; „Alle Daten löschen“ entfernt sie mit | 7.3, 10, 14 | Nutzerentscheidung bei der Planung von S-28, 29. Oktober 2026: Ein Update mit Fehlerbehebung käme sonst meist zu spät |
+| D-38 | Speicherschutz-Hinweis: auf iOS/iPadOS im Browser immer die Anleitung zum Home-Bildschirm, auch ohne Sets und mit Umzug per Backup, weil die installierte App einen eigenen Speicher hat; sonst nur bei vorhandenen Sets und nicht gewährtem Speicher ein Satz mit Link zum Backup; der Stand selbst steht in den Einstellungen; die provisorische Schaltfläche aus M0 entfällt. Anfrage nach dauerhaftem Speicher zusätzlich nach dem Wiederherstellen und bei jedem Start der installierten App, solange nicht gewährt | 6.6, 13.1, 13.6 | Nutzerentscheidung bei der Planung von S-26, 29. Oktober 2026; Messung S-11 |
 
 ---
 
@@ -1034,6 +1042,7 @@ Geprüft am 18. bis 20. Oktober 2026.
 | 2.27 | 29. Oktober 2026 | Formatspezifikation eigenständig (S-39): Rückverfolgung in 8 statt in der Spezifikation, Vorlage nur in der App (13.1), Kriterien zu Zuschnitt und Reihenfolge im LLM-Test (15.7), D-35; erwartete Set-Größe in Lektionsgröße (6.2); Lernen über mehrere Sets als offener Punkt (O-10) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.28 | 29. Oktober 2026 | Backup vollständig (S-25): Warnung vor dem Ersetzen nur bei Sets auf dem Gerät, mit Umfang, letztem Backup und „Vorher Backup speichern“; Wiederherstellen nur per Datei (11.4, D-36); E2E-21, E2E-20 mit 24 Zuständen (15.4) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.29 | 29. Oktober 2026 | Sicherungskopie vor Migrationen (S-28): Auslöser, Abbruch und Neustart des Upgrades, Backup-Format, Frist von 14 Tagen über `meta.preMigrationCopyAt`, Verhalten bei Fehlern (7.3, D-37); `meta` (6.1); „Alle Daten löschen“ entfernt die Kopie (10, 14) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.30 | 29. Oktober 2026 | Speicherschutz-Hinweise (S-26): Hinweis je nach Gerät und Bestand, Anleitung zum Home-Bildschirm mit Umzug per Backup, getrennter Speicher auf iOS, Anfrage nach dem Wiederherstellen und beim Start der installierten App (6.6, D-38); Stand in den Einstellungen (13.6); `storageProtection.ts` und `platform/device.ts` (3.1, 15.2); E2E-22, E2E-20 mit 26 Zuständen (15.4); Gerätecheck (15.5) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 
 ---
 
@@ -1124,7 +1133,8 @@ Ziel: Jeder riskante Teil läuft einmal von vorn bis hinten, in einfachster Form
 
 - ✅ **S-25** Backup vollständig: Vorschau mit Umfang, Warnung, Angebot eines vorherigen Backups – FR-19, AK-10  
   Erledigt am 29. Oktober 2026. Die Bestätigung in `views/backup.ts` zählt den Bestand auf dem Gerät über `dataScope` (wie „Alle Daten löschen“). Ohne Sets gibt es keine Warnung, und die Schaltfläche heißt „Wiederherstellen“. Mit Sets nennt eine abgesetzte Warnung den Umfang und das letzte Backup und bietet „Vorher Backup speichern“ an (11.4). Gespeichert wird das schon vorbereitete Backup aus dem oberen Abschnitt, damit das Teilen-Menü in der Geste startet; Meldungen erscheinen an der Stelle, an der getippt wurde. Nutzerentscheidung bei der Planung: Wiederherstellen per eingefügtem Text entfällt (D-36). Keine neue Domain-Logik. E2E-21 und E2E-02 (leeres Gerät ohne Warnung) laufen in mobile-chromium und mobile-webkit, E2E-20 prüft den neuen Zustand „Backup-Vorschau mit Warnung“. Gegenprobe: ohne Warnung scheitert E2E-21. Mit `playwright-cli` (mobiles Chromium, 320 px, hell und dunkel) geprüft: kein horizontales Scrollen, Fokus auf dem Umfang des Backups, Konsole leer.
-- 🔲 **S-26** Speicherschutz-Hinweise und iOS-Installationsanleitung – FR-31, AK-20
+- ✅ **S-26** Speicherschutz-Hinweise und iOS-Installationsanleitung – FR-31, AK-20  
+  Erledigt am 29. Oktober 2026. Domain testgetrieben: `storageProtection.ts` entscheidet zwischen Anleitung, Hinweis auf Backups und keinem Hinweis (6.6, D-38). `platform/device.ts` erkennt installierte App und iOS bzw. iPadOS (das sich als Mac mit Touchscreen meldet); `deliverFile` nutzt es mit. Die provisorische Statuszeile und „Dauerhaften Speicher anfordern“ aus S-06 sind weg; der Hinweis steht als Kasten über der Liste bzw. dem Empty State (`components/protectionHint.ts`), der Stand in den Einstellungen. Neu angefragt wird nach dem Wiederherstellen und beim Start der installierten App; `countSets` zählt dafür die Sets, ohne sie zu lesen. Nutzerentscheidung bei der Planung: Anleitung auf iOS schon im Empty State. Beim Planen aufgefallen: Ohne Anfrage nach dem Wiederherstellen hätte die frisch installierte iOS-App nie dauerhaften Speicher bekommen. E2E-22 (Gerät per `fakeDevice` in `support.ts` gespielt) läuft in mobile-chromium und mobile-webkit, E2E-20 prüft die Anleitung aufgeklappt und den Hinweis auf Backups. Gegenproben: `ios` ignoriert lässt drei Unit-Tests scheitern, ohne Anfrage nach dem Wiederherstellen scheitert E2E-22. Mit `playwright-cli` (mobiles Chromium mit iPhone-Kennung, 320 px, hell und dunkel) geprüft: kein horizontales Scrollen, Konsole leer; der Abstand am Kastenende brauchte `display: flow-root`. Offen für den Gerätecheck: getrennter Speicher von Safari-Tab und Home-Bildschirm-App auf iPhone und iPad, Umzug per Backup, danach kein Hinweis; Android Chrome ohne Hinweis.
 - 🔲 **S-27** Backup-Erinnerung mit Zurückstellen – FR-31, AK-20
 - ✅ **S-28** Sicherungskopie vor Migrationen (7.3) – FR-33, D-14  
   Erledigt am 29. Oktober 2026. Nutzerentscheidungen bei der Planung (D-37): Frist von 14 Tagen statt Löschen beim nächsten Start, Kopie im Backup-Format ohne Weg in der Oberfläche, Migration auch ohne Kopie, „Alle Daten löschen“ entfernt sie. `storage/preMigrationCopy.ts` speichert, liest und löscht die Kopie; `openDatabase` bricht ein Upgrade mit Datenumwandlung zuerst ab, sichert über `readEmergencyBackup` und öffnet erneut. `indexedDB.databases()` wird dafür nicht gebraucht (noch nicht `baseline-widely-available`). Integrationstests: Kopie mit unverändertem Altstand und Vermerk in derselben Transaktion, keine Kopie bei rein strukturellem Upgrade, Einrichtung und normalem Öffnen, keine Kopie nach gescheiterter Migration, Migration trotz gescheiterter Kopie, Ersetzen einer älteren Kopie, Frist (knapp vor und genau nach 14 Tagen, unbrauchbarer Vermerk), Kopie besteht `parseBackup` mit demselben Inhalt wie ein Backup vor der Migration, „Alle Daten löschen“ entfernt Kopie und Vermerk. Gegenproben: ohne Abbruch zum Sichern, ohne Löschen nach gescheiterter Migration, Frist von 13 Tagen, ohne Löschen bei „Alle Daten löschen“ – jeweils scheitert der passende Test. Kein neuer E2E-Test; E2E-04 bleibt bis zur ersten Erhöhung von `DB_VERSION` zurückgestellt. Mit `playwright-cli` (mobiles Chromium, Dev-Server) geprüft: `?testmigration=ok` legt `vokabeltrainer-testmigration-premigration` mit dem Altstand (`dataVersion` 1, Feld `title`) an, die migrierte Testdatenbank trägt `preMigrationCopyAt` mit demselben Zeitpunkt; `?testmigration=fail` zeigt „Daten nicht übernommen“ und lässt keine Kopie zurück. Nebenbefund ohne Bezug zu S-28: Mit `?testmigration=ok` wirft die Bibliothek einen `TypeError` in `setSize`, weil das Test-Set des Dev-Schalters keine Sektionen hat; der Schalter prüft nur den Mechanismus.

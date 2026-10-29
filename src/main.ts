@@ -27,9 +27,11 @@ import { setView } from "./app/views/set";
 import { settingsView } from "./app/views/settings";
 import { storageErrorView } from "./app/views/storageError";
 import { canReadClipboard, copyText, readClipboard } from "./platform/clipboard";
+import { isInstalled, isIos } from "./platform/device";
 import { persistenceState, requestPersistence } from "./platform/persistence";
 import type { StoredSet } from "./domain/model";
 import type { PracticeSetup } from "./domain/practiceSetup";
+import { protectionNotice } from "./domain/storageProtection";
 import type { Theme } from "./domain/theme";
 import { registerServiceWorker } from "./platform/serviceWorker";
 import { keepConnected } from "./storage/connection";
@@ -37,7 +39,7 @@ import { type OpenOptions, type OpenResult, openDatabase } from "./storage/datab
 import { getMeta, setMeta } from "./storage/meta";
 import { discardExpiredPreMigrationCopy } from "./storage/preMigrationCopy";
 import { interruptActiveSessions } from "./storage/sessions";
-import { getSet, listSets } from "./storage/sets";
+import { countSets, getSet, listSets } from "./storage/sets";
 
 declare const __APP_VERSION__: string;
 
@@ -111,11 +113,22 @@ async function start(): Promise<void> {
     });
     return persistence;
   };
-  // TDD 6.6: nach dem ersten gespeicherten Set einmal anfragen; danach zeigt die Bibliothek das Ergebnis.
+  // TDD 6.6: nach dem ersten gespeicherten oder wiederhergestellten Set einmal anfragen.
   const askOnceAfterSave = async () => {
     const asked = await getMeta(db, "persistRequested").catch(() => true);
     if (!asked) await askForPersistence();
   };
+  // Installiert gewähren Chrome und Safari den Speicher ohne Rückfrage (S-11), auch wenn die Anfrage im
+  // Browser-Tab abgelehnt wurde; deshalb dort bei jedem Start erneut (D-38). Im Tab fragte Firefox jedes Mal.
+  if (persistence === "not-granted" && isInstalled()) {
+    void countSets(db)
+      .then(async (sets) => {
+        if (sets > 0) await askForPersistence();
+      })
+      .catch((error: unknown) =>
+        console.warn("Dauerhafter Speicher nicht erneut angefragt", error),
+      );
+  }
   // Vor dem Routing abwarten, sonst träfe es eine gerade neu begonnene Sitzung (TDD 12.5).
   await interruptActiveSessions(db).catch((error: unknown) => {
     console.warn("Unterbrochene Sitzungen nicht vermerkt", error);
@@ -132,8 +145,8 @@ async function start(): Promise<void> {
   let message: string | null = null;
   const library = () =>
     libraryView({
-      persistence,
-      requestPersistence: askForPersistence,
+      protection: (hasSets) =>
+        protectionNotice({ persistence, ios: isIos(), installed: isInstalled(), hasSets }),
       loadSets: () => listSets(db),
       loadSampleSet: async () => {
         const outcome = await loadSampleSet(db);
@@ -191,8 +204,12 @@ async function start(): Promise<void> {
       checkBackup,
       restore: async (backup) => {
         const outcome = await restore(db, backup);
-        // Das Backup bringt seine Darstellung mit.
-        if (outcome.ok) showTheme(await loadTheme(db));
+        if (outcome.ok) {
+          // Das Backup bringt seine Darstellung mit.
+          showTheme(await loadTheme(db));
+          // Typischer Weg in die frisch installierte App auf iOS, die einen eigenen Speicher hat.
+          void askOnceAfterSave();
+        }
         return outcome;
       },
     });
@@ -211,6 +228,7 @@ async function start(): Promise<void> {
         location.hash = "#/";
       },
       appVersion: __APP_VERSION__,
+      persistence,
     });
   const helpPage = () => helpView({ prompt: newSetPrompt(), copyText, loadSpec, shareSpec });
   stopRouter = startRouter(
