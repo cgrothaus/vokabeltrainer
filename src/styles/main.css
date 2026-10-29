@@ -661,6 +661,10 @@ h2:focus {
   margin-top: 0.5rem;
 }
 
+.hint .actions {
+  margin-bottom: 1rem;
+}
+
 /* Meldung in der Bibliothek, z. B. nach dem Import. */
 .message {
   padding: 0.5rem 1rem;

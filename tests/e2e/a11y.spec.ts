@@ -170,6 +170,11 @@ test("Mit Set: Bibliothek, Set-Ansicht, Löschen, Einrichtung, Karteikarten, Zwi
   }
   findings.push(...(await audit(page, "Ergebnis")));
 
+  // Mit Antworten und ohne Backup erinnert die Bibliothek daran (TDD 6.6).
+  await page.goto("./");
+  await expect(page.getByRole("button", { name: "Backup speichern" })).toBeEnabled();
+  findings.push(...(await audit(page, "Bibliothek mit Backup-Erinnerung")));
+
   await page.goto("./#/backup");
   await page.getByLabel("Backup-Datei auswählen").setInputFiles({
     name: "Vokabeltrainer-Backup_2026-10-20.json",
