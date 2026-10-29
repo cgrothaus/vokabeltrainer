@@ -1,6 +1,7 @@
 // Datei an die Person übergeben (TDD 11.2, D-17): auf Mobilgeräten über das Teilen-Menü, dort lässt sie
 // sich z. B. in „Dateien“ sichern; sonst als Download. Ob das auf iPhone und Android trägt, klärt der
 // Gerätecheck zu S-09 (O-03).
+import { isInstalled } from "./device";
 
 /** `cancelled`: Die Person hat das Teilen-Menü geschlossen; die Datei gilt als nicht gespeichert. */
 export type Delivery = "shared" | "downloaded" | "cancelled";
@@ -26,13 +27,9 @@ export async function deliverFile(blob: Blob, filename: string): Promise<Deliver
   return "downloaded";
 }
 
-/** Touch-Gerät oder installierte App (TDD 11.2); `navigator.standalone` gibt es nur auf iOS. */
+/** Touch-Gerät oder installierte App (TDD 11.2). */
 function isMobile(): boolean {
-  return (
-    matchMedia("(pointer: coarse)").matches ||
-    matchMedia("(display-mode: standalone)").matches ||
-    (navigator as { standalone?: boolean }).standalone === true
-  );
+  return matchMedia("(pointer: coarse)").matches || isInstalled();
 }
 
 function download(blob: Blob, filename: string): void {

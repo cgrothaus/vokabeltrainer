@@ -4,7 +4,14 @@
 // und genau eine `h1`; dazu Fokus und Seitentitel nach einem Seitenwechsel.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page, test } from "@playwright/test";
-import { collectErrors, importSet, libraryMessage, setFile } from "./support";
+import {
+  changeDevice,
+  collectErrors,
+  fakeDevice,
+  importSet,
+  libraryMessage,
+  setFile,
+} from "./support";
 
 test.use({ viewport: { width: 320, height: 640 } });
 // axe braucht pro Zustand und Farbschema bis zu einer Sekunde; unter Last reichen 30 s nicht.
@@ -175,6 +182,24 @@ test("Mit Set: Bibliothek, Set-Ansicht, Löschen, Einrichtung, Karteikarten, Zwi
   await page.goto("./#/settings");
   await page.getByRole("button", { name: "Alle Daten löschen" }).click();
   findings.push(...(await audit(page, "Alle Daten löschen, Ankündigung")));
+
+  expect(findings).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+test("Speicherschutz: Anleitung zum Home-Bildschirm und Hinweis auf Backups", async ({ page }) => {
+  const errors = collectErrors(page);
+  const findings: string[] = [];
+  await fakeDevice(page, { ios: true });
+  await importSet(page, "Wetter");
+  await page.getByText("So kommt die App auf den Home-Bildschirm").click();
+  await expect(page.locator(".hint").getByRole("listitem")).toHaveCount(4);
+  findings.push(...(await audit(page, "Bibliothek mit Anleitung zum Home-Bildschirm")));
+
+  await changeDevice(page, { ios: false });
+  await page.reload();
+  await expect(page.locator(".hint")).toContainText("nicht dauerhaft geschützt");
+  findings.push(...(await audit(page, "Bibliothek mit Hinweis auf Backups")));
 
   expect(findings).toEqual([]);
   expect(errors).toEqual([]);

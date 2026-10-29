@@ -1,6 +1,7 @@
 // Einstellungen (TDD 3.2, 10, 13.5, FR-21, FR-25): Darstellung, Weg zum Backup, alle Daten löschen und
 // die App-Version.
 import type { RecordCounts } from "../../domain/backup";
+import type { PersistenceState } from "../../domain/storageProtection";
 import type { Theme } from "../../domain/theme";
 import type { DeleteAllOutcome } from "../deleteAll";
 import { focusSoon, h } from "../dom";
@@ -15,7 +16,15 @@ export interface SettingsContext {
   /** Nach dem Löschen; die App wechselt zur Bibliothek und zeigt dort die Meldung. */
   onRemoved: (message: string) => void;
   appVersion: string;
+  persistence: PersistenceState;
 }
+
+/** Stand des Speicherschutzes (TDD 6.6, 13.6); Hinweise dazu stehen in der Bibliothek. */
+const PERSISTENCE_TEXT: Record<PersistenceState, string> = {
+  granted: "Deine Daten sind auf diesem Gerät dauerhaft geschützt.",
+  "not-granted": "Deine Daten sind auf diesem Gerät nicht dauerhaft geschützt.",
+  unsupported: "Dieser Browser kann deine Daten nicht dauerhaft schützen.",
+};
 
 const THEMES: [Theme, string][] = [
   ["system", "Wie auf dem Gerät"],
@@ -40,6 +49,7 @@ export function settingsView(context: SettingsContext): Node {
       "section",
       { "aria-labelledby": "settings-data" },
       h("h2", { id: "settings-data" }, "Daten"),
+      h("p", null, PERSISTENCE_TEXT[context.persistence]),
       h("p", null, h("a", { href: "#/backup" }, "Backup und Wiederherstellung")),
       deletion(context),
     ),

@@ -20,7 +20,7 @@ Formatbeschreibung ──┘
    - **iPhone (Safari):** Teilen-Symbol → „Zum Home-Bildschirm“.
    - **Android (Chrome):** Menü ⋮ → „Zum Startbildschirm hinzufügen“ bzw. „App installieren“.
 3. Ab jetzt die App **über das Symbol „Vokabeln“** starten, nicht mehr im Browser.  
-   Wichtig auf dem iPhone: Nur so bleiben deine Daten dauerhaft gespeichert. Im Safari-Tab kann iOS sie nach einigen Tagen ohne Nutzung löschen.
+   Wichtig auf dem iPhone: Nur so bleiben deine Daten dauerhaft gespeichert. Im Safari-Tab kann iOS sie nach einigen Tagen ohne Nutzung löschen. Die App auf dem Home-Bildschirm hat einen eigenen Speicher: Was du vorher im Safari-Tab angelegt hast, siehst du dort nicht. Dann im Tab ein Backup speichern und in der App wiederherstellen (die Startseite im Tab erklärt das auch).
 4. Zum Kennenlernen ohne eigene Vokabeln: Auf der leeren Startseite „**Beispielset ausprobieren**“ tippen. Für den Test danach bitte trotzdem den Weg mit dem KI-Chat gehen (Abschnitt 2).
 
 ## 2. Vokabeln mit dem KI-Chat umwandeln
@@ -55,7 +55,6 @@ Klappt es, zeigt eine **Vorschau** Titel, Sprachen und Sektionen mit der Zahl de
 Bitte nicht als Fehler melden – das kommt in späteren Meilensteinen:
 
 - Sets lassen sich nicht bearbeiten, nur löschen und neu importieren.
-- Die Schaltfläche „Dauerhaften Speicher anfordern“ ist nur für unsere Messung da.
 
 ## Rückmeldung
 

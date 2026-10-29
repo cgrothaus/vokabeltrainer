@@ -9,7 +9,7 @@ import { readBackup } from "./backup";
 import { openDatabase } from "./database";
 import { recordAnswer, startSession } from "./sessions";
 import { getSetting } from "./settings";
-import { addSet, countSetActivity, deleteSet, getSet, listSets } from "./sets";
+import { addSet, countSetActivity, countSets, deleteSet, getSet, listSets } from "./sets";
 
 let db: IDBDatabase;
 
@@ -86,10 +86,17 @@ describe("addSet", () => {
   });
 });
 
-describe("getSet und listSets", () => {
+describe("getSet, listSets und countSets", () => {
   it("liefert nichts für unbekannte IDs und eine leere Liste ohne Sets", async () => {
     expect(await getSet(db, "unbekannt")).toBeUndefined();
     expect(await listSets(db)).toEqual([]);
+    expect(await countSets(db)).toBe(0);
+  });
+
+  it("zählt die Sets, ohne sie zu lesen", async () => {
+    await addSet(db, storedSet("m4x8c2r9tw"));
+    await addSet(db, storedSet("b7k2n9q4xz", "Englisch – Schule"));
+    expect(await countSets(db)).toBe(2);
   });
 });
 
