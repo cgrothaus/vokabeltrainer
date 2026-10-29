@@ -3,6 +3,7 @@
 import { BACKUP_STORES, type RecordCounts, summarizeRecords } from "../domain/backup";
 import type { StoreRecords } from "../domain/validateRecords";
 import { clearAllData, readStores } from "../storage/backup";
+import { deletePreMigrationCopy } from "../storage/preMigrationCopy";
 import { failureMessage } from "./storageMessages";
 
 export type DeleteAllOutcome = { ok: true } | { ok: false; error: string };
@@ -12,9 +13,13 @@ export async function dataScope(db: IDBDatabase): Promise<RecordCounts> {
   return summarizeRecords((await readStores(db, BACKUP_STORES)) as unknown as StoreRecords);
 }
 
-/** Gelöscht ist erst, wenn die Transaktion abgeschlossen ist (TDD 6.5). */
+/**
+ * Gelöscht ist erst, wenn die Transaktion abgeschlossen ist (TDD 6.5). Die Sicherungskopie vor einer
+ * Migration (TDD 7.3) kommt zuerst weg: Scheitert das, ist noch nichts gelöscht.
+ */
 export async function removeAllData(db: IDBDatabase): Promise<DeleteAllOutcome> {
   try {
+    await deletePreMigrationCopy(db.name);
     await clearAllData(db);
     return { ok: true };
   } catch (error) {

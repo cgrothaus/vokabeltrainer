@@ -1,6 +1,6 @@
 # TDD: Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.28 – Backup vollständig  
+**Version:** 2.29 – Sicherungskopie vor Migrationen  
 **Stand:** 29. Oktober 2026  
 **Bezug:** PRD 2.5 (`PRD_Vokabeltrainer_Allgemein_v2.md`), Formatspezifikation Version 1 (`Formatspezifikation_Vokabelset_v1.md`), Review-Notizen (`20261019_TDD_v1_Review_Notizen.md`)  
 **Status:** Entwurf; Grundlage für M0 (Walking Skeleton)  
@@ -243,7 +243,7 @@ Datenmigrationen laufen nach dem Neuladen beim Öffnen der Datenbank (Kapitel 7)
 | `reviewEvents` | `id` | `setId`, `sessionId` | Eine Antwort pro Datensatz |
 | `sessions` | `id` | `setId` | Lernsitzungen |
 | `settings` | `key` | – | Präferenzen (im Backup enthalten), z. B. `practice:<setId>` für die zuletzt gewählte Einrichtung einer Sitzung (12.1) und `theme` für die Darstellung der ganzen App (13.5) |
-| `meta` | `key` | – | Interne Angaben, z. B. `lastBackupAt`, `persistRequested`, `backupReminderSnoozedUntil` |
+| `meta` | `key` | – | Interne Angaben, z. B. `lastBackupAt`, `persistRequested`, `backupReminderSnoozedUntil`, `preMigrationCopyAt` (7.3) |
 
 Ein Store `progress` für den Lernstand gibt es nicht (D-07, F-08). Lernstand und Überblick werden aus `reviewEvents` und `sessions` berechnet (Kapitel 12.6).
 
@@ -357,9 +357,17 @@ interface Answer {
    Scheitert dagegen die erste Einrichtung (es gab noch keine Datenbank), gibt es nichts zu sichern. Die App öffnet die Datenbank dann **nicht** ohne Versionsangabe: Das legte eine leere Datenbank ohne Stores an, und beim nächsten Start liefe die Einrichtung nicht mehr. Sie bittet stattdessen, neu zu laden.
 4. Ist die vorhandene Version **neuer** als `DB_VERSION` (alte App in altem Tab oder aus altem Cache), schlägt das Öffnen mit `VersionError` fehl. Die App zeigt „Bitte neu laden“ und schreibt nichts.
 
-### 7.3 Sicherungskopie vor Migrationen (D-14)
+### 7.3 Sicherungskopie vor Migrationen (D-14, D-37)
 
-Vor einem Upgrade mit Datenumwandlung legt die App eine Kopie aller Stores in einer separaten Datenbank `vokabeltrainer-premigration` an. Sie wird nach dem nächsten erfolgreichen Start mit der neuen Version gelöscht. So bleibt auch ein Fehler, der erst nach der Migration auffällt, behebbar. Strukturelle Upgrades ohne Datenumwandlung brauchen diese Kopie nicht.
+Vor einem Upgrade mit Datenumwandlung legt die App eine Kopie des Bestands in einer separaten Datenbank `vokabeltrainer-premigration` an. So bleibt auch ein Fehler behebbar, der erst nach der Migration auffällt: Ein Update mit Fehlerbehebung findet den alten Stand dort vor und kann ihn über die Wiederherstellung (11.4) zurückspielen. Strukturelle Upgrades ohne Datenumwandlung brauchen diese Kopie nicht.
+
+- **Auslöser:** `onupgradeneeded` mit vorhandenen Daten (alte Version > 0), bei dem die Kette zwischen alter und neuer Version Datensätze umwandelt (`storesToMigrate` nicht leer). Fehlt ein Glied der Kette, gibt es keine Kopie; die Migration scheitert dann ohnehin (7.1).
+- **Ablauf:** Während der Upgrade-Transaktion lässt sich nicht in eine andere Datenbank schreiben. `openDatabase` bricht das Upgrade deshalb sofort ab, bevor sich etwas ändert, liest den unveränderten Stand wie das Notfall-Backup (7.2) und speichert ihn. Dann öffnet es erneut und migriert. Ein normaler Start öffnet dadurch nichts zusätzlich.
+- **Inhalt:** ein Datensatz im Store `copy` mit einem Backup (11.3) des alten Stands, also ohne `meta`. Eine neue Kopie ersetzt eine ältere. Die Datenbank heißt wie die der App mit der Endung `-premigration`, so haben auch die Datenbanken der Dev-Schalter ihre eigene.
+- **Frist:** Die Migration vermerkt in derselben Transaktion `meta.preMigrationCopyAt`. Beim Start löscht die App die Kopie samt Vermerk, wenn er mindestens 14 Tage alt oder unbrauchbar ist. Das geschieht im Hintergrund und ohne Speicherhinweis (6.5): Die Person kann nichts tun, und der nächste Start versucht es wieder.
+- **Fehler:** Lässt sich die Kopie nicht anlegen (z. B. Speicher voll), wird trotzdem migriert, ohne Vermerk; das Upgrade bleibt atomar, und bei einem Scheitern gibt es das Notfall-Backup. Scheitert die Migration nach dem Sichern, löscht die App die Kopie wieder, weil der alte Stand unverändert ist.
+- **Löschen:** „Alle Daten löschen“ (10) entfernt die Kopie zuerst und den Vermerk mit den übrigen Daten.
+- Einen Weg zur Kopie in der Oberfläche gibt es nicht; ihn bringt erst ein Update, das ihn braucht.
 
 ### 7.4 Regeln
 
@@ -509,7 +517,7 @@ Ungültiges JSON, unbekannte Formatversion, Validierungsfehler, widersprüchlich
 - Ein Eintrag wird in einem kompakten Formular bearbeitet: `term` mit Varianten, beliebig viele Bedeutungen mit Varianten, Notizen, Beispiele, Grammatik, Prüfstatus. Kein horizontales Scrollen (AK-12).
 - **Speichern:** ausdrücklich „Speichern“ / „Verwerfen“. Beim Verlassen mit ungespeicherten Änderungen fragt die App „Speichern“, „Verwerfen“ oder „Weiter bearbeiten“. Erst nach dem Commit gilt eine Änderung als gespeichert; dabei werden `editCount` und `updatedAt` erhöht.
 - **Löschen von Einträgen:** Review-Events bleiben erhalten (siehe 9.7).
-- **Alle Daten löschen:** in den Einstellungen (13.6), mit Ankündigung wie beim Set: Umfang (Sets, Einträge, Antworten und Lernsitzungen, gezählt mit `summarizeRecords` aus `domain/backup.ts`), der Hinweis, dass auch die Einstellungen zurückgesetzt werden, und ein Link „Vorher ein Backup speichern“; die Schaltfläche nennt die Folge („2 Sets und Lernstand löschen“, ohne Sets „Einstellungen zurücksetzen“). Gelöscht wird in **einer** Transaktion alles, was ins Backup gehört (`sets`, `reviewEvents`, `sessions`, `settings`), dazu in `meta` `lastBackupAt` und `backupReminderSnoozedUntil`, weil das letzte Backup einen künftigen Bestand nicht sichert (6.6); `persistRequested` bleibt, weil es den Browser betrifft. Danach folgt die Darstellung wieder dem Gerät, und die Bibliothek zeigt „Alle Daten gelöscht.“ mit dem Empty State.
+- **Alle Daten löschen:** in den Einstellungen (13.6), mit Ankündigung wie beim Set: Umfang (Sets, Einträge, Antworten und Lernsitzungen, gezählt mit `summarizeRecords` aus `domain/backup.ts`), der Hinweis, dass auch die Einstellungen zurückgesetzt werden, und ein Link „Vorher ein Backup speichern“; die Schaltfläche nennt die Folge („2 Sets und Lernstand löschen“, ohne Sets „Einstellungen zurücksetzen“). Gelöscht wird in **einer** Transaktion alles, was ins Backup gehört (`sets`, `reviewEvents`, `sessions`, `settings`), dazu in `meta` `lastBackupAt` und `backupReminderSnoozedUntil`, weil das letzte Backup einen künftigen Bestand nicht sichert (6.6), und `preMigrationCopyAt`; `persistRequested` bleibt, weil es den Browser betrifft. Eine Sicherungskopie vor einer Migration (7.3) wird vorher gelöscht; scheitert das, ist noch nichts gelöscht. Danach folgt die Darstellung wieder dem Gerät, und die Bibliothek zeigt „Alle Daten gelöscht.“ mit dem Empty State.
 
 ---
 
@@ -753,6 +761,7 @@ Eine globale Standardrichtung gibt es nicht: Die Richtung merkt sich die Einrich
 - Größen- und Mengengrenzen beim Import (8.3).
 - Exporte und Backups entstehen nur durch eine bewusste Aktion. Ein Backup ist in Dateiname und Oberfläche klar als solches erkennbar (`Vokabeltrainer-Backup_<Datum>.json`).
 - Fehlermeldungen enthalten keine unnötigen Inhalte aus den Daten.
+- Eine Sicherungskopie vor einer Migration (7.3) liegt höchstens 14 Tage auf dem Gerät; „Alle Daten löschen“ entfernt sie mit.
 - Content-Security-Policy per `<meta http-equiv>`: `default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'`. `'unsafe-inline'` ist wegen der eingebetteten Skripte nötig; eine Hash-basierte Policy kann später ergänzt werden.
 
 ---
@@ -935,6 +944,7 @@ Ergebnisse (LLM-App, Modell, Datum, Befund) werden im Umsetzungsplan bei S-15 fe
 | D-34 | Barrierearmut: Fokus nach jedem Seitenwechsel auf die `h1`, zentral im Router und auch bei nachgeladenen Ansichten, Überschriften ohne Fokusrahmen; Seitentitel nennt die Ansicht; bekannte Wortarten und Genus-Kürzel deutsch, das Format bleibt unverändert; automatische Prüfung mit `@axe-core/playwright` als Entwicklungsabhängigkeit | 3.2, 4.1, 13.1, 13.4, 15.4 | Nutzerentscheidung in S-23, 27. Oktober 2026 |
 | D-35 | Formatspezifikation als ausgeliefertes, eigenständiges Dokument: ohne Verweise auf PRD, TDD und deren Nummern, beschreibt Zweck, Ablauf und Bedeutung der Felder statt Anweisungen; Kapitel 11 beschreibt nur den Ablauf, die Prompt-Vorlagen stehen nur in der App. Ein Set entspricht einer Lektion oder ähnlich großen Lerneinheit, nicht einem ganzen Lehrwerk; Sektionen folgen den größeren Zwischenüberschriften; Lautschrift wird weggelassen | 8, 13.1, 15.7, Formatspez. 3.1, 4, 5.6, 10, 11 | Nutzerentscheidung in S-39, 29. Oktober 2026 (Vorlage nur in der App, Kapitel 11 als Ablaufbeschreibung); Lautschrift selbst festgelegt |
 | D-36 | Wiederherstellen nur per Datei, nicht per eingefügtem Text; vor dem Ersetzen warnt die App nur, wenn auf dem Gerät Sets liegen, und bietet dann an, vorher ein Backup zu speichern, ohne das Ersetzen davon abhängig zu machen | 11.4 | Nutzerentscheidung bei der Planung von S-25, 29. Oktober 2026: Backups sind schnell mehrere MB groß und kommen über das Teilen-Menü als Datei |
+| D-37 | Sicherungskopie vor Migrationen: als Backup des alten Stands, 14 Tage aufbewahrt statt nur bis zum nächsten Start, ohne Weg in der Oberfläche; scheitert sie, wird trotzdem migriert; „Alle Daten löschen“ entfernt sie mit | 7.3, 10, 14 | Nutzerentscheidung bei der Planung von S-28, 29. Oktober 2026: Ein Update mit Fehlerbehebung käme sonst meist zu spät |
 
 ---
 
@@ -1023,6 +1033,7 @@ Geprüft am 18. bis 20. Oktober 2026.
 | 2.26 | 29. Oktober 2026 | S-38 zurückgestellt: Lernstand ohne Zwischenspeicher, typische Bestände weit unter dem Prüffall (12.6, D-33, O-06); Abschnitt „Zurückgestellt“ im Umsetzungsplan (21) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.27 | 29. Oktober 2026 | Formatspezifikation eigenständig (S-39): Rückverfolgung in 8 statt in der Spezifikation, Vorlage nur in der App (13.1), Kriterien zu Zuschnitt und Reihenfolge im LLM-Test (15.7), D-35; erwartete Set-Größe in Lektionsgröße (6.2); Lernen über mehrere Sets als offener Punkt (O-10) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.28 | 29. Oktober 2026 | Backup vollständig (S-25): Warnung vor dem Ersetzen nur bei Sets auf dem Gerät, mit Umfang, letztem Backup und „Vorher Backup speichern“; Wiederherstellen nur per Datei (11.4, D-36); E2E-21, E2E-20 mit 24 Zuständen (15.4) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.29 | 29. Oktober 2026 | Sicherungskopie vor Migrationen (S-28): Auslöser, Abbruch und Neustart des Upgrades, Backup-Format, Frist von 14 Tagen über `meta.preMigrationCopyAt`, Verhalten bei Fehlern (7.3, D-37); `meta` (6.1); „Alle Daten löschen“ entfernt die Kopie (10, 14) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 
 ---
 
@@ -1115,7 +1126,8 @@ Ziel: Jeder riskante Teil läuft einmal von vorn bis hinten, in einfachster Form
   Erledigt am 29. Oktober 2026. Die Bestätigung in `views/backup.ts` zählt den Bestand auf dem Gerät über `dataScope` (wie „Alle Daten löschen“). Ohne Sets gibt es keine Warnung, und die Schaltfläche heißt „Wiederherstellen“. Mit Sets nennt eine abgesetzte Warnung den Umfang und das letzte Backup und bietet „Vorher Backup speichern“ an (11.4). Gespeichert wird das schon vorbereitete Backup aus dem oberen Abschnitt, damit das Teilen-Menü in der Geste startet; Meldungen erscheinen an der Stelle, an der getippt wurde. Nutzerentscheidung bei der Planung: Wiederherstellen per eingefügtem Text entfällt (D-36). Keine neue Domain-Logik. E2E-21 und E2E-02 (leeres Gerät ohne Warnung) laufen in mobile-chromium und mobile-webkit, E2E-20 prüft den neuen Zustand „Backup-Vorschau mit Warnung“. Gegenprobe: ohne Warnung scheitert E2E-21. Mit `playwright-cli` (mobiles Chromium, 320 px, hell und dunkel) geprüft: kein horizontales Scrollen, Fokus auf dem Umfang des Backups, Konsole leer.
 - 🔲 **S-26** Speicherschutz-Hinweise und iOS-Installationsanleitung – FR-31, AK-20
 - 🔲 **S-27** Backup-Erinnerung mit Zurückstellen – FR-31, AK-20
-- 🔲 **S-28** Sicherungskopie vor Migrationen (7.3) – FR-33, D-14
+- ✅ **S-28** Sicherungskopie vor Migrationen (7.3) – FR-33, D-14  
+  Erledigt am 29. Oktober 2026. Nutzerentscheidungen bei der Planung (D-37): Frist von 14 Tagen statt Löschen beim nächsten Start, Kopie im Backup-Format ohne Weg in der Oberfläche, Migration auch ohne Kopie, „Alle Daten löschen“ entfernt sie. `storage/preMigrationCopy.ts` speichert, liest und löscht die Kopie; `openDatabase` bricht ein Upgrade mit Datenumwandlung zuerst ab, sichert über `readEmergencyBackup` und öffnet erneut. `indexedDB.databases()` wird dafür nicht gebraucht (noch nicht `baseline-widely-available`). Integrationstests: Kopie mit unverändertem Altstand und Vermerk in derselben Transaktion, keine Kopie bei rein strukturellem Upgrade, Einrichtung und normalem Öffnen, keine Kopie nach gescheiterter Migration, Migration trotz gescheiterter Kopie, Ersetzen einer älteren Kopie, Frist (knapp vor und genau nach 14 Tagen, unbrauchbarer Vermerk), Kopie besteht `parseBackup` mit demselben Inhalt wie ein Backup vor der Migration, „Alle Daten löschen“ entfernt Kopie und Vermerk. Gegenproben: ohne Abbruch zum Sichern, ohne Löschen nach gescheiterter Migration, Frist von 13 Tagen, ohne Löschen bei „Alle Daten löschen“ – jeweils scheitert der passende Test. Kein neuer E2E-Test; E2E-04 bleibt bis zur ersten Erhöhung von `DB_VERSION` zurückgestellt. Mit `playwright-cli` (mobiles Chromium, Dev-Server) geprüft: `?testmigration=ok` legt `vokabeltrainer-testmigration-premigration` mit dem Altstand (`dataVersion` 1, Feld `title`) an, die migrierte Testdatenbank trägt `preMigrationCopyAt` mit demselben Zeitpunkt; `?testmigration=fail` zeigt „Daten nicht übernommen“ und lässt keine Kopie zurück. Nebenbefund ohne Bezug zu S-28: Mit `?testmigration=ok` wirft die Bibliothek einen `TypeError` in `setSize`, weil das Test-Set des Dev-Schalters keine Sektionen hat; der Schalter prüft nur den Mechanismus.
 - 🔲 **S-29** Erste Auslieferung vorbereiten: eigene Domain, `DB_VERSION` und Formate einfrieren, Fixtures v1 anlegen – FR-33, T-23  
   Das Fixture `tests/fixtures/db/v1.json` ist die Grundlage für E2E-04 bei der ersten Erhöhung von `DB_VERSION` (7.4, S-10).
 

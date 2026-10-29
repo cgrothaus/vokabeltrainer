@@ -61,8 +61,9 @@ export async function restoreBackup(
 
 /**
  * „Alle Daten löschen“ (TDD 10): leert in einer Transaktion alles, was ins Backup gehört, und vergisst
- * das letzte Backup samt Erinnerung, weil es den neuen Bestand nicht mehr sichert. Die Anfrage nach
- * dauerhaftem Speicher betrifft den Browser und bleibt vermerkt.
+ * das letzte Backup samt Erinnerung, weil es den neuen Bestand nicht mehr sichert, sowie den Zeitpunkt
+ * der Sicherungskopie (die Kopie löscht der Ablauf vorher, TDD 7.3). Die Anfrage nach dauerhaftem
+ * Speicher betrifft den Browser und bleibt vermerkt.
  */
 export function clearAllData(db: IDBDatabase): Promise<void> {
   return runTransaction(db, [...BACKUP_STORES, "meta"], "readwrite", (transaction) => {
@@ -70,5 +71,6 @@ export function clearAllData(db: IDBDatabase): Promise<void> {
     const meta = transaction.objectStore("meta");
     meta.delete("lastBackupAt" satisfies MetaKey);
     meta.delete("backupReminderSnoozedUntil" satisfies MetaKey);
+    meta.delete("preMigrationCopyAt" satisfies MetaKey);
   });
 }

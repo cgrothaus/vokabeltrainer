@@ -35,6 +35,7 @@ import { registerServiceWorker } from "./platform/serviceWorker";
 import { keepConnected } from "./storage/connection";
 import { type OpenOptions, type OpenResult, openDatabase } from "./storage/database";
 import { getMeta, setMeta } from "./storage/meta";
+import { discardExpiredPreMigrationCopy } from "./storage/preMigrationCopy";
 import { interruptActiveSessions } from "./storage/sessions";
 import { getSet, listSets } from "./storage/sets";
 
@@ -97,6 +98,10 @@ async function start(): Promise<void> {
     },
     onSaved: clearStorageProblem,
   });
+  // Ohne Meldung: Die Person kann nichts tun, und der nächste Start versucht es wieder (TDD 7.3).
+  discardExpiredPreMigrationCopy(db, new Date()).catch((error: unknown) =>
+    console.warn("Sicherungskopie vor der Migration nicht gelöscht", error),
+  );
   let persistence = await persistenceState();
   const askForPersistence = async () => {
     persistence = await requestPersistence();

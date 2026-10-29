@@ -1,4 +1,4 @@
-// Datenbank öffnen, einrichten und migrieren (TDD 6.1, 7.1, 7.2) sowie mit anderen Tabs abstimmen (TDD 3.4).
+// Datenbank öffnen, einrichten und migrieren (TDD 6.1, 7.1–7.3) sowie mit anderen Tabs abstimmen (TDD 3.4).
 import type { BackupFile } from "../domain/backup";
 import {
   type DataMigration,
@@ -7,6 +7,8 @@ import {
   storesToMigrate,
 } from "../domain/migrations";
 import { readEmergencyBackup } from "./emergencyBackup";
+import { putMeta } from "./meta";
+import { deletePreMigrationCopy, savePreMigrationCopy } from "./preMigrationCopy";
 import { DB_NAME, DB_VERSION, schema as appSchema, type SchemaStep } from "./schema";
 
 export type OpenResult =
@@ -35,6 +37,14 @@ export interface OpenOptions {
 }
 
 export function openDatabase(options: OpenOptions): Promise<OpenResult> {
+  return open(options, undefined);
+}
+
+/**
+ * `copiedAt`: `undefined`, solange vor einer Datenumwandlung noch nicht gesichert wurde; danach der
+ * Zeitpunkt der Sicherungskopie oder `null`, wenn sie sich nicht anlegen ließ (TDD 7.3).
+ */
+function open(options: OpenOptions, copiedAt: string | null | undefined): Promise<OpenResult> {
   const {
     appVersion,
     onVersionChange,
@@ -55,11 +65,19 @@ export function openDatabase(options: OpenOptions): Promise<OpenResult> {
     }
 
     let upgradedFrom: number | null = null;
+    // In eine andere Datenbank lässt sich während des Upgrades nicht schreiben: abbrechen, bevor sich
+    // etwas ändert, den alten Stand sichern und erneut öffnen.
+    let copyFirst = false;
     request.onupgradeneeded = (event) => {
       const from = event.oldVersion;
       upgradedFrom = from;
       const db = request.result;
       const transaction = request.transaction!;
+      if (copiedAt === undefined && from > 0 && convertsData(migrations, from, version)) {
+        copyFirst = true;
+        transaction.abort();
+        return;
+      }
       try {
         for (let v = from + 1; v <= version; v++)
           schema.find((step) => step.version === v)?.structure(db, transaction);
@@ -67,6 +85,8 @@ export function openDatabase(options: OpenOptions): Promise<OpenResult> {
         if (from > 0) {
           for (const store of storesToMigrate(migrations, from, version))
             migrateStore(transaction, store, migrations, from, version);
+          // Mit der Migration zusammen gespeichert: Die Frist der Kopie beginnt nur, wenn sie gelingt.
+          if (copiedAt) putMeta(transaction, "preMigrationCopyAt", copiedAt);
         }
       } catch (error) {
         abortUpgrade(transaction, error);
@@ -85,22 +105,60 @@ export function openDatabase(options: OpenOptions): Promise<OpenResult> {
     };
 
     request.onerror = () => {
-      if (request.error?.name === "VersionError") resolve({ ok: false, reason: "newer-version" });
+      if (copyFirst) resolve(copyThenOpen(options, name));
+      else if (request.error?.name === "VersionError")
+        resolve({ ok: false, reason: "newer-version" });
       else if (upgradedFrom === null) resolve({ ok: false, reason: "unavailable" });
       // Ohne Daten kein Notfall-Backup: Öffnen ohne Version legte eine leere Datenbank an,
       // und beim nächsten Start liefe die Einrichtung nicht mehr.
       else if (upgradedFrom === 0) resolve({ ok: false, reason: "setup-failed" });
-      else {
-        readEmergencyBackup(name, appVersion).then(
-          (backup) => resolve({ ok: false, reason: "migration-failed", backup }),
-          (error: unknown) => {
-            console.error("Notfall-Backup nicht lesbar", error);
-            resolve({ ok: false, reason: "migration-failed", backup: null });
-          },
-        );
-      }
+      else resolve(migrationFailed(name, appVersion, copiedAt));
     };
   });
+}
+
+/** Ob zwischen den Versionen Datensätze umgewandelt werden. Fehlt ein Glied der Kette, scheitert die Migration ohnehin. */
+function convertsData(chain: readonly DataMigration[], from: number, to: number): boolean {
+  try {
+    return storesToMigrate(chain, from, to).length > 0;
+  } catch {
+    return false;
+  }
+}
+
+async function copyThenOpen(options: OpenOptions, name: string): Promise<OpenResult> {
+  let copiedAt: string | null = null;
+  try {
+    const backup = await readEmergencyBackup(name, options.appVersion);
+    await savePreMigrationCopy(name, backup);
+    copiedAt = backup.exportedAt;
+  } catch (error) {
+    // Trotzdem migrieren: Das Upgrade bleibt atomar, scheitert es, gibt es das Notfall-Backup (TDD 7.3).
+    console.warn("Sicherungskopie vor der Migration nicht angelegt", error);
+  }
+  return open(options, copiedAt);
+}
+
+async function migrationFailed(
+  name: string,
+  appVersion: string,
+  copiedAt: string | null | undefined,
+): Promise<OpenResult> {
+  // Der alte Stand ist unverändert; eine Kopie ohne Frist bliebe sonst für immer liegen.
+  if (copiedAt)
+    await deletePreMigrationCopy(name).catch((error: unknown) =>
+      console.warn("Sicherungskopie nicht gelöscht", error),
+    );
+  try {
+    return {
+      ok: false,
+      reason: "migration-failed",
+      backup: await readEmergencyBackup(name, appVersion),
+    };
+  } catch (error) {
+    console.error("Notfall-Backup nicht lesbar", error);
+    return { ok: false, reason: "migration-failed", backup: null };
+  }
 }
 
 /** Ein Cursor-Durchlauf pro Store mit der ganzen Kette: Zwei offene Cursor auf demselben Store würden sich verschränken. */

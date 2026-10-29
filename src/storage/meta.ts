@@ -1,7 +1,12 @@
 // Interne Angaben im Store `meta` (TDD 6.1); sie gehören nicht ins Backup.
 import { runTransaction } from "./transaction";
 
-export type MetaKey = "persistRequested" | "lastBackupAt" | "backupReminderSnoozedUntil";
+export type MetaKey =
+  | "persistRequested"
+  | "lastBackupAt"
+  | "backupReminderSnoozedUntil"
+  /** Zeitpunkt der Sicherungskopie vor der letzten Migration (TDD 7.3). */
+  | "preMigrationCopyAt";
 
 interface MetaRecord {
   key: MetaKey;
@@ -19,6 +24,12 @@ export async function getMeta(db: IDBDatabase, key: MetaKey): Promise<unknown> {
 
 export function setMeta(db: IDBDatabase, key: MetaKey, value: unknown): Promise<void> {
   return runTransaction(db, "meta", "readwrite", (transaction) => putMeta(transaction, key, value));
+}
+
+export function deleteMeta(db: IDBDatabase, key: MetaKey): Promise<void> {
+  return runTransaction(db, "meta", "readwrite", (transaction) =>
+    transaction.objectStore("meta").delete(key),
+  );
 }
 
 /** Innerhalb einer größeren Transaktion, die `meta` einschließt. */

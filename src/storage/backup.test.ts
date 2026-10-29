@@ -3,13 +3,16 @@ import { IDBFactory } from "fake-indexeddb";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BACKUP_STORES, type CheckedBackup, parseBackup } from "../domain/backup";
 import { migrations } from "../domain/migrations";
+import { testMigration } from "../domain/migrations/testMigration";
 import type { ReviewEvent, Session, StoredSet } from "../domain/model";
 import { clearAllData, readBackup, readStores, restoreBackup } from "./backup";
 import { openDatabase } from "./database";
 import { getMeta, setMeta } from "./meta";
+import { readPreMigrationCopy } from "./preMigrationCopy";
 import { DB_VERSION } from "./schema";
 import { recordAnswer, startSession } from "./sessions";
 import { addSet } from "./sets";
+import { testSchema } from "./testMigration";
 import { runTransaction } from "./transaction";
 
 let db: IDBDatabase;
@@ -199,6 +202,7 @@ describe("clearAllData", () => {
     await fill(db);
     await setMeta(db, "lastBackupAt", "2026-10-20T20:00:00.000Z");
     await setMeta(db, "backupReminderSnoozedUntil", "2026-10-23T20:00:00.000Z");
+    await setMeta(db, "preMigrationCopyAt", "2026-10-21T20:00:00.000Z");
 
     await clearAllData(db);
 
@@ -211,6 +215,8 @@ describe("clearAllData", () => {
     expect(await getMeta(db, "persistRequested")).toBe(true);
     expect(await getMeta(db, "lastBackupAt")).toBeUndefined();
     expect(await getMeta(db, "backupReminderSnoozedUntil")).toBeUndefined();
+    // Die Kopie selbst löscht removeAllData (app/deleteAll.ts) vorher.
+    expect(await getMeta(db, "preMigrationCopyAt")).toBeUndefined();
   });
 
   it("hinterlässt einen Bestand, dessen Backup die Prüfung besteht", async () => {
@@ -218,5 +224,25 @@ describe("clearAllData", () => {
     await clearAllData(db);
     const backup = check(await readBackup(db, "test", "2026-10-20T20:00:00.000Z"));
     expect(backup.data).toEqual({ sets: [], reviewEvents: [], sessions: [], settings: [] });
+  });
+});
+
+describe("Sicherungskopie vor Migrationen (TDD 7.3)", () => {
+  it("ist ein Backup des alten Stands, das die Prüfung besteht", async () => {
+    await fill(db);
+    const before = check(await readBackup(db, "test", "2026-10-20T20:00:00.000Z"));
+    db.close();
+    const migrated = await openDatabase({
+      appVersion: "test",
+      version: 2,
+      schema: testSchema,
+      migrations: [testMigration],
+    });
+    if (!migrated.ok) throw new Error(migrated.reason);
+    db = migrated.db;
+
+    const copy = check(await readPreMigrationCopy(db.name));
+    expect(copy.dataVersion).toBe(1);
+    expect(copy.data).toEqual(before.data);
   });
 });
