@@ -182,6 +182,7 @@ async function start(): Promise<void> {
       prepareBackup: () => prepareBackup(db, __APP_VERSION__),
       saveBackup: (prepared) => saveBackup(db, prepared),
       lastBackupAt: () => lastBackupAt(db),
+      localScope: () => dataScope(db),
       checkBackup,
       restore: async (backup) => {
         const outcome = await restore(db, backup);

@@ -1,6 +1,11 @@
-// Backup speichern und wiederherstellen (TDD 11.3, 11.4, FR-19). In M0 mit knapper Bestätigung; die
-// Warnung nur bei vorhandenen Daten und das Angebot eines vorherigen Backups folgen mit S-25.
-import { type BackupSummary, type CheckedBackup, MAX_BACKUP_SIZE } from "../../domain/backup";
+// Backup speichern und wiederherstellen (TDD 11.3, 11.4, FR-19). Vor dem Ersetzen vorhandener Daten
+// nennt die Bestätigung deren Umfang und bietet an, sie vorher zu sichern.
+import {
+  type BackupSummary,
+  type CheckedBackup,
+  MAX_BACKUP_SIZE,
+  type RecordCounts,
+} from "../../domain/backup";
 import type { Delivery } from "../../platform/deliverFile";
 import type { CheckOutcome, PreparedBackup, RestoreOutcome } from "../backup";
 import { focusSoon, h } from "../dom";
@@ -11,9 +16,20 @@ export interface BackupContext {
   /** Muss direkt im Klick aufgerufen werden, sonst öffnet sich das Teilen-Menü nicht. */
   saveBackup: (prepared: PreparedBackup) => Promise<Delivery>;
   lastBackupAt: () => Promise<string | undefined>;
+  /** Umfang der Daten auf diesem Gerät, für die Warnung vor dem Ersetzen. */
+  localScope: () => Promise<RecordCounts>;
   checkBackup: (text: string) => CheckOutcome;
   restore: (backup: CheckedBackup) => Promise<RestoreOutcome>;
 }
+
+/** Ergebnis von „Backup speichern“, gleich ob oben oder in der Bestätigung ausgelöst. */
+type SaveResult = "saved" | "cancelled" | "failed";
+
+const SAVE_RESULT: Record<SaveResult, string> = {
+  saved: "Backup gespeichert.",
+  cancelled: "Backup nicht gespeichert.",
+  failed: "",
+};
 
 /** So viele Fehler werden einzeln gezeigt. */
 const SHOWN_ERRORS = 10;
@@ -39,6 +55,17 @@ function describe(summary: BackupSummary): string {
   return `Backup vom ${date(summary.exportedAt)}: ${sets}, ${sessions}, ${events}.`;
 }
 
+/** Was beim Wiederherstellen verloren ginge (TDD 11.4, Schritt 4). */
+function describeLocal(scope: RecordCounts | null): string {
+  if (!scope) return "Das Backup ersetzt alle Daten auf diesem Gerät.";
+  const content = `${count(scope.sets, "Set", "Sets")} mit ${count(scope.entries, "Eintrag", "Einträgen")}`;
+  const progress =
+    scope.sessions === 0
+      ? ""
+      : ` und dein Lernstand mit ${count(scope.events, "Antwort", "Antworten")} aus ${count(scope.sessions, "Lernsitzung", "Lernsitzungen")}`;
+  return `Auf diesem Gerät gespeichert: ${content}${progress}. Das Backup ersetzt alles davon.`;
+}
+
 export function backupView(context: BackupContext): Node {
   const save = saveSection(context);
   return h(
@@ -47,42 +74,51 @@ export function backupView(context: BackupContext): Node {
     h("h1", null, "Backup und Wiederherstellung"),
     save.section,
     // Nach dem Wiederherstellen gibt es einen neuen Bestand; das vorbereitete Backup wäre veraltet.
-    restoreSection(context, save.refresh),
+    restoreSection(context, save),
     h("p", null, h("a", { href: "#/" }, "Zurück zur Bibliothek")),
   );
 }
 
-function saveSection(context: BackupContext): { section: Node; refresh: () => void } {
+interface SaveSection {
+  section: Node;
+  /** Liest den Bestand neu ein, z. B. nach dem Wiederherstellen. */
+  refresh: () => void;
+  /** Speichert das vorbereitete Backup; direkt im Klick aufrufen (TDD 11.2). */
+  saveNow: () => Promise<SaveResult>;
+}
+
+function saveSection(context: BackupContext): SaveSection {
   let prepared: PreparedBackup | null = null;
   const last = h("p");
   const status = h("div", { "aria-live": "polite" });
   const problem = h("div", { role: "alert" });
+
+  /** Meldungen zeigt, wer speichern ließ, an seiner Stelle. */
+  const saveNow = async (): Promise<SaveResult> => {
+    if (!prepared) return "failed";
+    try {
+      const delivery = await context.saveBackup(prepared);
+      void showLast();
+      return delivery === "cancelled" ? "cancelled" : "saved";
+    } catch (error) {
+      console.error("Backup nicht gespeichert", error);
+      return "failed";
+    }
+  };
+
   const save = h(
     "button",
     {
       type: "button",
       disabled: true,
       onclick: async () => {
-        if (!prepared) return;
         save.disabled = true;
         status.replaceChildren();
         problem.replaceChildren();
-        try {
-          const delivery = await context.saveBackup(prepared);
-          status.replaceChildren(
-            h(
-              "p",
-              null,
-              delivery === "cancelled" ? "Backup nicht gespeichert." : "Backup gespeichert.",
-            ),
-          );
-          void showLast();
-        } catch (error) {
-          console.error("Backup nicht gespeichert", error);
-          problem.replaceChildren(h("p", null, NOT_SAVED));
-        } finally {
-          save.disabled = false;
-        }
+        const result = await saveNow();
+        if (result === "failed") problem.replaceChildren(h("p", null, NOT_SAVED));
+        else status.replaceChildren(h("p", null, SAVE_RESULT[result]));
+        save.disabled = false;
       },
     },
     "Backup wird vorbereitet …",
@@ -135,14 +171,78 @@ function saveSection(context: BackupContext): { section: Node; refresh: () => vo
     status,
     problem,
   );
-  return { section, refresh };
+  return { section, refresh, saveNow };
 }
 
-function restoreSection(context: BackupContext, onRestored: () => void): Node {
+/** Bestand auf diesem Gerät; `null`, wenn er sich nicht lesen ließ. */
+interface Local {
+  scope: RecordCounts | null;
+  lastBackupAt: string | undefined;
+}
+
+async function readLocal(context: BackupContext): Promise<Local> {
+  const [scope, lastBackupAt] = await Promise.all([
+    context.localScope().catch((error: unknown) => {
+      console.error("Umfang der Daten auf dem Gerät nicht ermittelt", error);
+      return null;
+    }),
+    context.lastBackupAt().catch(() => undefined),
+  ]);
+  return { scope, lastBackupAt };
+}
+
+/**
+ * Warnung vor dem Ersetzen vorhandener Daten mit dem Angebot, sie vorher zu sichern (TDD 11.4). Ist
+ * der Umfang unbekannt, wird gewarnt, als wären Daten vorhanden.
+ */
+function replaceWarning(
+  local: Local,
+  save: SaveSection,
+): { node: HTMLElement; saveFirst: HTMLButtonElement } {
+  const last = h(
+    "p",
+    null,
+    local.lastBackupAt
+      ? `Dein letztes Backup: ${dateTime(local.lastBackupAt)}.`
+      : "Auf diesem Gerät wurde noch kein Backup gespeichert.",
+  );
+  const status = h("div", { "aria-live": "polite" });
+  const problem = h("div", { role: "alert" });
+  const saveFirst = h(
+    "button",
+    {
+      type: "button",
+      class: "secondary",
+      onclick: async () => {
+        saveFirst.disabled = true;
+        status.replaceChildren();
+        problem.replaceChildren();
+        const result = await save.saveNow();
+        if (result === "failed") problem.replaceChildren(h("p", null, NOT_SAVED));
+        else status.replaceChildren(h("p", null, SAVE_RESULT[result]));
+        if (result === "saved") last.remove();
+        saveFirst.disabled = false;
+      },
+    },
+    "Vorher Backup speichern",
+  );
+  const node = h(
+    "div",
+    { class: "warning" },
+    h("p", null, describeLocal(local.scope)),
+    last,
+    saveFirst,
+    status,
+    problem,
+  );
+  return { node, saveFirst };
+}
+
+function restoreSection(context: BackupContext, save: SaveSection): Node {
   const file = h("input", {
     id: "backup-file",
     type: "file",
-    // Wie beim Import; ob iOS damit .json-Dateien auswählbar lässt, wird in S-11 geprüft (O-08).
+    // Wie beim Import; iOS und iPadOS lassen .json-Dateien damit auswählbar (S-11, O-08).
     accept: ".json,application/json,text/plain",
   });
   const errors = h("div", { role: "alert" });
@@ -172,8 +272,11 @@ function restoreSection(context: BackupContext, onRestored: () => void): Node {
     );
   };
 
-  const confirm = (backup: CheckedBackup, summary: BackupSummary) => {
+  const confirm = (backup: CheckedBackup, summary: BackupSummary, local: Local) => {
     const text = h("p", null, describe(summary));
+    // Sitzungen und Antworten gibt es nur zu Sets (D-25); Einstellungen allein gehen nicht verloren.
+    const hasData = local.scope === null || local.scope.sets > 0;
+    const warning = hasData && replaceWarning(local, save);
     const replace = h(
       "button",
       {
@@ -182,6 +285,7 @@ function restoreSection(context: BackupContext, onRestored: () => void): Node {
           replace.disabled = true;
           cancel.disabled = true;
           file.disabled = true;
+          if (warning) warning.saveFirst.disabled = true;
           let outcome: RestoreOutcome;
           try {
             outcome = await context.restore(backup);
@@ -195,10 +299,10 @@ function restoreSection(context: BackupContext, onRestored: () => void): Node {
           const done = h("p", null, "Backup wiederhergestellt.");
           status.replaceChildren(done);
           focusSoon(done);
-          onRestored();
+          save.refresh();
         },
       },
-      "Alle Daten ersetzen",
+      hasData ? "Alle Daten ersetzen" : "Wiederherstellen",
     );
     const cancel = h(
       "button",
@@ -210,7 +314,7 @@ function restoreSection(context: BackupContext, onRestored: () => void): Node {
         "div",
         { class: "confirm" },
         text,
-        h("p", null, "Alle Daten auf diesem Gerät werden dadurch ersetzt."),
+        warning && warning.node,
         h("div", { class: "actions" }, replace, cancel),
       ),
     );
@@ -233,7 +337,7 @@ function restoreSection(context: BackupContext, onRestored: () => void): Node {
     }
     const outcome = context.checkBackup(text);
     if (!outcome.ok) return showErrors(outcome.errors);
-    confirm(outcome.backup, outcome.summary);
+    confirm(outcome.backup, outcome.summary, await readLocal(context));
   });
 
   return h(

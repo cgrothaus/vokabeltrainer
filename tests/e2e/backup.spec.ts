@@ -114,7 +114,10 @@ test("E2E-02 Backup → frisches Gerät → Wiederherstellen ergibt denselben Be
   await expect(
     fresh.getByText(/^Backup vom .+: 1 Set mit 3 Einträgen, 1 Lernsitzung, 1 Antwort\.$/),
   ).toBeFocused();
-  await fresh.getByRole("button", { name: "Alle Daten ersetzen" }).click();
+  // Auf einem leeren Gerät geht nichts verloren: keine Warnung (TDD 11.4).
+  await expect(fresh.getByText(/Das Backup ersetzt/)).toHaveCount(0);
+  await expect(fresh.getByRole("button", { name: "Vorher Backup speichern" })).toHaveCount(0);
+  await fresh.getByRole("button", { name: "Wiederherstellen", exact: true }).click();
   await expect(fresh.getByText("Backup wiederhergestellt.")).toBeFocused();
 
   expect(await readAll(fresh)).toEqual(before);
@@ -124,6 +127,50 @@ test("E2E-02 Backup → frisches Gerät → Wiederherstellen ergibt denselben Be
   await expect(librarySets(fresh)).toHaveText(["Englisch – Wetter 3 Einträge"]);
   expect(freshErrors, "Fehler in der Konsole").toEqual([]);
   await fresh.context().close();
+});
+
+test("E2E-21 Vorhandene Daten: Warnung mit Umfang, vorher Backup speichern, dann ersetzen", async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  await withShare(page, "share");
+  await importSet(page, "Englisch – Vorher");
+  await startLearning(page, "Englisch – Vorher");
+  await page.getByRole("button", { name: /Tippen zum Aufdecken/ }).click();
+  await page.getByRole("button", { name: "Gewusst" }).click();
+  await expect(page.getByText("1 von 3 geschafft")).toBeVisible();
+  await endPractice(page);
+  await page.goto("./#/backup");
+
+  const warning =
+    "Auf diesem Gerät gespeichert: 1 Set mit 3 Einträgen und dein Lernstand mit 1 Antwort aus 1 Lernsitzung. Das Backup ersetzt alles davon.";
+  await chooseBackup(page, emptyBackup);
+  await expect(page.getByText(warning)).toBeVisible();
+  await expect(
+    page.getByText("Auf diesem Gerät wurde noch kein Backup gespeichert."),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Abbrechen" }).click();
+  await expect(page.getByText(warning)).toHaveCount(0);
+  expect(await readStore(page, "sets")).toHaveLength(1);
+
+  await chooseBackup(page, emptyBackup);
+  await page.getByRole("button", { name: "Vorher Backup speichern" }).click();
+  await expect(restoreRegion(page).getByText("Backup gespeichert.", { exact: true })).toBeVisible();
+  const saved = JSON.parse((await shared(page))!.text) as {
+    exportedAt: string;
+    data: { sets: unknown[]; reviewEvents: unknown[] };
+  };
+  expect(saved.data.sets).toHaveLength(1);
+  expect(saved.data.reviewEvents).toHaveLength(1);
+  expect(await lastBackupAt(page)).toBe(saved.exportedAt);
+  await expect(page.getByText(/^Letztes Backup: /)).toBeVisible();
+
+  await page.getByRole("button", { name: "Alle Daten ersetzen" }).click();
+  await expect(page.getByText("Backup wiederhergestellt.")).toBeFocused();
+  expect(await readStore(page, "sets")).toEqual([]);
+  expect(await readStore(page, "reviewEvents")).toEqual([]);
+  expect(await lastBackupAt(page)).toBe("2026-10-20T18:00:00.000Z");
+  expect(errors, "Fehler in der Konsole").toEqual([]);
 });
 
 test("Backup über das Teilen-Menü", async ({ page }) => {
@@ -163,7 +210,8 @@ test("Vokabelset statt Backup und Abbrechen ändern nichts", async ({ page }) =>
   await expect(page.getByRole("button", { name: "Alle Daten ersetzen" })).toHaveCount(0);
 
   await chooseBackup(page, emptyBackup);
-  await expect(restoreRegion(page).getByRole("alert")).toBeEmpty();
+  // Die erste Meldungsfläche gehört zur Dateiauswahl, die zweite zur Warnung vor dem Ersetzen.
+  await expect(restoreRegion(page).getByRole("alert").first()).toBeEmpty();
   await expect(
     page.getByText(
       "Backup vom 20. Oktober 2026: 0 Sets mit 0 Einträgen, 0 Lernsitzungen, 0 Antworten.",

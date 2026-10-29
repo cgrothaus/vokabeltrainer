@@ -628,12 +628,18 @@ h2:focus {
   opacity: 0.75;
 }
 
-/* Hinweis auf ein vorhandenes Set: Rahmen statt nur Farbe (TDD 13.4). */
-.confirm .duplicate {
+/* Hinweis auf ein vorhandenes Set, Warnung vor dem Ersetzen: Rahmen statt nur Farbe (TDD 13.4). */
+.confirm .duplicate,
+.confirm .warning {
   margin: 1rem 0;
   padding: 0 1rem;
   border-left: 4px solid var(--accent);
   background: var(--bg);
+}
+
+/* Die Warnung endet mit einer Schaltfläche, die sonst am Rand säße. */
+.confirm .warning {
+  padding-bottom: 1rem;
 }
 
 /* Meldung in der Bibliothek, z. B. nach dem Import. */

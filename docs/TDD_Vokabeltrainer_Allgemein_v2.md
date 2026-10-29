@@ -1,6 +1,6 @@
 # TDD: Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.26 – Lernstand ohne Zwischenspeicher  
+**Version:** 2.28 – Backup vollständig  
 **Stand:** 29. Oktober 2026  
 **Bezug:** PRD 2.4 (`PRD_Vokabeltrainer_Allgemein_v2.md`), Formatspezifikation Version 1 (`Formatspezifikation_Vokabelset_v1.md`), Review-Notizen (`20261019_TDD_v1_Review_Notizen.md`)  
 **Status:** Entwurf; Grundlage für M0 (Walking Skeleton)  
@@ -557,10 +557,13 @@ Ungültiges JSON, unbekannte Formatversion, Validierungsfehler, widersprüchlich
 
 ### 11.4 Wiederherstellung (FR-19, AK-10)
 
-1. Datei wählen (oder Text einfügen), herauslösen und parsen. Größengrenze 100 MB (Backups wachsen mit den Antworten über die 10 MB des Imports hinaus).
+1. Datei wählen, herauslösen und parsen. Einfügen als Text gibt es nicht (D-36). Größengrenze 100 MB (Backups wachsen mit den Antworten über die 10 MB des Imports hinaus).
 2. Hülle prüfen. Bei `formatVersion` oder `dataVersion` größer als die eigene wird abgelehnt mit „bitte App neu laden“. Ein Vokabelset (auch ohne Formatkennung) wird als solches erkannt und abgelehnt. Alle vier Bereiche unter `data` müssen Listen sein; `meta` und unbekannte Bereiche werden übergangen.
 3. Datensätze per Migrationskette (7.1) auf den aktuellen Stand bringen und vollständig validieren: Pflichtangaben und Typen nach 6.2, 12.4 und 12.5, eindeutige Schlüssel pro Store, eindeutige Sektions- und Eintrags-IDs pro Set, Referenzen von Sitzungen auf Sets und von Events auf Sets und Sitzungen (Event-Set = Sitzungs-Set). `entryId` wird nicht geprüft, weil Events gelöschter Einträge erhalten bleiben (9.7, 10). Meldungen nennen nur Positionen („Set 2, Sektion 1, Eintrag 3“), keine Inhalte (14). Eine scheiternde Migration ergibt eine Meldung, keine Ausnahme.
-4. Vorschau: Zahl der Sets, Einträge, Sitzungen und Events sowie Exportdatum. Sind lokale Daten vorhanden, folgt die Warnung „Alle Daten auf diesem Gerät werden ersetzt“ mit dem Angebot, vorher ein Backup des aktuellen Stands zu speichern. In M0 (S-09) steht der Umfang in einer Zeile mit dem Satz „Alle Daten auf diesem Gerät werden dadurch ersetzt.“ und den Schaltflächen „Alle Daten ersetzen“ und „Abbrechen“, unabhängig vom lokalen Bestand; den Rest ergänzt S-25.
+4. Vorschau: Zahl der Sets, Einträge, Sitzungen und Events sowie Exportdatum in einer Zeile. Was auf dem Gerät liegt, wird erst jetzt gezählt (wie bei „Alle Daten löschen“):
+   - **Keine Sets auf dem Gerät:** keine Warnung, Schaltflächen „Wiederherstellen“ und „Abbrechen“. Sitzungen und Events gibt es nur zu Sets (D-25); Einstellungen allein gehen nicht verloren.
+   - **Sets vorhanden:** abgesetzte Warnung mit dem Umfang auf dem Gerät („Auf diesem Gerät gespeichert: 2 Sets mit 40 Einträgen und dein Lernstand mit 120 Antworten aus 6 Lernsitzungen. Das Backup ersetzt alles davon.“), dem letzten Backup des Geräts und „Vorher Backup speichern“. Diese Schaltfläche liefert das beim Öffnen der Ansicht vorbereitete Backup aus (11.2, 11.3), meldet das Ergebnis in der Warnung und sperrt nichts. Darunter „Alle Daten ersetzen“ und „Abbrechen“.
+   - Lässt sich der Umfang nicht lesen, wird gewarnt, als wären Sets vorhanden („Das Backup ersetzt alle Daten auf diesem Gerät.“).
 5. Alle Stores außer `meta` in **einer** Read-Write-Transaktion leeren und befüllen; in derselben Transaktion `meta.lastBackupAt = exportedAt` des Backups setzen. Andere Einträge in `meta` bleiben. Scheitert etwas, bleibt der alte Bestand einschließlich `lastBackupAt` erhalten.
 6. UI neu laden, Erfolg melden.
 
@@ -826,7 +829,8 @@ Projekte: `mobile-chromium` (Pixel-Emulation) und `mobile-webkit` (iPhone-Emulat
 | E2E-17 Darstellung: „Dunkel“ bei hellem Gerät ergibt dieselben Farben wie ein dunkles Gerät (beide Blöcke gleich), `color-scheme` und `theme-color` folgen, die Wahl bleibt nach dem Neuladen; „Hell“ bei dunklem Gerät; „Wie auf dem Gerät“ folgt einem Wechsel sofort; ein wiederhergestelltes Backup bringt seine Darstellung mit | M1 | FR-21, FR-25, AK-10 |
 | E2E-18 Alle Daten löschen: Ankündigung mit Umfang, „Abbrechen“ ändert nichts, danach leere Bibliothek mit Meldung, alle Stores des Backups leer, `persistRequested` bleibt, Darstellung wieder wie auf dem Gerät | M1 | FR-06, TDD 10 |
 | E2E-19 Speicherfehler (`storageFailure.spec.ts`; Speicher per Init-Skript gestört, in Chromium zusätzlich echt voll über das Kontingent): Import, Wiederherstellen und Löschen melden den Fehler und ändern nichts; eine nicht gespeicherte Antwort zeigt einen Hinweis, die Sitzung läuft weiter, das Ergebnis nennt sie; ein nicht gespeichertes Sitzungsende zeigt den Speicherhinweis bis zum nächsten erfolgreichen Schreibvorgang; nach verlorener Verbindung speichern Import und laufende Sitzung ohne Meldung weiter | M1 | AK-26, FR-23, 6.5 |
-| E2E-20 Durchsicht (`a11y.spec.ts`): 23 Zustände aller Ansichten bei 320 px, hell und dunkel, ohne Verstöße von axe (WCAG 2.2 AA), ohne horizontales Scrollen auch bei 200 % Schrift, Ziele ab 44 × 44 außer Links im Fließtext, genau eine `h1`; nach Seitenwechseln Fokus auf der Überschrift und Seitentitel mit der Ansicht | M1 | FR-24, NFR-09–NFR-13, AK-12 |
+| E2E-20 Durchsicht (`a11y.spec.ts`): 24 Zustände aller Ansichten bei 320 px, hell und dunkel, ohne Verstöße von axe (WCAG 2.2 AA), ohne horizontales Scrollen auch bei 200 % Schrift, Ziele ab 44 × 44 außer Links im Fließtext, genau eine `h1`; nach Seitenwechseln Fokus auf der Überschrift und Seitentitel mit der Ansicht | M1 | FR-24, NFR-09–NFR-13, AK-12 |
+| E2E-21 Wiederherstellen auf einem Gerät mit Daten (`backup.spec.ts`): Warnung mit dem Umfang auf dem Gerät, „Abbrechen“ ändert nichts, „Vorher Backup speichern“ liefert den Bestand aus und setzt `lastBackupAt`, danach ersetzt „Alle Daten ersetzen“ alles; auf einem leeren Gerät (E2E-02) keine Warnung | M2 | AK-10, FR-19 |
 
 Playwright-WebKit entspricht nicht Safari auf iOS. Speicherlöschung, Installation, `persist()` und Teilen-Menü werden manuell geprüft (15.5).
 
@@ -927,6 +931,7 @@ Ergebnisse (LLM-App, Modell, Datum, Befund) werden im Umsetzungsplan bei S-15 fe
 | D-32 | Speicherfehler: Hintergrund-Schreibvorgänge ohne eigene Meldung melden sich über eine ruhige Leiste, die der nächste erfolgreiche Schreibvorgang entfernt; nicht gespeicherte Antworten unterbrechen die Sitzung nicht, Zwischenstand und Ergebnis nennen sie; eine verlorene Datenbankverbindung wird beim nächsten Zugriff automatisch neu geöffnet | 6.5, 12.2, 12.4, 13.1 | Nutzerentscheidung in S-22, 22. Oktober 2026 |
 | D-33 | Performance: Messung über den Dev-Schalter `?perf` mit erzeugten statt eingecheckten Daten, bewertet wird der langsamste von fünf Läufen; der Lernüberblick bei 50.000 Events darf bis zu 1 s brauchen, solange die Set-Ansicht sofort bedienbar ist und das blockierende Berechnen unter 200 ms bleibt (statt 200 ms insgesamt); Zwischenspeicher im Arbeitsspeicher (S-38) und gespeicherter Cache sind zurückgestellt | 12.6, 15.3, 15.6 | Nutzerentscheidung in S-24 nach der Messung auf dem Galaxy A34, 22. Oktober 2026; S-38 zurückgestellt am 29. Oktober 2026, weil typische Sets weit unter dem Prüffall liegen und die Grenze ohne Zwischenspeicher erfüllt ist |
 | D-34 | Barrierearmut: Fokus nach jedem Seitenwechsel auf die `h1`, zentral im Router und auch bei nachgeladenen Ansichten, Überschriften ohne Fokusrahmen; Seitentitel nennt die Ansicht; bekannte Wortarten und Genus-Kürzel deutsch, das Format bleibt unverändert; automatische Prüfung mit `@axe-core/playwright` als Entwicklungsabhängigkeit | 3.2, 4.1, 13.1, 13.4, 15.4 | Nutzerentscheidung in S-23, 27. Oktober 2026 |
+| D-36 | Wiederherstellen nur per Datei, nicht per eingefügtem Text; vor dem Ersetzen warnt die App nur, wenn auf dem Gerät Sets liegen, und bietet dann an, vorher ein Backup zu speichern, ohne das Ersetzen davon abhängig zu machen | 11.4 | Nutzerentscheidung bei der Planung von S-25, 29. Oktober 2026: Backups sind schnell mehrere MB groß und kommen über das Teilen-Menü als Datei |
 
 ---
 
@@ -1012,6 +1017,7 @@ Geprüft am 18. bis 20. Oktober 2026.
 | 2.24 | 27. Oktober 2026 | Performance-Messung (S-24): Grenzen für Import und Lernüberblick neu gefasst – Lernstand nach höchstens 1 s, Berechnen unter 200 ms, langsamster von fünf Läufen (12.6, 15.6, D-33); Messung per Dev-Schalter `?perf` (3.1, 15.6, TAK-15); erzeugte statt eingecheckte Messdaten (15.3); O-06; neues Paket S-38 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.25 | 27. Oktober 2026 | Barrierearmut (S-23): Fokus und Seitentitel nach Seitenwechsel (3.2, 13.4, D-34), Umbruch langer Wörter bei großer Schrift, Aufklapptitel als Touch-Ziele (13.4), Wortarten deutsch (13.1), axe-core (4.1), E2E-20 (15.4) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.26 | 29. Oktober 2026 | S-38 zurückgestellt: Lernstand ohne Zwischenspeicher, typische Bestände weit unter dem Prüffall (12.6, D-33, O-06); Abschnitt „Zurückgestellt“ im Umsetzungsplan (21) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.28 | 29. Oktober 2026 | Backup vollständig (S-25): Warnung vor dem Ersetzen nur bei Sets auf dem Gerät, mit Umfang, letztem Backup und „Vorher Backup speichern“; Wiederherstellen nur per Datei (11.4, D-36); E2E-21, E2E-20 mit 24 Zuständen (15.4) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 
 ---
 
@@ -1096,8 +1102,8 @@ Ziel: Jeder riskante Teil läuft einmal von vorn bis hinten, in einfachster Form
 
 ### M2 – Daten sichern
 
-- 🔲 **S-25** Backup vollständig: Vorschau mit Umfang, Warnung, Angebot eines vorherigen Backups – FR-19, AK-10  
-  Baut auf S-09 auf. Ergänzen: Warnung nur bei vorhandenen lokalen Daten, Angebot eines Backups des aktuellen Stands vor dem Ersetzen, Wiederherstellen per eingefügtem Text (11.4).
+- ✅ **S-25** Backup vollständig: Vorschau mit Umfang, Warnung, Angebot eines vorherigen Backups – FR-19, AK-10  
+  Erledigt am 29. Oktober 2026. Die Bestätigung in `views/backup.ts` zählt den Bestand auf dem Gerät über `dataScope` (wie „Alle Daten löschen“). Ohne Sets gibt es keine Warnung, und die Schaltfläche heißt „Wiederherstellen“. Mit Sets nennt eine abgesetzte Warnung den Umfang und das letzte Backup und bietet „Vorher Backup speichern“ an (11.4). Gespeichert wird das schon vorbereitete Backup aus dem oberen Abschnitt, damit das Teilen-Menü in der Geste startet; Meldungen erscheinen an der Stelle, an der getippt wurde. Nutzerentscheidung bei der Planung: Wiederherstellen per eingefügtem Text entfällt (D-36). Keine neue Domain-Logik. E2E-21 und E2E-02 (leeres Gerät ohne Warnung) laufen in mobile-chromium und mobile-webkit, E2E-20 prüft den neuen Zustand „Backup-Vorschau mit Warnung“. Gegenprobe: ohne Warnung scheitert E2E-21. Mit `playwright-cli` (mobiles Chromium, 320 px, hell und dunkel) geprüft: kein horizontales Scrollen, Fokus auf dem Umfang des Backups, Konsole leer.
 - 🔲 **S-26** Speicherschutz-Hinweise und iOS-Installationsanleitung – FR-31, AK-20
 - 🔲 **S-27** Backup-Erinnerung mit Zurückstellen – FR-31, AK-20
 - 🔲 **S-28** Sicherungskopie vor Migrationen (7.3) – FR-33, D-14
