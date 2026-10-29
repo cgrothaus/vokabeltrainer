@@ -7,7 +7,7 @@ export interface DataMigration {
   readonly stores: Readonly<Record<string, (record: unknown) => unknown>>;
 }
 
-/** Migrationen der App. Bis zur ersten Auslieferung (S-29) leer, `DB_VERSION` bleibt 1 (TDD 7.4). */
+/** Migrationen der App, ein Eintrag je Version ab 2 (TDD 7.1, 7.4). */
 export const migrations: readonly DataMigration[] = [];
 
 /** Bringt einen Datensatz von Version `from` auf `to`. */

@@ -1,7 +1,10 @@
 // Datenbankschema (TDD 6.1, D-06). Datenumwandlungen stehen in domain/migrations, hier nur die Struktur.
 
 export const DB_NAME = "vokabeltrainer";
-/** Bleibt bis zur ersten Auslieferung (S-29) bei 1; danach braucht jede Änderung Migration und Fixture (TDD 7.4). */
+/**
+ * Seit der ersten Auslieferung eingefroren: Jede Änderung am gespeicherten Datenmodell erhöht die Version
+ * und bringt einen Eintrag in `migrations`, einen Schritt hier und Fixtures vN mit (TDD 7.4, 15.3).
+ */
 export const DB_VERSION = 1;
 
 export type StoreName = "sets" | "reviewEvents" | "sessions" | "settings" | "meta";

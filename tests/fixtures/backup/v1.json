@@ -1,0 +1,1290 @@
+{
+  "format": "vokabeltrainer-backup",
+  "formatVersion": 1,
+  "dataVersion": 1,
+  "appVersion": "0.1.0+5d3b2c6",
+  "exportedAt": "2026-11-02T15:00:03.014Z",
+  "data": {
+    "sets": [
+      {
+        "title": "Englisch – Wetter",
+        "termLanguage": "en",
+        "meaningLanguage": "de",
+        "sections": [
+          {
+            "title": "Wetter",
+            "entries": [
+              {
+                "term": {
+                  "text": "rain"
+                },
+                "meanings": [
+                  {
+                    "text": "Regen"
+                  }
+                ],
+                "id": "mx4zzc"
+              },
+              {
+                "term": {
+                  "text": "sun"
+                },
+                "meanings": [
+                  {
+                    "text": "Sonne"
+                  }
+                ],
+                "id": "fma6s4"
+              },
+              {
+                "term": {
+                  "text": "autumn",
+                  "acceptedVariants": [
+                    "fall"
+                  ]
+                },
+                "meanings": [
+                  {
+                    "text": "Herbst"
+                  }
+                ],
+                "id": "zfpzft"
+              }
+            ],
+            "id": "7e7sht"
+          }
+        ],
+        "id": "4pwbrsk48z",
+        "editCount": 0,
+        "createdAt": "2026-11-02T15:00:00.372Z",
+        "updatedAt": "2026-11-02T15:00:00.372Z"
+      },
+      {
+        "title": "Englisch – Grundwortschatz (Beispielset)",
+        "termLanguage": "en",
+        "meaningLanguage": "de",
+        "level": "Klasse 6",
+        "source": "Eigene Zusammenstellung",
+        "license": "CC0",
+        "notes": "Beispielset zum Ausprobieren der App. Eigene Zusammenstellung aus allgemeinem Grundwortschatz, frei verwendbar (CC0).",
+        "reviewStatus": "checked",
+        "sections": [
+          {
+            "title": "In der Schule",
+            "entries": [
+              {
+                "term": {
+                  "text": "teacher"
+                },
+                "meanings": [
+                  {
+                    "text": "Lehrer/-in",
+                    "acceptedVariants": [
+                      "Lehrer",
+                      "Lehrerin"
+                    ]
+                  }
+                ],
+                "id": "2h7p5e"
+              },
+              {
+                "term": {
+                  "text": "child"
+                },
+                "meanings": [
+                  {
+                    "text": "Kind"
+                  }
+                ],
+                "grammar": {
+                  "partOfSpeech": "noun",
+                  "plural": "children"
+                },
+                "id": "6ypse3"
+              },
+              {
+                "term": {
+                  "text": "classroom"
+                },
+                "meanings": [
+                  {
+                    "text": "Klassenzimmer",
+                    "acceptedVariants": [
+                      "Klassenraum"
+                    ]
+                  }
+                ],
+                "id": "rwbmsu"
+              },
+              {
+                "term": {
+                  "text": "rubber",
+                  "acceptedVariants": [
+                    "eraser"
+                  ]
+                },
+                "meanings": [
+                  {
+                    "text": "Radiergummi"
+                  }
+                ],
+                "notes": "„rubber“ ist britisches, „eraser“ amerikanisches Englisch.",
+                "id": "7p52nb"
+              },
+              {
+                "term": {
+                  "text": "pencil case"
+                },
+                "meanings": [
+                  {
+                    "text": "Federmäppchen",
+                    "acceptedVariants": [
+                      "Mäppchen",
+                      "Federmappe"
+                    ]
+                  }
+                ],
+                "id": "nf7m3v"
+              },
+              {
+                "term": {
+                  "text": "exercise book"
+                },
+                "meanings": [
+                  {
+                    "text": "Heft"
+                  }
+                ],
+                "id": "ksqaa3"
+              },
+              {
+                "term": {
+                  "text": "homework"
+                },
+                "meanings": [
+                  {
+                    "text": "Hausaufgaben"
+                  }
+                ],
+                "notes": "Im Englischen ohne Plural: „my homework“.",
+                "id": "kmv7t7"
+              },
+              {
+                "term": {
+                  "text": "timetable"
+                },
+                "meanings": [
+                  {
+                    "text": "Stundenplan"
+                  }
+                ],
+                "id": "8w672x"
+              },
+              {
+                "term": {
+                  "text": "break"
+                },
+                "meanings": [
+                  {
+                    "text": "Pause"
+                  }
+                ],
+                "id": "xsctcd"
+              },
+              {
+                "term": {
+                  "text": "to learn"
+                },
+                "meanings": [
+                  {
+                    "text": "lernen"
+                  }
+                ],
+                "id": "cr4v6y"
+              },
+              {
+                "term": {
+                  "text": "to explain"
+                },
+                "meanings": [
+                  {
+                    "text": "erklären"
+                  }
+                ],
+                "examples": [
+                  {
+                    "text": "Can you explain the word, please?",
+                    "translation": "Kannst du bitte das Wort erklären?"
+                  }
+                ],
+                "id": "ygn6p4"
+              },
+              {
+                "term": {
+                  "text": "easy"
+                },
+                "meanings": [
+                  {
+                    "text": "leicht",
+                    "acceptedVariants": [
+                      "einfach"
+                    ]
+                  }
+                ],
+                "id": "thyw5y"
+              },
+              {
+                "term": {
+                  "text": "to forget"
+                },
+                "meanings": [
+                  {
+                    "text": "vergessen"
+                  }
+                ],
+                "examples": [
+                  {
+                    "text": "Don't forget your homework.",
+                    "translation": "Vergiss deine Hausaufgaben nicht."
+                  }
+                ],
+                "grammar": {
+                  "partOfSpeech": "verb",
+                  "forms": [
+                    "forget",
+                    "forgot",
+                    "forgotten"
+                  ]
+                },
+                "id": "k988b2"
+              },
+              {
+                "term": {
+                  "text": "ruler"
+                },
+                "meanings": [
+                  {
+                    "text": "Lineal"
+                  },
+                  {
+                    "text": "Herrscher/-in"
+                  }
+                ],
+                "id": "bh9gjy"
+              },
+              {
+                "term": {
+                  "text": "to spell"
+                },
+                "meanings": [
+                  {
+                    "text": "buchstabieren"
+                  }
+                ],
+                "examples": [
+                  {
+                    "text": "How do you spell your name?",
+                    "translation": "Wie buchstabiert man deinen Namen?"
+                  }
+                ],
+                "id": "z4vqkt"
+              }
+            ],
+            "id": "j45cf7"
+          },
+          {
+            "title": "Freizeit und Sport",
+            "entries": [
+              {
+                "term": {
+                  "text": "free time"
+                },
+                "meanings": [
+                  {
+                    "text": "Freizeit"
+                  }
+                ],
+                "id": "df5twc"
+              },
+              {
+                "term": {
+                  "text": "hobby"
+                },
+                "meanings": [
+                  {
+                    "text": "Hobby"
+                  }
+                ],
+                "grammar": {
+                  "partOfSpeech": "noun",
+                  "plural": "hobbies"
+                },
+                "id": "sjbp67"
+              },
+              {
+                "term": {
+                  "text": "football",
+                  "acceptedVariants": [
+                    "soccer"
+                  ]
+                },
+                "meanings": [
+                  {
+                    "text": "Fußball"
+                  }
+                ],
+                "notes": "„soccer“ sagt man vor allem in den USA.",
+                "id": "36xmva"
+              },
+              {
+                "term": {
+                  "text": "team"
+                },
+                "meanings": [
+                  {
+                    "text": "Mannschaft",
+                    "acceptedVariants": [
+                      "Team"
+                    ]
+                  }
+                ],
+                "id": "bh97jy"
+              },
+              {
+                "term": {
+                  "text": "to play"
+                },
+                "meanings": [
+                  {
+                    "text": "spielen"
+                  }
+                ],
+                "id": "h7urnd"
+              },
+              {
+                "term": {
+                  "text": "to win"
+                },
+                "meanings": [
+                  {
+                    "text": "gewinnen"
+                  }
+                ],
+                "grammar": {
+                  "partOfSpeech": "verb",
+                  "forms": [
+                    "win",
+                    "won",
+                    "won"
+                  ]
+                },
+                "id": "srtnma"
+              },
+              {
+                "term": {
+                  "text": "to lose"
+                },
+                "meanings": [
+                  {
+                    "text": "verlieren"
+                  }
+                ],
+                "grammar": {
+                  "partOfSpeech": "verb",
+                  "forms": [
+                    "lose",
+                    "lost",
+                    "lost"
+                  ]
+                },
+                "id": "pv4h3e"
+              },
+              {
+                "term": {
+                  "text": "to swim"
+                },
+                "meanings": [
+                  {
+                    "text": "schwimmen"
+                  }
+                ],
+                "grammar": {
+                  "partOfSpeech": "verb",
+                  "forms": [
+                    "swim",
+                    "swam",
+                    "swum"
+                  ]
+                },
+                "id": "ms3yt6"
+              },
+              {
+                "term": {
+                  "text": "bike",
+                  "acceptedVariants": [
+                    "bicycle"
+                  ]
+                },
+                "meanings": [
+                  {
+                    "text": "Fahrrad",
+                    "acceptedVariants": [
+                      "Rad"
+                    ]
+                  }
+                ],
+                "id": "meschc"
+              },
+              {
+                "term": {
+                  "text": "to meet"
+                },
+                "meanings": [
+                  {
+                    "text": "treffen"
+                  },
+                  {
+                    "text": "kennenlernen"
+                  }
+                ],
+                "examples": [
+                  {
+                    "text": "Let's meet after school."
+                  }
+                ],
+                "grammar": {
+                  "partOfSpeech": "verb",
+                  "forms": [
+                    "meet",
+                    "met",
+                    "met"
+                  ]
+                },
+                "id": "y37say"
+              },
+              {
+                "term": {
+                  "text": "match"
+                },
+                "meanings": [
+                  {
+                    "text": "Spiel (Wettkampf)",
+                    "acceptedVariants": [
+                      "Spiel"
+                    ]
+                  },
+                  {
+                    "text": "Streichholz"
+                  }
+                ],
+                "id": "78z38g"
+              },
+              {
+                "term": {
+                  "text": "to practise",
+                  "acceptedVariants": [
+                    "to practice"
+                  ]
+                },
+                "meanings": [
+                  {
+                    "text": "üben"
+                  }
+                ],
+                "notes": "„to practice“ ist die amerikanische Schreibweise.",
+                "id": "t8apwc"
+              },
+              {
+                "term": {
+                  "text": "weekend"
+                },
+                "meanings": [
+                  {
+                    "text": "Wochenende"
+                  }
+                ],
+                "examples": [
+                  {
+                    "text": "What did you do at the weekend?",
+                    "translation": "Was hast du am Wochenende gemacht?"
+                  }
+                ],
+                "id": "xpm7qd"
+              },
+              {
+                "term": {
+                  "text": "to miss"
+                },
+                "meanings": [
+                  {
+                    "text": "vermissen"
+                  },
+                  {
+                    "text": "verpassen"
+                  }
+                ],
+                "examples": [
+                  {
+                    "text": "I miss my friends.",
+                    "translation": "Ich vermisse meine Freunde."
+                  }
+                ],
+                "id": "st25me"
+              }
+            ],
+            "id": "v9r8h2"
+          },
+          {
+            "title": "Essen und Trinken",
+            "entries": [
+              {
+                "term": {
+                  "text": "breakfast"
+                },
+                "meanings": [
+                  {
+                    "text": "Frühstück"
+                  }
+                ],
+                "id": "bz8639"
+              },
+              {
+                "term": {
+                  "text": "lunch"
+                },
+                "meanings": [
+                  {
+                    "text": "Mittagessen"
+                  }
+                ],
+                "id": "564va9"
+              },
+              {
+                "term": {
+                  "text": "dinner"
+                },
+                "meanings": [
+                  {
+                    "text": "Abendessen"
+                  }
+                ],
+                "id": "qcfz5w"
+              },
+              {
+                "term": {
+                  "text": "apple"
+                },
+                "meanings": [
+                  {
+                    "text": "Apfel"
+                  }
+                ],
+                "id": "heqwpr"
+              },
+              {
+                "term": {
+                  "text": "bread"
+                },
+                "meanings": [
+                  {
+                    "text": "Brot"
+                  }
+                ],
+                "id": "h9jz5q"
+              },
+              {
+                "term": {
+                  "text": "cheese"
+                },
+                "meanings": [
+                  {
+                    "text": "Käse"
+                  }
+                ],
+                "id": "ysn7eb"
+              },
+              {
+                "term": {
+                  "text": "potato"
+                },
+                "meanings": [
+                  {
+                    "text": "Kartoffel"
+                  }
+                ],
+                "grammar": {
+                  "partOfSpeech": "noun",
+                  "plural": "potatoes"
+                },
+                "id": "3bmbf5"
+              },
+              {
+                "term": {
+                  "text": "biscuit",
+                  "acceptedVariants": [
+                    "cookie"
+                  ]
+                },
+                "meanings": [
+                  {
+                    "text": "Keks"
+                  }
+                ],
+                "notes": "„cookie“ ist amerikanisches Englisch.",
+                "id": "bj2d3e"
+              },
+              {
+                "term": {
+                  "text": "knife"
+                },
+                "meanings": [
+                  {
+                    "text": "Messer"
+                  }
+                ],
+                "grammar": {
+                  "partOfSpeech": "noun",
+                  "plural": "knives"
+                },
+                "id": "jcz43h"
+              },
+              {
+                "term": {
+                  "text": "to eat"
+                },
+                "meanings": [
+                  {
+                    "text": "essen"
+                  }
+                ],
+                "grammar": {
+                  "partOfSpeech": "verb",
+                  "forms": [
+                    "eat",
+                    "ate",
+                    "eaten"
+                  ]
+                },
+                "id": "b84gy3"
+              },
+              {
+                "term": {
+                  "text": "to drink"
+                },
+                "meanings": [
+                  {
+                    "text": "trinken"
+                  }
+                ],
+                "grammar": {
+                  "partOfSpeech": "verb",
+                  "forms": [
+                    "drink",
+                    "drank",
+                    "drunk"
+                  ]
+                },
+                "id": "xundpc"
+              },
+              {
+                "term": {
+                  "text": "hungry"
+                },
+                "meanings": [
+                  {
+                    "text": "hungrig"
+                  }
+                ],
+                "examples": [
+                  {
+                    "text": "I'm hungry.",
+                    "translation": "Ich habe Hunger."
+                  }
+                ],
+                "id": "fc843r"
+              },
+              {
+                "term": {
+                  "text": "delicious"
+                },
+                "meanings": [
+                  {
+                    "text": "lecker",
+                    "acceptedVariants": [
+                      "köstlich"
+                    ]
+                  }
+                ],
+                "id": "u7efw4"
+              },
+              {
+                "term": {
+                  "text": "to cook"
+                },
+                "meanings": [
+                  {
+                    "text": "kochen"
+                  }
+                ],
+                "examples": [
+                  {
+                    "text": "My dad cooks on Sundays."
+                  }
+                ],
+                "id": "77n8hn"
+              }
+            ],
+            "id": "tuwpzr"
+          },
+          {
+            "title": "Unterwegs",
+            "entries": [
+              {
+                "term": {
+                  "text": "car"
+                },
+                "meanings": [
+                  {
+                    "text": "Auto",
+                    "acceptedVariants": [
+                      "Wagen"
+                    ]
+                  }
+                ],
+                "id": "en4yx3"
+              },
+              {
+                "term": {
+                  "text": "bus"
+                },
+                "meanings": [
+                  {
+                    "text": "Bus"
+                  }
+                ],
+                "grammar": {
+                  "partOfSpeech": "noun",
+                  "plural": "buses"
+                },
+                "id": "grk8ux"
+              },
+              {
+                "term": {
+                  "text": "train"
+                },
+                "meanings": [
+                  {
+                    "text": "Zug"
+                  }
+                ],
+                "id": "rfnvbd"
+              },
+              {
+                "term": {
+                  "text": "station"
+                },
+                "meanings": [
+                  {
+                    "text": "Bahnhof"
+                  }
+                ],
+                "id": "6558x5"
+              },
+              {
+                "term": {
+                  "text": "underground",
+                  "acceptedVariants": [
+                    "subway"
+                  ]
+                },
+                "meanings": [
+                  {
+                    "text": "U-Bahn"
+                  }
+                ],
+                "notes": "„subway“ ist amerikanisches Englisch; die Londoner U-Bahn heißt „the Tube“.",
+                "id": "722usp"
+              },
+              {
+                "term": {
+                  "text": "ticket"
+                },
+                "meanings": [
+                  {
+                    "text": "Fahrkarte",
+                    "acceptedVariants": [
+                      "Fahrschein"
+                    ]
+                  },
+                  {
+                    "text": "Eintrittskarte"
+                  }
+                ],
+                "id": "p22dda"
+              },
+              {
+                "term": {
+                  "text": "to catch"
+                },
+                "meanings": [
+                  {
+                    "text": "fangen"
+                  },
+                  {
+                    "text": "erwischen"
+                  }
+                ],
+                "examples": [
+                  {
+                    "text": "We caught the last bus.",
+                    "translation": "Wir haben den letzten Bus erwischt."
+                  }
+                ],
+                "grammar": {
+                  "partOfSpeech": "verb",
+                  "forms": [
+                    "catch",
+                    "caught",
+                    "caught"
+                  ]
+                },
+                "id": "mwa6n7"
+              },
+              {
+                "term": {
+                  "text": "to go"
+                },
+                "meanings": [
+                  {
+                    "text": "gehen"
+                  },
+                  {
+                    "text": "fahren"
+                  }
+                ],
+                "grammar": {
+                  "partOfSpeech": "verb",
+                  "forms": [
+                    "go",
+                    "went",
+                    "gone"
+                  ]
+                },
+                "id": "rknavm"
+              },
+              {
+                "term": {
+                  "text": "to buy"
+                },
+                "meanings": [
+                  {
+                    "text": "kaufen"
+                  }
+                ],
+                "grammar": {
+                  "partOfSpeech": "verb",
+                  "forms": [
+                    "buy",
+                    "bought",
+                    "bought"
+                  ]
+                },
+                "id": "yvc69k"
+              },
+              {
+                "term": {
+                  "text": "map"
+                },
+                "meanings": [
+                  {
+                    "text": "Landkarte"
+                  },
+                  {
+                    "text": "Stadtplan"
+                  }
+                ],
+                "id": "fupann"
+              },
+              {
+                "term": {
+                  "text": "left"
+                },
+                "meanings": [
+                  {
+                    "text": "links"
+                  }
+                ],
+                "id": "qvqxgk"
+              },
+              {
+                "term": {
+                  "text": "right"
+                },
+                "meanings": [
+                  {
+                    "text": "rechts"
+                  },
+                  {
+                    "text": "richtig"
+                  }
+                ],
+                "id": "mnhzq8"
+              },
+              {
+                "term": {
+                  "text": "suitcase"
+                },
+                "meanings": [
+                  {
+                    "text": "Koffer"
+                  }
+                ],
+                "id": "cn9uyj"
+              },
+              {
+                "term": {
+                  "text": "holiday"
+                },
+                "meanings": [
+                  {
+                    "text": "Ferien",
+                    "acceptedVariants": [
+                      "Urlaub"
+                    ]
+                  }
+                ],
+                "notes": "Amerikanisch sagt man „vacation“.",
+                "id": "gx92aj"
+              }
+            ],
+            "id": "3f92ak"
+          }
+        ],
+        "id": "974t4nm298",
+        "editCount": 0,
+        "createdAt": "2026-11-02T15:00:00.215Z",
+        "updatedAt": "2026-11-02T15:00:00.215Z"
+      }
+    ],
+    "reviewEvents": [
+      {
+        "id": "27e465rsxh3q",
+        "sessionId": "9n2snx3bf8dn",
+        "setId": "974t4nm298",
+        "entryId": "st25me",
+        "entryRev": "kybug766",
+        "occurredAt": "2026-11-02T15:00:01.574Z",
+        "direction": "termToMeaning",
+        "mode": "multipleChoice",
+        "result": "correct",
+        "firstAttempt": true
+      },
+      {
+        "id": "299kqudhu76y",
+        "sessionId": "sahrs6mn8avw",
+        "setId": "974t4nm298",
+        "entryId": "t8apwc",
+        "entryRev": "ffrb488f",
+        "occurredAt": "2026-11-02T15:00:02.158Z",
+        "direction": "termToMeaning",
+        "mode": "flashcard",
+        "result": "correct",
+        "firstAttempt": true
+      },
+      {
+        "id": "4hpjnv6xu2by",
+        "sessionId": "sahrs6mn8avw",
+        "setId": "974t4nm298",
+        "entryId": "77n8hn",
+        "entryRev": "3tee9b6a",
+        "occurredAt": "2026-11-02T15:00:02.225Z",
+        "direction": "termToMeaning",
+        "mode": "multipleChoice",
+        "result": "correct",
+        "firstAttempt": true
+      },
+      {
+        "id": "4x98mvrs475h",
+        "sessionId": "9n2snx3bf8dn",
+        "setId": "974t4nm298",
+        "entryId": "gx92aj",
+        "entryRev": "4cn2fv5c",
+        "occurredAt": "2026-11-02T15:00:01.808Z",
+        "direction": "termToMeaning",
+        "mode": "flashcard",
+        "result": "correct",
+        "firstAttempt": true
+      },
+      {
+        "id": "6q8ghpsz8xpm",
+        "sessionId": "vuhs9nvybajm",
+        "setId": "4pwbrsk48z",
+        "entryId": "fma6s4",
+        "entryRev": "jzgphaxf",
+        "occurredAt": "2026-11-02T15:00:02.535Z",
+        "direction": "termToMeaning",
+        "mode": "flashcard",
+        "result": "incorrect",
+        "firstAttempt": true
+      },
+      {
+        "id": "76pdupme4bh8",
+        "sessionId": "9n2snx3bf8dn",
+        "setId": "974t4nm298",
+        "entryId": "t8apwc",
+        "entryRev": "ffrb488f",
+        "occurredAt": "2026-11-02T15:00:00.788Z",
+        "direction": "termToMeaning",
+        "mode": "flashcard",
+        "result": "incorrect",
+        "firstAttempt": true
+      },
+      {
+        "id": "8sn6yg3y7js5",
+        "sessionId": "9n2snx3bf8dn",
+        "setId": "974t4nm298",
+        "entryId": "77n8hn",
+        "entryRev": "3tee9b6a",
+        "occurredAt": "2026-11-02T15:00:01.074Z",
+        "direction": "termToMeaning",
+        "mode": "multipleChoice",
+        "result": "correct",
+        "firstAttempt": false
+      },
+      {
+        "id": "b997kqs7fucv",
+        "sessionId": "9n2snx3bf8dn",
+        "setId": "974t4nm298",
+        "entryId": "t8apwc",
+        "entryRev": "ffrb488f",
+        "occurredAt": "2026-11-02T15:00:01.206Z",
+        "direction": "termToMeaning",
+        "mode": "flashcard",
+        "result": "correct",
+        "firstAttempt": false
+      },
+      {
+        "id": "ca3qut7c7cw8",
+        "sessionId": "9n2snx3bf8dn",
+        "setId": "974t4nm298",
+        "entryId": "8w672x",
+        "entryRev": "pde5ypbb",
+        "occurredAt": "2026-11-02T15:00:01.274Z",
+        "direction": "termToMeaning",
+        "mode": "multipleChoice",
+        "result": "correct",
+        "firstAttempt": false
+      },
+      {
+        "id": "eu8863g2jbde",
+        "sessionId": "sahrs6mn8avw",
+        "setId": "974t4nm298",
+        "entryId": "8w672x",
+        "entryRev": "pde5ypbb",
+        "occurredAt": "2026-11-02T15:00:02.038Z",
+        "direction": "termToMeaning",
+        "mode": "multipleChoice",
+        "result": "correct",
+        "firstAttempt": true
+      },
+      {
+        "id": "f5bwz456s4af",
+        "sessionId": "vuhs9nvybajm",
+        "setId": "4pwbrsk48z",
+        "entryId": "zfpzft",
+        "entryRev": "68bq3aeh",
+        "occurredAt": "2026-11-02T15:00:02.633Z",
+        "direction": "termToMeaning",
+        "mode": "flashcard",
+        "result": "correct",
+        "firstAttempt": true
+      },
+      {
+        "id": "j65stafeyhvs",
+        "sessionId": "vuhs9nvybajm",
+        "setId": "4pwbrsk48z",
+        "entryId": "fma6s4",
+        "entryRev": "jzgphaxf",
+        "occurredAt": "2026-11-02T15:00:02.833Z",
+        "direction": "termToMeaning",
+        "mode": "flashcard",
+        "result": "correct",
+        "firstAttempt": false
+      },
+      {
+        "id": "k462ff8h9773",
+        "sessionId": "9n2snx3bf8dn",
+        "setId": "974t4nm298",
+        "entryId": "36xmva",
+        "entryRev": "q7s9pa99",
+        "occurredAt": "2026-11-02T15:00:01.408Z",
+        "direction": "termToMeaning",
+        "mode": "flashcard",
+        "result": "correct",
+        "firstAttempt": true
+      },
+      {
+        "id": "m8dwgu7vukxs",
+        "sessionId": "vuhs9nvybajm",
+        "setId": "4pwbrsk48z",
+        "entryId": "mx4zzc",
+        "entryRev": "kz7q8qbc",
+        "occurredAt": "2026-11-02T15:00:02.733Z",
+        "direction": "termToMeaning",
+        "mode": "flashcard",
+        "result": "correct",
+        "firstAttempt": true
+      },
+      {
+        "id": "nwwqc7p7wfpf",
+        "sessionId": "9n2snx3bf8dn",
+        "setId": "974t4nm298",
+        "entryId": "mnhzq8",
+        "entryRev": "hbenzee2",
+        "occurredAt": "2026-11-02T15:00:01.876Z",
+        "direction": "termToMeaning",
+        "mode": "multipleChoice",
+        "result": "correct",
+        "firstAttempt": true
+      },
+      {
+        "id": "s7mjczxjwq3p",
+        "sessionId": "9n2snx3bf8dn",
+        "setId": "974t4nm298",
+        "entryId": "77n8hn",
+        "entryRev": "3tee9b6a",
+        "occurredAt": "2026-11-02T15:00:00.641Z",
+        "direction": "termToMeaning",
+        "mode": "multipleChoice",
+        "result": "incorrect",
+        "firstAttempt": true
+      },
+      {
+        "id": "t7sqsszsuj2u",
+        "sessionId": "9n2snx3bf8dn",
+        "setId": "974t4nm298",
+        "entryId": "ksqaa3",
+        "entryRev": "xtgd9hek",
+        "occurredAt": "2026-11-02T15:00:01.705Z",
+        "direction": "termToMeaning",
+        "mode": "flashcard",
+        "result": "correct",
+        "firstAttempt": true
+      },
+      {
+        "id": "xxu5uehk4nzf",
+        "sessionId": "9n2snx3bf8dn",
+        "setId": "974t4nm298",
+        "entryId": "8w672x",
+        "entryRev": "pde5ypbb",
+        "occurredAt": "2026-11-02T15:00:00.857Z",
+        "direction": "termToMeaning",
+        "mode": "multipleChoice",
+        "result": "incorrect",
+        "firstAttempt": true
+      },
+      {
+        "id": "xzbnhwhdvzmj",
+        "sessionId": "9n2snx3bf8dn",
+        "setId": "974t4nm298",
+        "entryId": "u7efw4",
+        "entryRev": "jtb53aes",
+        "occurredAt": "2026-11-02T15:00:01.506Z",
+        "direction": "termToMeaning",
+        "mode": "flashcard",
+        "result": "correct",
+        "firstAttempt": true
+      },
+      {
+        "id": "yfr5www3d4g3",
+        "sessionId": "9n2snx3bf8dn",
+        "setId": "974t4nm298",
+        "entryId": "z4vqkt",
+        "entryRev": "nvc7w7a8",
+        "occurredAt": "2026-11-02T15:00:00.957Z",
+        "direction": "termToMeaning",
+        "mode": "multipleChoice",
+        "result": "correct",
+        "firstAttempt": true
+      }
+    ],
+    "sessions": [
+      {
+        "id": "9n2snx3bf8dn",
+        "setId": "974t4nm298",
+        "sectionIds": [
+          "j45cf7",
+          "v9r8h2",
+          "tuwpzr",
+          "3f92ak"
+        ],
+        "startedAt": "2026-11-02T15:00:00.539Z",
+        "status": "completed",
+        "config": {
+          "direction": "termToMeaning",
+          "count": 10,
+          "mcShare": 50
+        },
+        "endedAt": "2026-11-02T15:00:01.887Z"
+      },
+      {
+        "id": "sahrs6mn8avw",
+        "setId": "974t4nm298",
+        "sectionIds": [
+          "j45cf7",
+          "v9r8h2",
+          "tuwpzr",
+          "3f92ak"
+        ],
+        "startedAt": "2026-11-02T15:00:01.975Z",
+        "status": "completed",
+        "config": {
+          "direction": "termToMeaning",
+          "count": 3,
+          "mcShare": 50
+        },
+        "repeatOf": "9n2snx3bf8dn",
+        "endedAt": "2026-11-02T15:00:02.237Z"
+      },
+      {
+        "id": "vuhs9nvybajm",
+        "setId": "4pwbrsk48z",
+        "sectionIds": [
+          "7e7sht"
+        ],
+        "startedAt": "2026-11-02T15:00:02.432Z",
+        "status": "completed",
+        "config": {
+          "direction": "termToMeaning",
+          "count": 3,
+          "mcShare": 25
+        },
+        "endedAt": "2026-11-02T15:00:02.846Z"
+      }
+    ],
+    "settings": [
+      {
+        "key": "practice:4pwbrsk48z",
+        "value": {
+          "sections": "all",
+          "direction": "termToMeaning",
+          "count": "all",
+          "mcShare": 25
+        }
+      },
+      {
+        "key": "practice:974t4nm298",
+        "value": {
+          "sections": "all",
+          "direction": "termToMeaning",
+          "count": 10,
+          "mcShare": 50
+        }
+      },
+      {
+        "key": "theme",
+        "value": "dark"
+      }
+    ]
+  }
+}

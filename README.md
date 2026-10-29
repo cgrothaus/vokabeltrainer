@@ -2,7 +2,7 @@
 
 Ein mobiler Vokabeltrainer, der offline funktioniert. Man installiert ihn als Web-App (PWA) auf dem Home-Bildschirm. Es gibt kein Backend und kein Konto: Alle Daten bleiben auf dem Gerät.
 
-> **Status:** frühe Entwicklung. Meilenstein M0 (Walking Skeleton) läuft, eine nutzbare App gibt es noch nicht. Den aktuellen Stand zeigt der [Umsetzungsplan](docs/TDD_Vokabeltrainer_Allgemein_v2.md) (TDD Kap. 21). Ein provisorischer Testaufbau läuft unter https://cgrothaus.github.io/vokabeltrainer/; dort gespeicherte Daten können jederzeit verloren gehen.
+> **Status:** Die Meilensteine M0 bis M2 sind umgesetzt: Vokabelsets importieren, lernen und sichern. Die App läuft unter https://vokabeltrainer.cgrothaus.de/; gespeicherte Daten bleiben bei Updates erhalten. Sets in der App bearbeiten und exportierte Sets aktualisieren kommen mit M3 und M4. Den aktuellen Stand zeigt der [Umsetzungsplan](docs/TDD_Vokabeltrainer_Allgemein_v2.md) (TDD Kap. 21).
 
 ## Funktionen (geplant)
 

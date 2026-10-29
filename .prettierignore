@@ -2,6 +2,9 @@
 *.md
 dist/
 package-lock.json
+# Gespeicherte Stände aus der App, bytegenau eingefroren (TDD 15.3).
+tests/fixtures/db/
+tests/fixtures/backup/
 .claude/
 
 # Testberichte und Browserprüfung
