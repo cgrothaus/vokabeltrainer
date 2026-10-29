@@ -1,7 +1,7 @@
 # Betatest Meilenstein 0: Anleitung
 
 **Stand:** 29. Oktober 2026  
-**App:** https://cgrothaus.github.io/vokabeltrainer/
+**App:** https://vokabeltrainer.cgrothaus.de/
 
 Danke, dass du mittestest! Die App ist noch ein Gerüst: Sie kann Vokabeln importieren, als Karteikarten und Multiple Choice abfragen und ein Backup speichern. Wir wollen herausfinden, ob dieser Weg auf deinem Handy von vorn bis hinten funktioniert – besonders der Schritt mit dem KI-Chat.
 
@@ -21,13 +21,14 @@ Formatbeschreibung ──┘
    - **Android (Chrome):** Menü ⋮ → „Zum Startbildschirm hinzufügen“ bzw. „App installieren“.
 3. Ab jetzt die App **über das Symbol „Vokabeln“** starten, nicht mehr im Browser.  
    Wichtig auf dem iPhone: Nur so bleiben deine Daten dauerhaft gespeichert. Im Safari-Tab kann iOS sie nach einigen Tagen ohne Nutzung löschen. Die App auf dem Home-Bildschirm hat einen eigenen Speicher: Was du vorher im Safari-Tab angelegt hast, siehst du dort nicht. Dann im Tab ein Backup speichern und in der App wiederherstellen (die Startseite im Tab erklärt das auch).
-4. Zum Kennenlernen ohne eigene Vokabeln: Auf der leeren Startseite „**Beispielset ausprobieren**“ tippen. Für den Test danach bitte trotzdem den Weg mit dem KI-Chat gehen (Abschnitt 2).
+4. **Schon unter der früheren Adresse getestet?** Die App lief anfangs unter https://cgrothaus.github.io/vokabeltrainer/; diese Adresse leitet jetzt auf die neue weiter. Daten von dort übernimmt die App nicht, du fängst neu an. Das alte Symbol vom Home-Bildschirm entfernen und die App unter der neuen Adresse neu hinzufügen.
+5. Zum Kennenlernen ohne eigene Vokabeln: Auf der leeren Startseite „**Beispielset ausprobieren**“ tippen. Für den Test danach bitte trotzdem den Weg mit dem KI-Chat gehen (Abschnitt 2).
 
 ## 2. Vokabeln mit dem KI-Chat umwandeln
 
 1. **Foto machen** von den Vokabelseiten einer Lektion oder von einer selbst geschriebenen Vokabelliste. Mehrere Fotos gehen auch. Ein Set entspricht etwa einer Lektion; Fotos aus mehreren Lektionen ergeben mehrere Sets, die der Chat einzeln ausgibt.
 2. **Vorlage aus der App holen:** In der App „**Wie bekomme ich ein Vokabelset?**“ öffnen (auf der leeren Startseite, unter der Liste oder beim Import) → „**Vorlage kopieren**“. Die Vorlage enthält den Link auf die Formatbeschreibung:  
-   https://cgrothaus.github.io/vokabeltrainer/formatspezifikation.md
+   https://vokabeltrainer.cgrothaus.de/formatspezifikation.md
 3. **Im Chat die Vorlage einfügen und die Fotos anhängen.** Kann der Chat den Link nicht öffnen, in der App „**Formatbeschreibung teilen**“ tippen und die Datei im Chat anhängen.
 
    Mehr bitte nicht vorgeben: Wir testen, ob die Formatbeschreibung allein reicht. Fragt der Chat nach, beantworte die Frage und notiere sie für die Rückmeldung.
