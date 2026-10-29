@@ -151,7 +151,7 @@ test("E2E-17 Ein wiederhergestelltes Backup bringt seine Darstellung mit", async
       }),
     ),
   });
-  await page.getByRole("button", { name: "Alle Daten ersetzen" }).click();
+  await page.getByRole("button", { name: "Wiederherstellen", exact: true }).click();
   await expect(page.getByText("Backup wiederhergestellt.")).toBeFocused();
   expect(await colors(page, names)).toEqual(dark);
 

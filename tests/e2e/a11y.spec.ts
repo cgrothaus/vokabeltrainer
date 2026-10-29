@@ -104,7 +104,7 @@ test("Ohne Sets: Bibliothek, Hilfe, Import, Backup, Einstellungen, unbekannte Ad
     mimeType: "application/json",
     buffer: Buffer.from(emptyBackup),
   });
-  await expect(page.getByRole("button", { name: "Alle Daten ersetzen" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Wiederherstellen", exact: true })).toBeVisible();
   findings.push(...(await audit(page, "Backup-Vorschau")));
 
   await page.goto("./#/settings");
@@ -162,6 +162,15 @@ test("Mit Set: Bibliothek, Set-Ansicht, Löschen, Einrichtung, Karteikarten, Zwi
     await expect(page.locator(".rating")).toBeHidden();
   }
   findings.push(...(await audit(page, "Ergebnis")));
+
+  await page.goto("./#/backup");
+  await page.getByLabel("Backup-Datei auswählen").setInputFiles({
+    name: "Vokabeltrainer-Backup_2026-10-20.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(emptyBackup),
+  });
+  await expect(page.getByRole("button", { name: "Vorher Backup speichern" })).toBeVisible();
+  findings.push(...(await audit(page, "Backup-Vorschau mit Warnung")));
 
   await page.goto("./#/settings");
   await page.getByRole("button", { name: "Alle Daten löschen" }).click();
