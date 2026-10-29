@@ -1,6 +1,6 @@
 # Betatest Meilenstein 0: Anleitung
 
-**Stand:** 22. Oktober 2026  
+**Stand:** 29. Oktober 2026  
 **App:** https://cgrothaus.github.io/vokabeltrainer/
 
 Danke, dass du mittestest! Die App ist noch ein Gerüst: Sie kann Vokabeln importieren, als Karteikarten und Multiple Choice abfragen und ein Backup speichern. Wir wollen herausfinden, ob dieser Weg auf deinem Handy von vorn bis hinten funktioniert – besonders der Schritt mit dem KI-Chat.
@@ -25,7 +25,7 @@ Formatbeschreibung ──┘
 
 ## 2. Vokabeln mit dem KI-Chat umwandeln
 
-1. **Foto machen** von einer Vokabelliste, am besten einer selbst geschriebenen. Mehrere Fotos gehen auch.
+1. **Foto machen** von den Vokabelseiten einer Lektion oder von einer selbst geschriebenen Vokabelliste. Mehrere Fotos gehen auch. Ein Set entspricht etwa einer Lektion; Fotos aus mehreren Lektionen ergeben mehrere Sets, die der Chat einzeln ausgibt.
 2. **Vorlage aus der App holen:** In der App „**Wie bekomme ich ein Vokabelset?**“ öffnen (auf der leeren Startseite, unter der Liste oder beim Import) → „**Vorlage kopieren**“. Die Vorlage enthält den Link auf die Formatbeschreibung:  
    https://cgrothaus.github.io/vokabeltrainer/formatspezifikation.md
 3. **Im Chat die Vorlage einfügen und die Fotos anhängen.** Kann der Chat den Link nicht öffnen, in der App „**Formatbeschreibung teilen**“ tippen und die Datei im Chat anhängen.
@@ -40,7 +40,7 @@ In der App „**Vokabelset importieren**“ öffnen, dann eine der beiden Mögli
 - **Als Text:** Im Chat die Antwort (oder den Codeblock) kopieren → in der App „**Aus Zwischenablage einfügen**“ tippen (das iPhone fragt dann noch einmal mit „Einfügen“). Alternativ lange ins Feld „Text einfügen“ tippen → „Einfügen“ → „**Prüfen**“. Begleittext vor oder nach dem Codeblock stört nicht.
 - **Als Datei:** Den Chat bitten „Gib mir das als JSON-Datei“, Datei speichern (z. B. in „Dateien“ bzw. „Downloads“) → in der App „**Oder eine Datei auswählen**“.
 
-Klappt es, zeigt eine **Vorschau** Titel, Sprachen und Sektionen mit der Zahl der Einträge – fehlt eine Lektion? Dann „**Importieren**“; die App wechselt zur Bibliothek und meldet „… gespeichert.“ Hast du ein ähnliches Set schon, weist die Vorschau darauf hin. Bei einer Fehlermeldung: Screenshot machen und die Meldung ruhig an den Chat zurückgeben („Der Import meldet: …“). Wie oft das nötig war, ist eine wichtige Rückmeldung.
+Klappt es, zeigt eine **Vorschau** Titel, Sprachen und Sektionen mit der Zahl der Einträge – fehlt ein Abschnitt? Dann „**Importieren**“; die App wechselt zur Bibliothek und meldet „… gespeichert.“ Hast du ein ähnliches Set schon, weist die Vorschau darauf hin. Bei einer Fehlermeldung: Screenshot machen und die Meldung ruhig an den Chat zurückgeben („Der Import meldet: …“). Wie oft das nötig war, ist eine wichtige Rückmeldung.
 
 ## 4. Lernen und sichern
 
@@ -64,7 +64,7 @@ Bitte schick mir nach dem Test kurz:
 1. **Gerät und System**, z. B. „iPhone 15, iOS 26“ oder „Pixel 8, Android 16, Chrome“.
 2. **KI-Chat:** App und Modell (z. B. „ChatGPT, GPT-5“), Formatbeschreibung als Link oder Datei, hat der Chat nachgefragt? Haben „Vorlage kopieren“ und „Formatbeschreibung teilen“ geklappt?
 3. **Import:** auf Anhieb geklappt? Als Text (über „Aus Zwischenablage einfügen“ oder das Feld) oder Datei? Hat die Vorschau geholfen? Fehlermeldungen als Screenshot.
-4. **Inhalt:** falsche Übersetzungen, fehlende Wörter, unsinnig zusammengefasste oder getrennte Bedeutungen.
+4. **Inhalt:** falsche Übersetzungen, fehlende Wörter, unsinnig zusammengefasste oder getrennte Bedeutungen; passen Set und Sektionen zur Gliederung der Lektion?
 5. **Backup:** Wo ist die Datei gelandet? Hat Abbrechen im Teilen-Menü etwas gespeichert?
 6. **Offline-Start** und **Aktualisieren:** hat beides funktioniert?
 7. Alles, was unklar, umständlich oder überraschend war.

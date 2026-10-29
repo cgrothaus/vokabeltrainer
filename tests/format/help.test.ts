@@ -1,5 +1,6 @@
-// Hilfe und Formatspezifikation (TDD 13.1, 15.7): Beispiel und Vorlage der App stehen wörtlich in der
-// Spezifikation, und die App verweist auf die Datei, die der Build veröffentlicht.
+// Hilfe und Formatspezifikation (TDD 13.1, 15.7, D-35): Das Beispiel der App steht wörtlich in der
+// Spezifikation, die App verweist auf die Datei, die der Build veröffentlicht, und die Spezifikation
+// steht als ausgeliefertes Dokument für sich: ohne Vorlage und ohne Verweise auf Projektdokumente.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { PUBLISHED_DOCS } from "../../scripts/precache";
@@ -34,15 +35,23 @@ describe("Hilfe", () => {
     expect(validateSetFile(JSON.parse(FORMAT_EXAMPLE))).toMatchObject({ ok: true, warnings: [] });
   });
 
-  it("bietet die Vorlage aus 11.1 der Formatspezifikation an", () => {
-    expect(NEW_SET_PROMPT).toBe(codeBlock("### 11.1 Neues Set erstellen", "text"));
-  });
-
   it("die Vorlage enthält den Platzhalter für den Link genau einmal", () => {
     expect(NEW_SET_PROMPT.split(LINK_PLACEHOLDER)).toHaveLength(2);
   });
 
   it("verweist auf die veröffentlichte Formatspezifikation", () => {
     expect(PUBLISHED_DOCS[SPEC_FILE]).toBe("docs/Formatspezifikation_Vokabelset_v1.md");
+  });
+});
+
+describe("Formatspezifikation", () => {
+  it("verweist nicht auf Projektdokumente oder deren Nummern", () => {
+    expect(spec).not.toMatch(/\b(PRD|TDD)\b/);
+    expect(spec).not.toMatch(/\b(FR|NFR|DF|AK|TAK|PI|D|S|T|F|O|R|Z)-\d+/);
+  });
+
+  it("enthält keine Vorlage für den KI-Chat", () => {
+    expect(spec).not.toContain(LINK_PLACEHOLDER);
+    expect(spec).not.toContain(NEW_SET_PROMPT.split("\n")[1]);
   });
 });

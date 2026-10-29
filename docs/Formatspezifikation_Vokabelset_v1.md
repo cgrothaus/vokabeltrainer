@@ -2,52 +2,65 @@
 
 **Formatkennung:** `vokabeltrainer-set`  
 **Formatversion:** 1  
-**Dokumentstand:** 22. Oktober 2026 – Entwurf  
-**Bezug:** PRD 2.4 (FR-13–FR-20, FR-29, FR-30, FR-32, DF-01–DF-11), TDD v2
+**Dokumentstand:** 29. Oktober 2026
 
-Dieses Dokument beschreibt, wie eine Datei aufgebaut sein muss, damit der Vokabeltrainer sie importieren kann. Es richtet sich an drei Gruppen:
+## Wozu diese Beschreibung dient
+
+Der Vokabeltrainer ist eine App zum Vokabellernen auf dem Handy. Lernende üben darin mit Karteikarten und Multiple-Choice-Fragen in beide Richtungen; falsch beantwortete Vokabeln kommen in derselben Runde wieder, und die App merkt sich den Lernstand. Sie läuft im Browser oder als installierte Web-App, ohne Konto und ohne Server: Alle Daten bleiben auf dem Gerät.
+
+Vokabeln kommen als **Vokabelset** in die App, als JSON im Format, das dieses Dokument beschreibt. Meist gibt es eine gedruckte Vorlage, etwa die Vokabelseiten einer Lektion im Schulbuch, ein Arbeitsblatt oder eine handgeschriebene Liste. Der übliche Weg in die App:
+
+1. Lernende fotografieren die Vokabelseiten.
+2. Sie geben die Fotos zusammen mit dieser Beschreibung in einen KI-Chat, z. B. ChatGPT, Claude oder Gemini.
+3. Der Chat überträgt die Vokabeln von den Fotos in ein Vokabelset und gibt es als JSON-Codeblock aus.
+4. Lernende kopieren die Antwort und fügen sie in der App unter „Vokabelset importieren“ ein. Die App zeigt eine Vorschau mit Titel, Sprachen und Sektionen und speichert das Set nach Bestätigung.
+
+Ein zweiter Weg: Ein Set wird aus der App exportiert, von Hand oder in einem KI-Chat geprüft und korrigiert und wieder importiert. Der Lernstand bleibt dabei erhalten (Kapitel 6 bis 9). Kapitel 11 beschreibt beide Wege genauer.
+
+Dieses Dokument richtet sich an
 
 - **Menschen**, die ein Set von Hand schreiben oder prüfen,
-- **LLMs**, die ein Set aus einem Foto, einer Buchseite oder einer Wortliste erzeugen oder ein exportiertes Set korrigieren (Kapitel 10 und 11),
-- **Entwicklung und Tests** als verbindliche Referenz für Validator, JSON Schema und Testfixtures.
+- **KI-Assistenten**, die ein Set aus Fotos, einer Buchseite oder einer Wortliste erstellen oder ein exportiertes Set korrigieren (besonders Kapitel 3.1, 4, 5.6 und 10),
+- **Programme**, die solche Dateien erzeugen oder prüfen.
 
-Ein maschinenlesbares JSON Schema (Draft 2020-12) liegt als `vokabeltrainer-set.schema.json` neben diesem Dokument; die App veröffentlicht beide neben sich selbst (Kapitel 11). Es prüft Aufbau, Typen und Längen; einige Regeln lassen sich darin nicht ausdrücken, etwa doppelte IDs oder das Entfernen von Leerzeichen am Rand. Bei Widersprüchen gilt dieses Dokument.
+Ein maschinenlesbares JSON Schema (Draft 2020-12) liegt als `vokabeltrainer-set.schema.json` neben diesem Dokument (Kapitel 11). Es prüft Aufbau, Typen und Längen; einige Regeln lassen sich darin nicht ausdrücken, etwa doppelte IDs oder das Entfernen von Leerzeichen am Rand. Bei Widersprüchen gilt dieses Dokument.
 
 ---
 
 ## 1. Das Wichtigste in Kürze
 
-Ein neues Set braucht nur einen Titel, zwei Sprachen und Sektionen mit Einträgen:
+Ein Set entspricht einer Lektion oder einer ähnlich großen Lerneinheit und ist in wenige Sektionen nach den größeren Zwischenüberschriften gegliedert. Ein neues Set braucht nur einen Titel, zwei Sprachen und Sektionen mit Einträgen:
 
 ```json
 {
   "format": "vokabeltrainer-set",
   "formatVersion": 1,
   "set": {
-    "title": "Englisch – Freizeit und Essen",
+    "title": "Lektion 4 – In der Stadt",
     "termLanguage": "en",
     "meaningLanguage": "de",
     "level": "Klasse 6"
   },
   "sections": [
     {
-      "title": "Essen und Trinken",
+      "title": "Unterwegs",
       "entries": [
-        { "term": "apple", "meanings": ["Apfel"] },
-        { "term": "breakfast", "meanings": ["Frühstück"] }
+        { "term": "bus stop", "meanings": ["Bushaltestelle"] },
+        { "term": "to miss", "meanings": ["vermissen", "verpassen"] }
       ]
     },
     {
-      "title": "Freizeit",
+      "title": "Einkaufen",
       "entries": [
-        { "term": "to miss", "meanings": ["vermissen", "verpassen"] },
-        { "term": "football", "meanings": ["Fußball"] }
+        { "term": "money", "meanings": ["Geld"] },
+        { "term": "apple", "meanings": ["Apfel"] }
       ]
     }
   ]
 }
 ```
 
+- Ein **Set** ist eine größere Lerneinheit, z. B. eine Lektion; **Sektionen** sind ihre größeren Abschnitte (Kapitel 3.1 und 4).
 - `term` ist das Wort in der **Lernsprache** (hier Englisch).
 - `meanings` ist eine **Liste von Bedeutungen** in der **Bedeutungssprache** (hier Deutsch).
 - IDs werden bei neuen Sets **weggelassen**; die App vergibt sie beim Import.
@@ -58,6 +71,8 @@ Ein ausführlicheres Beispiel mit Varianten, mehreren Bedeutungen, Grammatik und
 
 ## 2. Aufbau einer Datei
 
+Eine Datei enthält genau ein Set, gegliedert in **Set → Sektionen → Einträge**. Das Set erscheint in der Bibliothek der App als eine Zeile. Seine Sektionen wählt man aus, wenn man eine Lernrunde einrichtet. Ein Eintrag ist eine Vokabel, die als Karteikarte oder Multiple-Choice-Frage abgefragt wird.
+
 | Feld | Pflicht | Typ | Bedeutung |
 |---|---|---|---|
 | `format` | ja¹ | String | Immer `"vokabeltrainer-set"` |
@@ -67,7 +82,7 @@ Ein ausführlicheres Beispiel mit Varianten, mehreren Bedeutungen, Grammatik und
 | `set` | ja | Objekt | Angaben zum Set (Kapitel 3) |
 | `sections` | ja | Array | Geordnete Liste der Sektionen (Kapitel 4); mindestens eine |
 
-¹ Fehlen `format` und `formatVersion`, nimmt die App tolerant Formatversion 1 an und weist in der Vorschau darauf hin. Eine Datei mit `formatVersion` größer als 1 wird von einer App, die nur Version 1 kennt, mit einem verständlichen Hinweis abgelehnt (DF-11).
+¹ Fehlen `format` und `formatVersion`, nimmt die App tolerant Formatversion 1 an und weist in der Vorschau darauf hin. Eine Datei mit `formatVersion` größer als 1 wird von einer App, die nur Version 1 kennt, mit einem verständlichen Hinweis abgelehnt (Kapitel 12).
 
 Die Reihenfolge der Sektionen im Array und der Einträge innerhalb einer Sektion ist die Reihenfolge in der App. Es gibt keine separaten Sortierfelder.
 
@@ -75,34 +90,57 @@ Die Reihenfolge der Sektionen im Array und der Einträge innerhalb einer Sektion
 
 ## 3. Das Set (`set`)
 
+### 3.1 Was ein Set ist
+
+Ein Set ist eine **größere, in sich geschlossene Lerneinheit**, mit der man eine Zeit lang arbeitet, typischerweise
+
+- eine Lektion (Unit, Kapitel, Modul) eines Lehrwerks,
+- ein Arbeitsblatt oder eine Vokabelliste für eine Klassenarbeit,
+- eine eigene Sammlung zu einem Thema.
+
+Ein ganzes Lehrwerk ist **kein** Set; es ergibt so viele Sets, wie es Lektionen hat. So bleibt die Bibliothek übersichtlich: Lernende wählen die aktuelle Lektion aus und sehen pro Set und Sektion, wie gut sie die Vokabeln schon können. Umgekehrt ist eine einzelne Zwischenüberschrift kein eigenes Set, sondern eine Sektion (Kapitel 4).
+
+Stammen die Vokabeln auf den Fotos oder in der Liste aus **mehreren Lektionen**, gehört jede Lektion in ein eigenes Set. Die App übernimmt aus einem eingefügten Text nur das erste Set; jedes Set steht deshalb in einem eigenen JSON-Codeblock und wird für sich kopiert und importiert.
+
+### 3.2 Felder
+
 | Feld | Pflicht | Typ | Bedeutung |
 |---|---|---|---|
 | `id` | nein² | String | Stabile ID des Sets |
 | `rev` | nein² | String | Prüfwert der Set-Angaben beim Export (Kapitel 6) |
-| `title` | ja | String, 1–200 Zeichen | Titel des Sets |
-| `termLanguage` | ja | Sprachcode | Lernsprache, z. B. `"en"`, `"fr"`, `"es"`, `"la"`, `"en-GB"` |
-| `meaningLanguage` | ja | Sprachcode | Sprache der Bedeutungen, z. B. `"de"` |
-| `level` | nein | String | Lernstufe frei formuliert, z. B. `"Klasse 6"`, `"A2"`, `"Kursstufe"` |
-| `textbook` | nein | String | Lehrwerk, falls das Set sich darauf bezieht |
+| `title` | ja | String, 1–200 Zeichen | Name des Sets in der Bibliothek. Bei einer Lektion am besten ihre Bezeichnung aus der Vorlage mit dem Thema, z. B. „Lektion 4 – In der Stadt“ oder „Unit 2 – My family“. Die Bibliothek sortiert Zahlen in Titeln der Größe nach („Lektion 2“ vor „Lektion 10“). |
+| `termLanguage` | ja | Sprachcode | Lernsprache, also die Sprache der Wörter, die gelernt werden, z. B. `"en"`, `"fr"`, `"es"`, `"la"`, `"en-GB"` |
+| `meaningLanguage` | ja | Sprachcode | Sprache der Bedeutungen, meist die Muttersprache der Lernenden, z. B. `"de"` |
+| `level` | nein | String | Lernstufe frei formuliert, z. B. `"Klasse 6"`, `"A2"`, `"Kursstufe"`. Die Bibliothek gruppiert Sets nach Lernsprache und sortiert sie darin nach Lernstufe und Titel. |
+| `textbook` | nein | String | Name des Lehrwerks, aus dem das Set stammt; er gehört hierher und nicht in den Titel |
 | `edition` | nein | String | Ausgabe oder Auflage des Lehrwerks |
-| `source` | nein | String | Herkunft, z. B. „eigene Zusammenstellung“ oder „Arbeitsblatt vom 3. 10.“ |
-| `license` | nein | String | Nutzungsrechte, z. B. `"CC0"` |
-| `notes` | nein | String | Freie Hinweise zum Set |
-| `reviewStatus` | nein | `"unchecked"` oder `"checked"` | Prüfstatus des Sets |
+| `source` | nein | String | Herkunft, z. B. „Arbeitsblatt vom 3. 10.“ oder „eigene Zusammenstellung“ |
+| `license` | nein | String | Nutzungsrechte, falls bekannt, z. B. `"CC0"` |
+| `notes` | nein | String | Freie Hinweise zum Set; erscheinen in der Set-Ansicht |
+| `reviewStatus` | nein | `"unchecked"` oder `"checked"` | Ob das Set als Ganzes geprüft ist |
 
 ² Bei neu erstellten Sets weglassen. Bei Dateien, die aus der App exportiert wurden, immer vorhanden und **unverändert zu erhalten**.
 
 **Sprachcodes** folgen BCP 47 (wie in `lang`-Attributen von HTML): zwei oder drei Buchstaben für die Sprache, optional mit Region, z. B. `en`, `en-GB`, `pt-BR`, `de`, `la`.
 
+Optionale Angaben, die aus der Vorlage nicht hervorgehen, etwa Lernstufe oder Lehrwerk, dürfen fehlen.
+
 ---
 
 ## 4. Sektionen (`sections[]`)
+
+Sektionen gliedern ein Set in **wenige größere Abschnitte**. In der App sind sie
+
+- die Auswahl beim Einrichten einer Lernrunde, z. B. nur „Unterwegs“ üben,
+- aufklappbare Abschnitte in der Set-Ansicht, jeweils mit eigenem Lernstand.
+
+Damit das hilft, folgen Sektionen den **größeren Zwischenüberschriften** der Vorlage, etwa den Teilen einer Lektion („Einstieg“, „Text A“, „Text B“) oder ihren Themen. Kleinere Überschriften, Wortfelder, Kästen, Tabellen oder Seitenwechsel ergeben keine eigene Sektion; ihre Einträge gehören zur übergeordneten Überschrift. Eine Sektion mit nur zwei oder drei Einträgen ist meist zu klein. Typisch sind zwei bis sechs Sektionen mit jeweils etwa 10 bis 50 Einträgen. Hat die Vorlage keine Zwischenüberschriften, genügt **eine** Sektion, z. B. mit dem Thema der Lektion als Titel.
 
 | Feld | Pflicht | Typ | Bedeutung |
 |---|---|---|---|
 | `id` | nein² | String | Stabile ID der Sektion |
 | `rev` | nein² | String | Prüfwert des Sektionstitels beim Export |
-| `title` | ja | String, 1–200 Zeichen | Name, z. B. „Lektion 3“, „Essen und Trinken“, „Lernkasten Fach 2“ |
+| `title` | ja | String, 1–200 Zeichen | Name, meist die Zwischenüberschrift der Vorlage, z. B. „Unterwegs“, „Text A“, „Redewendungen“ |
 | `entries` | ja | Array | Geordnete Liste der Einträge; darf leer sein |
 
 ---
@@ -115,12 +153,14 @@ Die Reihenfolge der Sektionen im Array und der Einträge innerhalb einer Sektion
 |---|---|---|---|
 | `id` | nein² | String | Stabile ID des Eintrags |
 | `rev` | nein² | String | Prüfwert des Eintragsinhalts beim Export |
-| `term` | ja | Antwort | Wort oder Ausdruck in der Lernsprache |
-| `meanings` | ja | Array von Antworten, mindestens eine | Bedeutungen in der Bedeutungssprache |
-| `notes` | nein | String | Hinweis, z. B. „nur britisches Englisch“ oder „unsicher: Foto unscharf“ |
-| `examples` | nein | Array | Beispielsätze, je String oder `{ "text", "translation"? }` |
+| `term` | ja | Antwort | Wort oder Ausdruck in der Lernsprache, so wie er in der Vorlage steht, z. B. „to miss“ oder „la maison“ |
+| `meanings` | ja | Array von Antworten, mindestens eine | Bedeutungen in der Bedeutungssprache. Beim Abfragen stehen alle Bedeutungen eines Eintrags gemeinsam auf der Karte (Unterscheidung von Varianten in 5.3). |
+| `notes` | nein | String | Hinweis für die Lernenden, z. B. „nur britisches Englisch“, oder auf eine unsichere Stelle, z. B. „unsicher: Foto unscharf“ |
+| `examples` | nein | Array | Beispielsätze, je String oder `{ "text", "translation"? }`; `translation` ist die Übersetzung in die Bedeutungssprache |
 | `grammar` | nein | Objekt | Grammatische Angaben (5.4) |
-| `reviewStatus` | nein | `"unchecked"` oder `"checked"` | Prüfstatus des Eintrags |
+| `reviewStatus` | nein | `"unchecked"` oder `"checked"` | `"unchecked"` kennzeichnet einen Eintrag als „ungeprüft“, z. B. weil er auf dem Foto schwer lesbar war |
+
+Notiz, Beispiele und Grammatik erscheinen auf der Rückseite der Karteikarte und in der Set-Ansicht, „ungeprüft“ in der Set-Ansicht am Eintrag.
 
 ### 5.2 Antworten: Text und akzeptierte Varianten
 
@@ -171,6 +211,22 @@ Beispiel: `{ "term": "to go", "meanings": ["gehen", "fahren"], "grammar": { "par
 - Führende und abschließende Leerzeichen entfernt die App beim Import.
 - Pflichttexte (Titel, `term`, Bedeutungen, `text` einer Antwort oder eines Beispiels) dürfen nicht leer sein, ebenso Elemente von Listen (Varianten, Beispiele, Wortformen). Ein Text nur aus Leerzeichen gilt als leer.
 - Ein leeres optionales Feld, z. B. `"notes": ""`, `"examples": []` oder `"grammar": {}`, entfernt die App beim Import ohne Rückmeldung. Besser lässt man es weg.
+
+### 5.6 Was wohin gehört
+
+Vokabellisten in Lehrwerken haben oft mehrere Spalten und Zusatzangaben. So verteilen sie sich auf das Format:
+
+| In der Vorlage | Im Set |
+|---|---|
+| Lektionsbezeichnung und Thema | `title` des Sets; der Name des Lehrwerks in `textbook` |
+| Größere Zwischenüberschriften | Sektionen (Kapitel 4) |
+| Wort oder Ausdruck in der Lernsprache, wie abgedruckt, also mit „to“, Artikel oder Ergänzungen wie „sb./sth.“ | `term` |
+| Übersetzungen, oft durch Komma oder Semikolon getrennt | `meanings` bzw. `acceptedVariants`, je nachdem, ob es verschiedene Bedeutungen oder gleichwertige Wörter sind (5.3) |
+| Stammformen unregelmäßiger Verben, Plural, Genus oder Wortart, wenn sie getrennt vom Wort stehen | `grammar` (5.4) |
+| Beispielsatz, gegebenenfalls mit Übersetzung | `examples` |
+| Hinweise wie „BE“/„AE“, „umgangssprachlich“, Gegenteil oder verwandte Wörter | `notes` |
+| Lautschrift | weglassen; dafür gibt es kein Feld |
+| Seitenzahlen, Verweise auf Zeilen oder Texte, Nummerierung, Symbole | weglassen |
 
 ---
 
@@ -241,9 +297,9 @@ Eine Datei kann ein ganzes Set oder nur ausgewählte Sektionen enthalten.
 ### 8.4 Toleranz und Prüfung
 
 - **Unbekannte Felder** werden ignoriert und in der Vorschau als „wird ignoriert“ aufgeführt. Der Import scheitert daran nicht. Stehen `meanings` und `meaning` beide in einem Eintrag, wird `meaning` ignoriert.
-- **Eingefügter Text** darf das JSON in einem Markdown-Codeblock (```` ```json … ``` ````) oder mit kurzem Begleittext davor oder danach enthalten; die App schneidet das JSON-Objekt heraus.
+- **Eingefügter Text** darf das JSON in einem Markdown-Codeblock (```` ```json … ``` ````) oder mit kurzem Begleittext davor oder danach enthalten; die App schneidet das JSON-Objekt heraus. Enthält der Text mehrere Codeblöcke, nimmt sie den ersten, der ein JSON-Objekt enthält.
 - Der Schlüssel `meaning` (Einzahl) mit einer einzelnen Antwort wird als `meanings` mit einem Element verstanden; die Vorschau weist darauf hin.
-- **Fehler**, die eine sichere Übernahme verhindern, blockieren den Import mit einer verständlichen Meldung samt Fundstelle, z. B. „Sektion 2 „Freizeit“, Eintrag 5: Es fehlt die Bedeutung.“ Dazu gehören: kein gültiges JSON, unbekannte Formatversion, fehlende Pflichtfelder, leere Pflichttexte oder Listenelemente, Werte vom falschen Typ (z. B. eine Zahl als `notes`), ein anderer `reviewStatus` als `"unchecked"` oder `"checked"`, ungültige Sprachcodes, IDs oder `rev`-Werte, doppelte IDs, widersprüchlicher `scope`, zu lange Texte.
+- **Fehler**, die eine sichere Übernahme verhindern, blockieren den Import mit einer verständlichen Meldung samt Fundstelle, z. B. „Sektion 2 „Einkaufen“, Eintrag 5: Es fehlt die Bedeutung.“ Dazu gehören: kein gültiges JSON, unbekannte Formatversion, fehlende Pflichtfelder, leere Pflichttexte oder Listenelemente, Werte vom falschen Typ (z. B. eine Zahl als `notes`), ein anderer `reviewStatus` als `"unchecked"` oder `"checked"`, ungültige Sprachcodes, IDs oder `rev`-Werte, doppelte IDs, widersprüchlicher `scope`, zu lange Texte.
 - **Grenzen:** Datei höchstens 10 MiB, höchstens 500 Sektionen und 20.000 Einträge. Texte höchstens (in Zeichen, ohne Leerzeichen am Rand):
 
   | Text | Zeichen |
@@ -267,7 +323,7 @@ Eine Datei kann ein ganzes Set oder nur ausgewählte Sektionen enthalten.
   "set": {
     "id": "m4x8c2r9tw",
     "rev": "k2p9w4ha",
-    "title": "Englisch – Freizeit und Essen",
+    "title": "Lektion 4 – In der Stadt",
     "termLanguage": "en",
     "meaningLanguage": "de",
     "level": "Klasse 6"
@@ -276,17 +332,17 @@ Eine Datei kann ein ganzes Set oder nur ausgewählte Sektionen enthalten.
     {
       "id": "q7h3kd",
       "rev": "t5m2b8xe",
-      "title": "Freizeit",
+      "title": "Unterwegs",
       "entries": [
-        { "id": "a8f2kc", "rev": "3hd9w2mq", "term": "to miss", "meanings": ["vermissen"] },
-        { "id": "p3z7rn", "rev": "x9c4k2fj", "term": "footbal", "meanings": ["Fußball"] }
+        { "id": "a8f2kc", "rev": "3hd9w2mq", "term": "bus stp", "meanings": ["Bushaltestelle"] },
+        { "id": "p3z7rn", "rev": "x9c4k2fj", "term": "to miss", "meanings": ["vermissen"] }
       ]
     }
   ]
 }
 ```
 
-**Korrigierte Fassung** – eine Bedeutung ergänzt, ein Tippfehler behoben, ein neuer Eintrag hinzugefügt:
+**Korrigierte Fassung** – ein Tippfehler behoben, eine Bedeutung ergänzt, ein neuer Eintrag hinzugefügt:
 
 ```json
 {
@@ -297,7 +353,7 @@ Eine Datei kann ein ganzes Set oder nur ausgewählte Sektionen enthalten.
   "set": {
     "id": "m4x8c2r9tw",
     "rev": "k2p9w4ha",
-    "title": "Englisch – Freizeit und Essen",
+    "title": "Lektion 4 – In der Stadt",
     "termLanguage": "en",
     "meaningLanguage": "de",
     "level": "Klasse 6"
@@ -306,11 +362,11 @@ Eine Datei kann ein ganzes Set oder nur ausgewählte Sektionen enthalten.
     {
       "id": "q7h3kd",
       "rev": "t5m2b8xe",
-      "title": "Freizeit",
+      "title": "Unterwegs",
       "entries": [
-        { "id": "a8f2kc", "rev": "3hd9w2mq", "term": "to miss", "meanings": ["vermissen", "verpassen"] },
-        { "id": "p3z7rn", "rev": "x9c4k2fj", "term": "football", "meanings": ["Fußball"] },
-        { "term": "to swim", "meanings": ["schwimmen"], "grammar": { "forms": ["swim", "swam", "swum"] } }
+        { "id": "a8f2kc", "rev": "3hd9w2mq", "term": "bus stop", "meanings": ["Bushaltestelle"] },
+        { "id": "p3z7rn", "rev": "x9c4k2fj", "term": "to miss", "meanings": ["vermissen", "verpassen"] },
+        { "term": "to ride", "meanings": ["fahren", "reiten"], "grammar": { "forms": ["ride", "rode", "ridden"] } }
       ]
     }
   ]
@@ -321,54 +377,37 @@ Eine Datei kann ein ganzes Set oder nur ausgewählte Sektionen enthalten.
 
 ---
 
-## 10. Regeln für LLMs
+## 10. Worauf es bei einer erzeugten Datei ankommt
 
-Die Prompt-Vorlagen (Kapitel 11) verweisen auf dieses Dokument; die Regeln gelten auch ohne Vorlage.
+Diese Punkte fassen zusammen, was eine Datei braucht, damit die App sie ohne Nacharbeit übernimmt und das Set gut lernbar ist. Sie gelten für Menschen wie für KI-Assistenten.
 
-1. Antworte mit **genau einem JSON-Codeblock** und sonst nichts.
-2. Verwende **nur die Feldnamen dieser Spezifikation**, genau so geschrieben. Erfinde keine zusätzlichen Felder.
-3. **Neues Set:** keine `id`, kein `rev`, kein `scope`, kein `exportedAt`.
-4. **Korrektur eines exportierten Sets:** `id`, `rev`, `scope` und `exportedAt` exakt unverändert übernehmen – auch bei korrigierten Einträgen. Neue Einträge ohne `id` und `rev`.
-5. Gib **immer die vollständige Datei** zurück, nicht nur die geänderten Teile, und behalte die Reihenfolge bei.
-6. `term` ist in der Lernsprache (`termLanguage`), `meanings` in der Bedeutungssprache (`meaningLanguage`).
-7. Unterscheide **Varianten** (gleichwertige Wörter derselben Bedeutung → `acceptedVariants`) von **verschiedenen Bedeutungen** (→ mehrere Elemente in `meanings`), siehe 5.3.
-8. Verwende die Kurzform (String), wenn eine Antwort keine Varianten hat.
-9. Texte ohne HTML oder Markdown. Leere Felder weglassen statt leere Strings zu schreiben.
-10. Bei Unsicherheit (z. B. unleserliches Foto) den Eintrag trotzdem aufnehmen, `"reviewStatus": "unchecked"` setzen und den Grund in `notes` nennen.
-11. Sprachcodes nach BCP 47, z. B. `en`, `de`, `fr`, `es`, `la`.
+1. **Einfügbar:** Eine Antwort aus dem KI-Chat wird meist als Ganzes kopiert und in die App eingefügt. Die App nimmt daraus den ersten JSON-Codeblock; kurzer Begleittext davor oder danach stört nicht (8.4). Ein Set gehört daher vollständig in genau einen Codeblock mit gültigem JSON.
+2. **Zuschnitt:** ein Set pro Lektion oder vergleichbarer Lerneinheit (3.1), gegliedert in wenige Sektionen nach den größeren Zwischenüberschriften (4). Mehrere Lektionen ergeben mehrere Sets in getrennten Codeblöcken.
+3. **Treu zur Vorlage:** Sektionen und Einträge stehen in der Reihenfolge der Vorlage. Aufgenommen wird, was dort steht, ohne zusätzliche Vokabeln, Bedeutungen oder Beispielsätze. Naheliegende gleichwertige Schreibweisen als `acceptedVariants` (z. B. „jeder“, „jede“, „jedes“ zu „jede/-r/-s“) sind willkommen, weil sie die Abfrage erleichtern.
+4. **Zuordnung:** `term` in der Lernsprache (`termLanguage`), `meanings` in der Bedeutungssprache (`meaningLanguage`); Zusatzangaben wie in 5.6. Varianten (gleichwertige Wörter derselben Bedeutung → `acceptedVariants`) und verschiedene Bedeutungen (→ mehrere Elemente in `meanings`) unterscheiden sich wie in 5.3. Ohne Varianten genügt die Kurzform (String).
+5. **Feldnamen:** nur die Feldnamen dieser Spezifikation, genau so geschrieben. Zusätzliche Felder ignoriert die App und listet sie in der Vorschau als „wird ignoriert“ auf.
+6. **Neues Set:** keine `id`, kein `rev`, kein `scope`, kein `exportedAt`; die App vergibt die IDs selbst (6).
+7. **Korrektur eines exportierten Sets:** `id`, `rev`, `scope` und `exportedAt` bleiben exakt erhalten, auch bei korrigierten Einträgen; neue Einträge kommen ohne `id` und `rev` hinzu. Zurück geht immer die vollständige Datei in unveränderter Reihenfolge, denn beim Ersetzen löscht die App, was in der Datei fehlt (8.3).
+8. **Reiner Text:** Texte ohne HTML oder Markdown; leere Felder fehlen besser ganz, statt leere Strings zu enthalten (5.5).
+9. **Unsicheres kennzeichnen:** Ist etwas unleserlich oder unsicher, wird der Eintrag trotzdem aufgenommen, mit `"reviewStatus": "unchecked"` und dem Grund in `notes`. So sehen Lernende in der App, was sie nachprüfen sollten.
+10. **Sprachcodes** nach BCP 47, z. B. `en`, `de`, `fr`, `es`, `la`.
 
 ---
 
-## 11. Prompt-Vorlagen
+## 11. So wird diese Beschreibung genutzt
 
-Die App bietet diese Vorlagen zum Kopieren an (FR-20). Sie wiederholen die Regeln nicht, sondern verweisen auf dieses Dokument: Ein Test mit mehreren LLMs (TDD 15.7) hat gezeigt, dass die Spezifikation allein reicht, um aus einer Vokabelliste ein gültiges Set zu erzeugen oder ein exportiertes Set unter Erhalt der IDs zu korrigieren.
+Die App veröffentlicht dieses Dokument als `formatspezifikation.md` neben sich selbst, z. B. unter https://cgrothaus.github.io/vokabeltrainer/formatspezifikation.md, und das JSON Schema daneben als `vokabeltrainer-set.schema.json`. Ihre Hilfe „Wie bekomme ich ein Vokabelset?“ führt durch die Wege aus der Einleitung:
 
-Die App veröffentlicht dieses Dokument als `formatspezifikation.md` neben sich selbst, z. B. unter https://cgrothaus.github.io/vokabeltrainer/formatspezifikation.md, und setzt diese Adresse für `[Link zur Formatbeschreibung]` ein. Kann der Chat keine Links öffnen, hängt man das Dokument als Datei an; die App bietet dafür „Formatbeschreibung teilen“ an.
-
-### 11.1 Neues Set erstellen
-
-Dazu ein oder mehrere Fotos der Vokabelliste anhängen.
-
-```text
-Hier ist die Formatbeschreibung für meinen Vokabeltrainer: [Link zur Formatbeschreibung]
-Mach aus den Vokabeln auf den angehängten Fotos ein Vokabelset in diesem Format.
-```
-
-### 11.2 Exportiertes Set prüfen und korrigieren
-
-Dazu die exportierte Datei anhängen oder ihren Inhalt unter den Text einfügen.
-
-```text
-Hier ist die Formatbeschreibung für meinen Vokabeltrainer: [Link zur Formatbeschreibung]
-Prüfe das angehängte Vokabelset und korrigiere die Fehler.
-```
+- **Neues Set:** Lernende fotografieren die Vokabelseiten einer Lektion und geben die Fotos zusammen mit dem Link auf dieses Dokument in einen KI-Chat; die App bietet dafür einen kurzen Begleittext zum Kopieren an. Statt Fotos kann es auch eine abgetippte Wortliste sein. Erwartet wird eine Antwort mit dem Set als JSON-Codeblock, die sich direkt in der App einfügen lässt (Kapitel 1 bis 5 und 10).
+- **Prüfen und korrigieren:** Ein aus der App exportiertes Set wird zusammen mit diesem Dokument in einen KI-Chat gegeben oder von Hand bearbeitet. Erwartet wird die vollständige, korrigierte Datei mit unveränderten IDs (Kapitel 6 bis 9).
+- Kann ein Chat keine Links öffnen, wird dieses Dokument als Datei angehängt; die App bietet dafür „Formatbeschreibung teilen“ an.
 
 ---
 
 ## 12. Versionierung und Kompatibilität
 
 - `formatVersion` wird nur erhöht, wenn eine ältere App eine neue Datei **falsch verstehen** würde. Neue optionale Felder, die ältere Apps gefahrlos ignorieren können, erhöhen die Version nicht.
-- Jede App-Version liest Dateien **aller früheren** Formatversionen (DF-11).
+- Jede App-Version liest Dateien **aller früheren** Formatversionen.
 - Dateien einer **neueren** Formatversion werden abgelehnt mit dem Hinweis, die App neu zu laden.
 - Änderungen an dieser Spezifikation werden in Kapitel 13 festgehalten.
 
@@ -378,7 +417,8 @@ Prüfe das angehängte Vokabelset und korrigiere die Fehler.
 
 | Stand | Änderung |
 |---|---|
-| 19. Oktober 2026 | Erster Entwurf für Formatversion 1 (Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer), auf Basis der Review-Entscheidungen vom 19. Oktober 2026 (`20261019_TDD_v1_Review_Notizen.md`, F-03 bis F-07). |
-| 21. Oktober 2026 | Präzisiert mit der vollständigen Validierung (S-12, TDD 2.12), Formatversion bleibt 1: JSON Schema liegt bei; leere optionale Felder werden entfernt statt abgelehnt (5.5, D-24); Form von `rev` und `sectionIds` (6, 7); `null` bei neuen Sets, Teil-Export nicht als neues Set (8.1); `null` nur bei optionalen Feldern (8.2); `meaning` neben `meanings`, vollständige Fehlerliste, Grenzen für alle Texte (8.4). Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer. |
-| 21. Oktober 2026 | Kurze Prompt-Vorlagen mit Link auf dieses Dokument statt der langen Vorlagen (11), nach bestandenem LLM-Test (S-15, TDD 15.7); die App veröffentlicht Spezifikation und Schema neben sich selbst. Formatversion bleibt 1. Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer. |
-| 22. Oktober 2026 | Hinweis auf das Beispielset der App mit Herkunft und Lizenz (1, FR-32, S-16). Formatversion bleibt 1. Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer. |
+| 19. Oktober 2026 | Erster Entwurf für Formatversion 1. Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer. |
+| 21. Oktober 2026 | Präzisiert mit der vollständigen Validierung, Formatversion bleibt 1: JSON Schema liegt bei; leere optionale Felder werden entfernt statt abgelehnt (5.5); Form von `rev` und `sectionIds` (6, 7); `null` bei neuen Sets, Teil-Export nicht als neues Set (8.1); `null` nur bei optionalen Feldern (8.2); `meaning` neben `meanings`, vollständige Fehlerliste, Grenzen für alle Texte (8.4). Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer. |
+| 21. Oktober 2026 | Kurze Vorlagen mit Link auf dieses Dokument statt der langen Vorlagen (11), nachdem mehrere KI-Assistenten allein mit dieser Spezifikation gültige Sets erzeugt hatten; die App veröffentlicht Spezifikation und Schema neben sich selbst. Formatversion bleibt 1. Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer. |
+| 22. Oktober 2026 | Hinweis auf das Beispielset der App mit Herkunft und Lizenz (1). Formatversion bleibt 1. Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer. |
+| 29. Oktober 2026 | Eigenständig und mit Kontext, Formatversion bleibt 1: Einleitung zu Zweck und Ablauf; Zuschnitt von Set (3.1) und Sektionen (4); Bedeutung der Felder in der App (2, 3.2, 5.1) und Zuordnung typischer Angaben (5.6); Beispiele als Lektion (1, 9); Hinweise für erzeugte Dateien beschreibend statt als Anweisungen (10); Kapitel 11 beschreibt den Ablauf, die Vorlagen stehen nur noch in der App; keine Verweise auf interne Projektdokumente. Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer. |
