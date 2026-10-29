@@ -66,7 +66,7 @@ Eingerichtet (S-01, S-02, S-05):
 npm run dev          # Vite-Dev-Server (Service Worker deaktiviert); `?testmigration=ok|fail` prüft die Test-Migration, `?perf` misst TAK-15 (TDD 15.6)
 npm run build        # App nach dist/index.html (JS und CSS eingebettet), dann dist/sw.js, danach Build-Prüfung (TAK-01)
 npm run preview      # gebautes Artefakt lokal ausliefern (Port 4173)
-npm run typecheck    # tsc -b über die Projektreferenzen; `tsc --noEmit` im Wurzelverzeichnis prüft nichts
+npm run typecheck    # tsc -b über die Projektreferenzen; `tsc --noEmit` im Wurzelverzeichnis prüft nichts; „Cannot find module“ nach einem Merge mit neuer Abhängigkeit: erst `npm ci`
 npm run format       # Prettier (Markdown ist ausgenommen, Dokumente werden von Hand formatiert)
 npm run icons        # PNG-Icons aus public/icons/icon.svg neu erzeugen (Playwright-Chromium), Ergebnis einchecken
 npm test             # Vitest-Projekt `unit`: src/**/*.test.ts in Node
