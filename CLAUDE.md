@@ -21,7 +21,7 @@ Vor einer Umsetzung das betreffende Arbeitspaket (S-xx) in TDD Kap. 21 und die d
 ## Arbeitsregeln
 
 - Dokumente, UI-Texte, Fehlermeldungen und Commit-Messages auf **Deutsch**; Code, Bezeichner und Datenfelder auf Englisch. In der Oberfläche erscheinen keine technischen Begriffe wie „ID“, „rev“ oder „IndexedDB“.
-- **Umsetzungsstand nur in TDD Kap. 21** pflegen (🔲 offen · 🔶 in Arbeit · ✅ erledigt). Alle anderen Kapitel beschreiben den Sollzustand.
+- **Umsetzungsstand nur in TDD Kap. 21** pflegen (🔲 offen · 🔶 in Arbeit · ✅ erledigt). Alle anderen Kapitel beschreiben den Sollzustand. Zurückgestellte Pakete wandern ans Ende von Kap. 21 unter „Zurückgestellt“ (mit Begründung und Anlass zur Wiederaufnahme), damit ihr Meilenstein abschließbar bleibt.
 - IDs (FR, D, TAK, S …) werden nie neu vergeben; entfallene Einträge bleiben mit „entfallen“ stehen. Neue technische Entscheidungen bekommen eine D-Nummer in TDD Kap. 17, neue Arbeitspakete fortlaufende S-Nummern.
 - Inhaltliche Änderungen an PRD/TDD erhöhen die Version im Dokumentkopf und bekommen eine Zeile in der Änderungshistorie (inkl. Spalte „Entstehung“ mit Modell). Commit-Messages nennen das Dokument und die Version, z. B. „PRD 2.4: …“.
 - `docs/code-iteration1/` (per `.gitignore` ausgeschlossen) enthält den alten Prototyp mit **Lehrwerksvokabeln**. Diese Inhalte dürfen nicht in das Repository, in Fixtures oder in das Beispielset übernommen werden; das Repository ist öffentlich. Das Ablaufverhalten des Prototyps (z. B. Karteikarten-Warteschlange) darf als Vorlage dienen.
