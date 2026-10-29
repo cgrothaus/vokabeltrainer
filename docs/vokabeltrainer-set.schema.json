@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Vokabelset-Datei (vokabeltrainer-set, Formatversion 1)",
-  "description": "Maßgeblich ist Formatspezifikation_Vokabelset_v1.md. Unbekannte Felder sind erlaubt; die App ignoriert sie und meldet sie als Warnung. Nicht abgebildet sind: doppelte IDs, die Höchstzahl von 20.000 Einträgen über alle Sektionen, das Entfernen von Leerzeichen am Rand und die NFC-Normalisierung vor der Längenprüfung sowie die vollständige Prüfung der Sprachcodes nach BCP 47.",
+  "description": "Maßgeblich ist die Formatspezifikation (formatspezifikation.md). Unbekannte Felder sind erlaubt; die App ignoriert sie und meldet sie als Warnung. Nicht abgebildet sind: doppelte IDs, die Höchstzahl von 20.000 Einträgen über alle Sektionen, das Entfernen von Leerzeichen am Rand und die NFC-Normalisierung vor der Längenprüfung sowie die vollständige Prüfung der Sprachcodes nach BCP 47.",
   "type": "object",
   "required": ["set", "sections"],
   "properties": {

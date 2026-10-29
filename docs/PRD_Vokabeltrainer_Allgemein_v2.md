@@ -2,8 +2,8 @@
 
 ## Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.4 – Meilenstein M0 (Walking Skeleton)  
-**Stand:** 19. Oktober 2026  
+**Version:** 2.5 – Zuschnitt von Sets, eigenständige Formatspezifikation  
+**Stand:** 29. Oktober 2026  
 **Status:** Entwurf für die nächste Entwicklungsiteration  
 **Ausgangspunkt:** Bestehender HTML-Prototyp „Vokabeltrainer Englisch“  
 **Entstehung und Autorenschaft:** siehe Kapitel 13 (Änderungshistorie)
@@ -116,7 +116,7 @@ Die App verwaltet mehrere unabhängige Vokabelsets in einer persönlichen Biblio
 
 Lernsprache, Bedeutungssprache und Lernstufe sind **Eigenschaften eines Sets**, keine eigenen Navigationsebenen. Die Bibliothek nutzt sie zum Gruppieren, Sortieren und Filtern, z. B. als Liste nach Lernsprache gruppiert. Bei wenigen Sets darf die Navigation keine zusätzlichen Ebenen erzwingen; Sets ohne Lernstufe erscheinen ganz normal in ihrer Sprachgruppe.
 
-Beispiele für Sektionen sind Lektionen, Teile einer Lektion, Lernkästen, Themen oder frei benannte Abschnitte.
+Ein Vokabelset entspricht in der Regel einer **größeren, in sich geschlossenen Lerneinheit**, etwa einer Lektion eines Lehrwerks, einem Arbeitsblatt oder einer thematischen Sammlung – nicht einem ganzen Lehrwerk, das so viele Sets ergibt, wie es Lektionen hat. Sektionen gliedern ein Set nach seinen größeren Zwischenüberschriften, z. B. in Teile einer Lektion oder Themen; kleinere Überschriften ergeben keine eigene Sektion.
 
 ### 4.1 Lernsprache und Bedeutungssprache
 
@@ -128,7 +128,7 @@ Schuljahr beziehungsweise Lernstufe dienen der Orientierung und Sortierung. Die 
 
 ### 4.3 Vokabelset
 
-Ein Set besitzt einen Titel und die für den Betrieb erforderlichen Sprachangaben. Quelle, Lehrwerk, Ausgabe, Lernstufe, Hinweise zur Herkunft und Bearbeitungs- beziehungsweise Prüfstatus sind optionale Metadaten.
+Ein Set besitzt einen Titel und die für den Betrieb erforderlichen Sprachangaben. Es umfasst typischerweise eine Lektion oder eine ähnlich große Lerneinheit (siehe oben). Quelle, Lehrwerk, Ausgabe, Lernstufe, Hinweise zur Herkunft und Bearbeitungs- beziehungsweise Prüfstatus sind optionale Metadaten.
 
 ### 4.4 Sektionen
 
@@ -169,7 +169,7 @@ Die Liste fasst den Umfang zusammen; verbindlich sind die jeweils referenzierten
 - Aktiver Schutz vor Datenverlust durch den Browser: Anfrage nach dauerhaftem Speicher, Empfehlung zur Installation auf dem Home-Bildschirm, Backup-Erinnerung (FR-31).
 - Persistente Präferenzen und Lernfortschritte über das Schließen und erneute Öffnen der App hinweg; jede Antwort wird protokolliert (FR-11, FR-21).
 - Weiterführung der vorhandenen Übungsformen und Sitzungsfunktionen, angepasst an die neue Set-Struktur (FR-07–10, FR-12).
-- Dokumentation des Importformats mit Schema, Beispielen, Regeln, einer kopierbaren Prompt-Vorlage und Hinweisen für LLM-gestützte Erstellung und Korrektur (FR-20).
+- Eigenständige Dokumentation des Importformats mit Schema, Beispielen, Regeln und Hinweisen für LLM-gestützte Erstellung und Korrektur, dazu eine kopierbare Prompt-Vorlage in der App (FR-20).
 - Ein rechtlich unbedenkliches Beispielset (Englisch–Deutsch, Niveau etwa 6. Klasse), das zugleich als Testdatensatz dient (FR-32). Die Vokabeln des Prototyps werden nicht unverändert übernommen.
 - Bereitstellung über statisches Hosting als installierbare, offline nutzbare Web-App (NFR-01–05).
 - Weiterarbeiten mit dem vorhandenen lokalen Bestand nach jedem App-Update (FR-33, DF-11).
@@ -292,11 +292,13 @@ Nutzende können ein komplettes Vokabelset oder ausgewählte Sektionen als JSON 
 Nutzende können alle lokal gespeicherten Daten einschließlich Sets, Sektionen, IDs, Lernfortschritt, Lernhistorie und Einstellungen in einem Backup exportieren und auf einem anderen Gerät wiederherstellen. Die Wiederherstellung ersetzt immer den gesamten lokalen Bestand; ein Zusammenführen ist nicht vorgesehen. Sie zeigt vorab den Umfang des Backups und warnt, wenn vorhandene lokale Daten ersetzt werden. Ein Backup ist klar von einem gewöhnlichen Vokabelset-Export unterscheidbar. Die App merkt sich den Zeitpunkt des letzten erfolgreichen Backup-Exports.
 
 **FR-20 – Dokumentiertes JSON-Format (MUST)**  
-Es gibt eine separate, verständliche Spezifikation des Vokabelset-Formats mit Versionsregel, Pflicht- und optionalen Feldern, Beispielen, Regeln für stabile IDs, Sektionen und Antwortvarianten sowie Anweisungen für LLMs. Mindestens ein Minimalbeispiel für ein neu erstelltes Set und ein Beispiel für einen exportierten, später zu korrigierenden Datensatz sind erforderlich.
+Es gibt eine separate, verständliche Spezifikation des Vokabelset-Formats mit Versionsregel, Pflicht- und optionalen Feldern, Beispielen, Regeln für stabile IDs, Sektionen und Antwortvarianten sowie Hinweisen für die Erstellung mit KI. Mindestens ein Minimalbeispiel für ein neu erstelltes Set und ein Beispiel für einen exportierten, später zu korrigierenden Datensatz sind erforderlich.
+
+Die Spezifikation wird mit der App ausgeliefert und steht für sich: Sie verweist nicht auf interne Projektdokumente. Statt Anweisungen oder Prompts beschreibt sie Zweck und Ablauf (Foto und Spezifikation in einen KI-Chat, Antwort in die App einfügen) und die Bedeutung der Felder in der App, sodass ein LLM allein daraus erkennt, was zu tun ist. Sie erklärt den Zuschnitt von Sets und Sektionen (Kapitel 4) und welche Angaben einer Vokabelliste in welches Feld gehören.
 
 Zusätzlich gilt:
 
-- Die App enthält eine **kopierbare Prompt-Vorlage**, mit der ein LLM aus einem Foto, einer Buchseite oder einer Wortliste ein importierbares Set erzeugt, sowie eine Vorlage für die Korrektur eines exportierten Sets unter Erhalt der IDs.
+- Die App enthält eine **kopierbare Prompt-Vorlage** (nur in der App, nicht in der Spezifikation), mit der ein LLM aus einem Foto, einer Buchseite oder einer Wortliste ein importierbares Set erzeugt, sowie eine Vorlage für die Korrektur eines exportierten Sets unter Erhalt der IDs.
 - Die Beispiele in der Spezifikation verwenden ausschließlich Inhalte, die die Anforderungen aus FR-32 erfüllen.
 
 **FR-32 – Rechtlich unbedenkliches Beispielset (MUST)**  
@@ -425,7 +427,7 @@ Die nächste Version gilt als fachlich erfolgreich, wenn mindestens die folgende
 - **AK-10 – Backup** (FR-19): Ein vollständiges Backup kann auf einer frischen App-Installation wiederhergestellt werden und enthält Sets, IDs, Lernhistorie, Lernstände und Einstellungen.
 - **AK-11 – Keine Übertragung** (FR-26, NFR-04): Die Kernfunktionen sind ohne Backend nutzbar; Vokabeldaten werden nicht an externe Dienste übertragen.
 - **AK-12 – Mobile Nutzung** (FR-24, NFR-06): Die zentralen Wege – Set auswählen, Sitzung starten, Karte bewerten, Ergebnis ansehen, Vokabel bearbeiten, importieren und exportieren – funktionieren auf einem Smartphone ohne horizontales Scrollen der Hauptoberfläche.
-- **AK-13 – Dokumentation** (FR-20, DF-02): Eine Person oder ein LLM kann anhand der Formatspezifikation ein neues gültiges Set erstellen und versteht, wie IDs bei einer externen Korrektur zu erhalten sind.
+- **AK-13 – Dokumentation** (FR-20, DF-02): Eine Person oder ein LLM kann allein anhand der Formatspezifikation und des Lernmaterials ein neues gültiges Set erstellen, mit einem Zuschnitt von Set und Sektionen nach Kapitel 4, und versteht, wie IDs bei einer externen Korrektur zu erhalten sind.
 - **AK-14 – Erststart** (FR-28, FR-32): Bei einer leeren Bibliothek erklärt der Empty State knapp, wie die App funktioniert, und bietet einen gut erkennbaren Weg zum Import des ersten Sets samt schnell auffindbarer Format-Hilfe und Prompt-Vorlage sowie die Möglichkeit, ein Beispielset auszuprobieren. Neue Nutzende müssen weder die interne Datenstruktur noch die Bedeutung von IDs kennen.
 - **AK-15 – Kontextbezogene Hilfe** (FR-27, FR-28): Bei Import, Aktualisierung, Ersetzung und Backup-Wiederherstellung sind die jeweils wichtigen Folgen vor der Bestätigung verständlich erklärt. Hinweise stehen am passenden Schritt und verlangen keine Suche in einer separaten Anleitung.
 - **AK-16 – Nicht aufdringliche Führung** (FR-28, NFR-13): Die Kernwege bleiben ohne obligatorische Einführungstour nutzbar. Hilfetexte behindern die Bedienung auf einem kleinen Bildschirm nicht und ersetzen keine notwendigen Verbesserungen an Navigation, Beschriftungen oder Rückmeldungen.
@@ -462,7 +464,7 @@ Diese Indikatoren sind Ziele für eine spätere Evaluation und keine bereits nac
 - **R-06 – Importqualität:** Das Format muss ausdrucksstark genug für verschiedene Sprachen sein, dabei aber für manuelle und LLM-gestützte Erstellung einfach bleiben.
 - **R-07 – Backup-Wiederherstellung:** Das Produkt muss klar zwischen dem Import von Lerninhalten und dem Ersetzen des vollständigen persönlichen Datenbestands unterscheiden.
 - **R-08 – Änderungserkennung seit dem Export:** Für FR-29 muss festgelegt werden, woran die App erkennt, dass ein Eintrag seit einem bestimmten Export lokal geändert wurde, und wie der Bezug einer Importdatei zu diesem Export hergestellt wird.
-- **R-09 – Duplikaterkennung:** Für FR-30 sind Kriterien festzulegen, die echte Duplikate zuverlässig erkennen, ohne ähnliche, aber gewollt getrennte Sets (z. B. zwei Auflagen eines Lehrwerks) fälschlich zu melden.
+- **R-09 – Duplikaterkennung:** Für FR-30 sind Kriterien festzulegen, die echte Duplikate zuverlässig erkennen, ohne ähnliche, aber gewollt getrennte Sets (z. B. dieselbe Lektion aus zwei Auflagen eines Lehrwerks) fälschlich zu melden.
 - **R-10 – Qualität eingefügter LLM-Antworten:** LLM-Ausgaben enthalten häufig Begleittext, Codeblöcke oder kleine Formatfehler. Es ist festzulegen, was die App tolerant bereinigt und was sie als verständlichen Fehler meldet.
 - **R-11 – App-Aktualisierung im Offline-Betrieb:** Der Mechanismus für Offline-Betrieb kann alte App-Versionen zwischenspeichern. Es ist festzulegen, wie neue Versionen zuverlässig, aber ohne Unterbrechung laufender Sitzungen aktiv werden und wie Datenmigrationen dabei ablaufen.
 
@@ -506,6 +508,7 @@ Diese Punkte sind im TDD zu konkretisieren; sie sollen nicht durch unklare Annah
 - Optionale geräteübergreifende Synchronisierung, falls später ein geeigneter, datenschutzbewusster Mechanismus gewünscht ist.
 - Zusätzliche Sprachen, grammatische Merkmale und spezifische Lernmodi.
 - Komfortfunktionen zur Unterstützung der externen Erstellung und Qualitätskontrolle von Lernmaterial, ohne die lokale und einfache Grundarchitektur aufzugeben.
+- Lernen über mehrere Sets hinweg, z. B. mehrere Lektionen vor einer Klassenarbeit, und eine übersichtlichere Bibliothek bei vielen Sets in Lektionsgröße, etwa gruppiert nach Lehrwerk.
 
 ---
 
@@ -525,3 +528,4 @@ Das TDD muss insbesondere sicherstellen, dass die zentrale Produktanforderung er
 | 2.2 | 19. Oktober 2026 | Review eingearbeitet: Speicherschutz und Backup-Erinnerung (FR-31), statisches Hosting als installierbare Offline-Web-App statt `file://`, Import per eingefügtem Text und Prompt-Vorlage, Protokoll jeder Antwort (FR-11), Warnung bei lokalen Änderungen seit dem Export (FR-29), Duplikaterkennung (FR-30), Meilensteine (5.3), Hierarchie mit Sprache/Lernstufe als Set-Eigenschaften, Unterscheidung von Varianten und Bedeutungen, Regeln für Multiple-Choice-Antworten und Bedienwege (FR-09), Löschen und Leeranlage von Sets, rechtlich unbedenkliches Beispielset ohne unveränderte Prototyp-Vokabeln (FR-32), Zielalter, Wiederherstellung ersetzt immer, freie Eingabe als LATER, Akzeptanzkriterien 17–23, Risiken 8–11 | Review und Überarbeitung mit Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.3 | 19. Oktober 2026 | Eindeutige IDs für Ziele (Z), Datenformat (DF), nicht-funktionale Anforderungen (NFR), Akzeptanzkriterien (AK), Produktindikatoren (PI) und Risiken (R); Akzeptanzkriterien verweisen auf die geprüften Anforderungen; Scope-Überblick verweist auf FR/NFR. Neu: FR-33 (Weiterarbeiten nach App-Updates), DF-11 (Abwärtskompatibilität), NFR-19 verschärft, AK-24 (App-Update), AK-25 (Sets und Sektionen verwalten), AK-26 (Speicherfehler); R-05 konkretisiert | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.4 | 19. Oktober 2026 | Meilenstein M0 (Walking Skeleton) vor M1 ergänzt; Hinweis, dass Umsetzungsstand nur im Umsetzungsplan des TDD geführt wird; provisorisches Deployment vs. endgültige Adresse | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.5 | 29. Oktober 2026 | Zuschnitt: Ein Set entspricht einer größeren Lerneinheit wie einer Lektion, nicht einem ganzen Lehrwerk; Sektionen folgen den größeren Zwischenüberschriften (4, 4.3). Formatspezifikation eigenständig und ausgeliefert, mit Zweck, Ablauf und Bedeutung der Felder statt Anweisungen; Prompt-Vorlage nur in der App (5.1, FR-20, AK-13). R-09 an den Zuschnitt angepasst; Lernen über mehrere Sets als mögliche Ausbaustufe (11) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
