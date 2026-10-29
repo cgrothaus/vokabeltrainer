@@ -1,5 +1,6 @@
 import "./styles/main.css";
 import { checkBackup, lastBackupAt, prepareBackup, restore, saveBackup } from "./app/backup";
+import { loadReminder, snoozeReminder } from "./app/backupReminder";
 import {
   clearStorageProblem,
   mountStorageNotice,
@@ -147,6 +148,10 @@ async function start(): Promise<void> {
     libraryView({
       protection: (hasSets) =>
         protectionNotice({ persistence, ios: isIos(), installed: isInstalled(), hasSets }),
+      loadReminder: () => loadReminder(db),
+      prepareBackup: () => prepareBackup(db, __APP_VERSION__),
+      saveBackup: (prepared) => saveBackup(db, prepared),
+      snoozeReminder: () => snoozeReminder(db),
       loadSets: () => listSets(db),
       loadSampleSet: async () => {
         const outcome = await loadSampleSet(db);

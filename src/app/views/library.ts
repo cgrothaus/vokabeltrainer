@@ -1,6 +1,8 @@
+import type { Reminder } from "../../domain/backupReminder";
 import type { StoredSet } from "../../domain/model";
 import { groupSets, setSize } from "../../domain/library";
 import type { ProtectionNotice } from "../../domain/storageProtection";
+import { backupReminder, type ReminderActions } from "../components/backupReminder";
 import { learnButton } from "../components/learnButton";
 import { protectionHint } from "../components/protectionHint";
 import { h } from "../dom";
@@ -9,9 +11,11 @@ import type { SampleOutcome } from "../sampleSet";
 import { failureMessage } from "../storageMessages";
 import { emptyLibrary } from "./emptyLibrary";
 
-export interface LibraryContext {
+export interface LibraryContext extends ReminderActions {
   /** Welcher Speicherschutz-Hinweis passt (TDD 6.6); hängt davon ab, ob Sets vorhanden sind. */
   protection: (hasSets: boolean) => ProtectionNotice;
+  /** Ob die Backup-Erinnerung fällig ist (TDD 6.6). */
+  loadReminder: () => Promise<Reminder>;
   loadSets: () => Promise<StoredSet[]>;
   /** Speichert das Beispielset (Empty State); bei Erfolg wechselt die App zur Set-Ansicht. */
   loadSampleSet: () => Promise<SampleOutcome>;
@@ -21,7 +25,7 @@ export interface LibraryContext {
 
 export function libraryView(context: LibraryContext): Node {
   // Hinweise über der Liste (TDD 13.1); sie hängen vom Bestand ab und erscheinen nach dem Laden.
-  const hints = h("div", { class: "hints" });
+  const hints = h("div", { class: "hints", "aria-busy": "true" });
   const sets = h("section", { "aria-label": "Vokabelsets" });
   // Erst nach dem Laden zeigen: Bei leerer Bibliothek bietet der Empty State dieselben Wege an.
   const more = h(
@@ -30,10 +34,10 @@ export function libraryView(context: LibraryContext): Node {
     h("p", null, h("a", { href: "#/import", class: "action" }, "Vokabelset importieren")),
     h("p", null, h("a", { href: "#/help" }, "Wie bekomme ich ein Vokabelset?")),
   );
-  void showSets(sets, context).then((empty) => {
+  void showSets(sets, context).then(async (empty) => {
     more.hidden = empty;
-    const hint = protectionHint(context.protection(!empty), !empty);
-    if (hint) hints.replaceChildren(hint);
+    hints.replaceChildren(...(await showHints(context, empty)));
+    hints.removeAttribute("aria-busy");
   });
   const text = context.takeMessage();
   const message = text && h("p", { role: "status", class: "message", tabindex: "-1" }, text);
@@ -49,6 +53,24 @@ export function libraryView(context: LibraryContext): Node {
     more,
     h("p", null, h("a", { href: "#/backup" }, "Backup und Wiederherstellung")),
     h("p", null, h("a", { href: "#/settings" }, "Einstellungen")),
+  );
+}
+
+/**
+ * Backup-Erinnerung und Speicherschutz-Hinweis (TDD 6.6). Ohne Sets gibt es keine Antworten (D-25),
+ * also keine Erinnerung; neben ihr wäre der Hinweis auf Backups doppelt.
+ */
+async function showHints(context: LibraryContext, empty: boolean): Promise<Node[]> {
+  let reminder: Reminder = { due: false };
+  if (!empty)
+    reminder = await context.loadReminder().catch((error: unknown) => {
+      console.warn("Backup-Erinnerung nicht geprüft", error);
+      return { due: false } as const;
+    });
+  const notice = context.protection(!empty);
+  const protection = reminder.due && notice === "backup" ? null : protectionHint(notice, !empty);
+  return [reminder.due ? backupReminder(reminder, context) : null, protection].filter(
+    (node): node is Node => node !== null,
   );
 }
 
