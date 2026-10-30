@@ -1,5 +1,5 @@
 // Empty State der Bibliothek (TDD 13.1, FR-28, AK-14): erklärt knapp die App und zeigt den nächsten
-// Schritt. „Leeres Set anlegen“ folgt mit S-31.
+// Schritt; daneben Beispielset und „Leeres Set anlegen“ (FR-02).
 import { sampleSetButton } from "../components/sampleSetButton";
 import { h } from "../dom";
 import type { SampleOutcome } from "../sampleSet";
@@ -18,6 +18,7 @@ export function emptyLibrary(loadSampleSet: () => Promise<SampleOutcome>): Node 
     h("p", null, h("a", { href: "#/import", class: "action" }, "Erstes Vokabelset importieren")),
     h("p", null, sampleSetButton(loadSampleSet, problem)),
     problem,
+    h("p", null, h("a", { href: "#/new-set", class: "action secondary" }, "Leeres Set anlegen")),
     h("p", null, h("a", { href: "#/help" }, "Wie bekomme ich ein Vokabelset?")),
   );
 }

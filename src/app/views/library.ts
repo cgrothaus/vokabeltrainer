@@ -32,6 +32,7 @@ export function libraryView(context: LibraryContext): Node {
     "div",
     { hidden: true },
     h("p", null, h("a", { href: "#/import", class: "action" }, "Vokabelset importieren")),
+    h("p", null, h("a", { href: "#/new-set", class: "action secondary" }, "Leeres Set anlegen")),
     h("p", null, h("a", { href: "#/help" }, "Wie bekomme ich ein Vokabelset?")),
   );
   void showSets(sets, context).then(async (empty) => {

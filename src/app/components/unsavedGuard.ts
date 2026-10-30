@@ -23,6 +23,11 @@ export interface GuardOptions {
 export interface UnsavedGuard {
   /** Verlässt das Formular dorthin, woher es geöffnet wurde (nach Speichern oder Verwerfen). */
   leave: () => void;
+  /**
+   * Ersetzt das Formular im Verlauf durch `target`, z. B. nach dem Anlegen eines Sets dessen
+   * Bearbeitung; Zurück führt dann dorthin, woher das Formular geöffnet wurde.
+   */
+  leaveTo: (target: string) => void;
   /** Nach der Frage weiter bearbeiten; Zurück fragt dann wieder. */
   stay: () => void;
 }
@@ -50,6 +55,14 @@ export function guardUnsaved(options: GuardOptions): UnsavedGuard {
     else location.replace(options.fallback);
   };
 
+  const leaveTo = (target: string) => {
+    leaving = true;
+    if (!onForm()) return location.replace(target);
+    // Erst vom zusätzlichen Eintrag zurück (gleiche Adresse, kein `hashchange`), dann ersetzen.
+    window.addEventListener("popstate", () => location.replace(target), { once: true, signal });
+    history.back();
+  };
+
   window.addEventListener(
     "popstate",
     () => {
@@ -69,5 +82,5 @@ export function guardUnsaved(options: GuardOptions): UnsavedGuard {
     { signal },
   );
 
-  return { leave, stay };
+  return { leave, leaveTo, stay };
 }

@@ -275,6 +275,42 @@ test("Bearbeiten: Set bearbeiten, Eintragsformular, Fehler, Frage beim Verlassen
   expect(errors).toEqual([]);
 });
 
+test("Sets und Sektionen: Anlegen, Angaben, Umbenennen, Sektion löschen", async ({ page }) => {
+  const errors = collectErrors(page);
+  const findings: string[] = [];
+  await page.goto("./#/new-set");
+  await expect(page.getByRole("heading", { name: "Leeres Set anlegen" })).toBeVisible();
+  findings.push(...(await audit(page, "Leeres Set anlegen")));
+  await page.getByLabel("Lernsprache", { exact: true }).selectOption({ label: "Andere Sprache …" });
+  await page.getByRole("button", { name: "Set anlegen" }).click();
+  await expect(page.getByRole("main").getByRole("alert").first()).toContainText("Der Titel fehlt.");
+  findings.push(...(await audit(page, "Leeres Set anlegen mit Fehlern")));
+
+  await page.getByLabel("Titel", { exact: true }).fill("Wetter");
+  await page.getByLabel("Sprachcode der Lernsprache").fill("en");
+  await page.getByRole("button", { name: "Set anlegen" }).click();
+  await expect(page.getByRole("heading", { name: "Wetter bearbeiten" })).toBeVisible();
+  await page.getByLabel("Titel der neuen Sektion").fill("Jahreszeiten");
+  await page.getByRole("button", { name: "Sektion hinzufügen" }).click();
+  await page.getByRole("link", { name: "Eintrag hinzufügen zu „Sektion 1“" }).click();
+  await page.getByRole("group", { name: "Wort", exact: true }).getByLabel("Text").fill("rain");
+  await page.getByRole("group", { name: "Bedeutung 1" }).getByLabel("Text").fill("Regen");
+  await page.getByRole("button", { name: "Speichern", exact: true }).click();
+  await page.getByRole("button", { name: "Umbenennen: „Sektion 1“" }).click();
+  findings.push(...(await audit(page, "Set bearbeiten, Umbenennen")));
+  await page.getByRole("button", { name: "Abbrechen" }).click();
+  await page.getByRole("button", { name: "Löschen: „Sektion 1“" }).click();
+  findings.push(...(await audit(page, "Sektion löschen, Ankündigung")));
+  await page.getByRole("button", { name: "Abbrechen" }).click();
+
+  await page.getByRole("link", { name: "Angaben bearbeiten" }).click();
+  await page.getByText("Weitere Angaben").click();
+  findings.push(...(await audit(page, "Angaben bearbeiten")));
+
+  expect(findings).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
 test("Nach einem Seitenwechsel: Fokus auf der Überschrift, Seitentitel nennt die Ansicht", async ({
   page,
 }) => {

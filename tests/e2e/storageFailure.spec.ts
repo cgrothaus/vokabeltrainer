@@ -229,6 +229,26 @@ test("E2E-19 Eintrag speichern scheitert: Meldung, Eingabe bleibt, neuer Versuch
   );
 });
 
+test("E2E-19 Sektion verschieben scheitert: Meldung, Reihenfolge bleibt", async ({ page }) => {
+  await page.goto("./#/new-set");
+  await page.getByLabel("Titel", { exact: true }).fill("Englisch – Wetter");
+  await page.getByRole("button", { name: "Set anlegen" }).click();
+  await page.getByLabel("Titel der neuen Sektion").fill("Jahreszeiten");
+  await page.getByRole("button", { name: "Sektion hinzufügen" }).click();
+  await expect(page.locator(".edit-section h2")).toHaveCount(2);
+
+  await failWrites(page, FULL);
+  await page.getByRole("button", { name: "„Jahreszeiten“ nach oben" }).click();
+  await expect(alert(page)).toContainText("Die Reihenfolge wurde nicht gespeichert.");
+  await expect(alert(page)).toBeFocused();
+  await expect(page.locator(".edit-section h2")).toHaveText([
+    "Sektion 1 0 Einträge",
+    "Jahreszeiten 0 Einträge",
+  ]);
+  const [set] = await readStore<StoredSet>(page, "sets");
+  expect(set!.sections.map((section) => section.title)).toEqual(["Sektion 1", "Jahreszeiten"]);
+});
+
 test("E2E-19 Verlorene Verbindung: Der nächste Zugriff verbindet neu, ohne Meldung", async ({
   page,
 }) => {
