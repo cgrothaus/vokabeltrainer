@@ -5,7 +5,7 @@ import { type Child, h } from "../dom";
 
 // Die Formatspezifikation (5.4) nennt englische Beispielwerte; bekannte erscheinen deutsch, alle
 // anderen so, wie sie im Set stehen (TDD 13.1).
-const PARTS_OF_SPEECH: Record<string, string> = {
+export const PARTS_OF_SPEECH: Record<string, string> = {
   noun: "Nomen",
   verb: "Verb",
   adjective: "Adjektiv",
@@ -18,7 +18,7 @@ const PARTS_OF_SPEECH: Record<string, string> = {
   numeral: "Zahlwort",
   phrase: "Wendung",
 };
-const GENDERS: Record<string, string> = { m: "maskulin", f: "feminin", n: "neutrum" };
+export const GENDERS: Record<string, string> = { m: "maskulin", f: "feminin", n: "neutrum" };
 
 const translate = (table: Record<string, string>, value: string) =>
   table[value.toLowerCase()] ?? value;

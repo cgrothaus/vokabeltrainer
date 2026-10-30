@@ -206,6 +206,29 @@ test("E2E-19 Set löschen scheitert: Meldung, Set bleibt", async ({ page }) => {
   expect(await readStore<StoredSet>(page, "sets")).toHaveLength(1);
 });
 
+test("E2E-19 Eintrag speichern scheitert: Meldung, Eingabe bleibt, neuer Versuch klappt", async ({
+  page,
+}) => {
+  await importSet(page, "Englisch – Wetter");
+  await page.getByRole("link", { name: "Englisch – Wetter", exact: true }).click();
+  await page.getByRole("link", { name: "Bearbeiten" }).click();
+  await page.locator(".edit-entries a").filter({ hasText: "rain" }).click();
+  const term = page.getByRole("group", { name: "Wort", exact: true }).getByLabel("Text");
+  await term.fill("drizzle");
+  await failWrites(page, FULL);
+  await page.getByRole("button", { name: "Speichern", exact: true }).click();
+  await expect(alert(page).first()).toContainText("Der Eintrag wurde nicht gespeichert.");
+  await expect(term).toHaveValue("drizzle");
+  expect((await readStore<StoredSet>(page, "sets"))[0]!.editCount).toBe(0);
+
+  await failWrites(page, null);
+  await page.getByRole("button", { name: "Speichern", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Englisch – Wetter bearbeiten" })).toBeVisible();
+  expect((await readStore<StoredSet>(page, "sets"))[0]!.sections[0]!.entries[0]!.term.text).toBe(
+    "drizzle",
+  );
+});
+
 test("E2E-19 Verlorene Verbindung: Der nächste Zugriff verbindet neu, ohne Meldung", async ({
   page,
 }) => {

@@ -41,13 +41,14 @@ export function normalizeSetFile(file: SetFile): NewSet {
       compact({
         id: section.id,
         title: text(section.title),
-        entries: section.entries.map(entry),
+        entries: section.entries.map(normalizeEntry),
       }),
     ),
   });
 }
 
-function entry(value: FileEntry): NewEntry {
+/** Ein Eintrag aus einer Datei oder aus dem Formular des Editors (TDD 10). */
+export function normalizeEntry(value: FileEntry): NewEntry {
   return compact({
     id: value.id,
     term: answer(value.term),

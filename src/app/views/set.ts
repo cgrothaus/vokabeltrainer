@@ -1,5 +1,5 @@
 // Set-Ansicht (TDD 13.1, FR-02, FR-03): Angaben des Sets, Lernstand (12.6), Sektionen zum Aufklappen
-// mit allen Angaben der Einträge, Lernen und Löschen. Bearbeiten folgt mit M3 (S-30, S-31).
+// mit allen Angaben der Einträge, Lernen, Bearbeiten (eigene Ansicht, D-41) und Löschen.
 import { setSize } from "../../domain/library";
 import type { Answer, StoredEntry, StoredSection, StoredSet } from "../../domain/model";
 import { describeDay, type Overview, type SetStats } from "../../domain/stats";
@@ -83,7 +83,16 @@ function content(set: StoredSet, context: SetContext): Child[] {
       `${languageName(set.termLanguage)} → ${languageName(set.meaningLanguage)} · ${count(entries, "Eintrag", "Einträge")}`,
     ),
     setDetails(set),
-    entries > 0 && h("div", { class: "actions" }, learnButton(set)),
+    h(
+      "div",
+      { class: "actions" },
+      entries > 0 && learnButton(set),
+      h(
+        "a",
+        { href: `#/edit/${encodeURIComponent(set.id)}`, class: "action secondary" },
+        "Bearbeiten",
+      ),
+    ),
     h("h2", null, "Lernstand"),
     overview,
     h("h2", null, "Sektionen"),

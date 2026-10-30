@@ -1,5 +1,5 @@
 // Updates ohne Unterbrechung (TDD 5.3, NFR-05): Eine neue Version wartet, bis man sie bestätigt, und
-// erscheint nie während einer Lernsitzung (TAK-12).
+// erscheint nie während einer Lernsitzung oder Bearbeitung (TAK-12).
 import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -117,6 +117,36 @@ test("E2E-14 Während einer Lernsitzung erscheint der Hinweis erst danach", asyn
     await page.getByRole("button", { name: /Tippen zum Aufdecken/ }).click();
     await page.getByRole("button", { name: "Gewusst" }).click();
     await expect(page.getByRole("heading", { name: "Geschafft" })).toBeVisible();
+    await expect(notice).toContainText("Neue Version verfügbar");
+  });
+});
+
+test("E2E-14 Während der Bearbeitung eines Eintrags erscheint der Hinweis erst danach", async ({
+  page,
+}, testInfo) => {
+  await withCopiedApp(testInfo, async (url, dir) => {
+    const notice = page.locator("#update-notice");
+    await importSet(page, "Englisch – Update", url);
+    await serviceWorkerReady(page);
+    await page.goto(url);
+    await page.getByRole("link", { name: "Englisch – Update", exact: true }).click();
+    await page.getByRole("link", { name: "Bearbeiten" }).click();
+    await page.locator(".edit-entries a").filter({ hasText: "rain" }).click();
+    await expect(page.getByRole("heading", { name: "Eintrag bearbeiten" })).toBeVisible();
+
+    publishNewVersion(dir);
+    await page.evaluate(async () => {
+      await (await navigator.serviceWorker.getRegistration())!.update();
+    });
+    await expect
+      .poll(() =>
+        page.evaluate(async () => !!(await navigator.serviceWorker.getRegistration())?.waiting),
+      )
+      .toBe(true);
+    await expect(notice).toBeEmpty();
+
+    await page.getByRole("button", { name: "Verwerfen" }).click();
+    await expect(page.getByRole("heading", { name: "Englisch – Update bearbeiten" })).toBeVisible();
     await expect(notice).toContainText("Neue Version verfügbar");
   });
 });

@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { assignIds, createId, ID_ALPHABET, type RandomBytes } from "./ids";
+import {
+  assignIds,
+  createId,
+  freshId,
+  ID_ALPHABET,
+  ID_LENGTH,
+  idsInSet,
+  type RandomBytes,
+} from "./ids";
 import type { NewSet } from "./normalize";
 
 /** Liefert die angegebenen Bytes der Reihe nach und danach immer wieder von vorn. */
@@ -95,5 +103,26 @@ describe("assignIds", () => {
     const result = assignIds(many, seeded(7, 4));
     const ids = result.sections.flatMap((s) => [s.id, ...s.entries.map((e) => e.id)]);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+describe("idsInSet und freshId", () => {
+  const set = {
+    sections: [
+      { id: "222222", entries: [{ id: "333333" }, { id: "444444" }] },
+      { id: "555555", entries: [] },
+    ],
+  };
+
+  it("sammelt alle Sektions- und Eintrags-IDs eines Sets", () => {
+    expect([...idsInSet(set)].sort()).toEqual(["222222", "333333", "444444", "555555"]);
+  });
+
+  it("zieht neu, bis die ID frei ist, und merkt sie sich", () => {
+    // Index 0 → „2“ usw.: erst drei vergebene IDs, dann „666666“.
+    const used = idsInSet(set);
+    const random = bytes(...[0, 1, 2, 4].flatMap((index) => Array<number>(6).fill(index)));
+    expect(freshId(used, ID_LENGTH.entry, random)).toBe("666666");
+    expect(used.has("666666")).toBe(true);
   });
 });

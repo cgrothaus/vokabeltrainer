@@ -34,6 +34,45 @@ export async function getSet(db: IDBDatabase, id: string): Promise<StoredSet | u
   return set;
 }
 
+export type UpdateSetResult =
+  /** `set`: so, wie es jetzt gespeichert ist. */
+  | { ok: true; set: StoredSet }
+  /** `changed`: Das Set wurde seit dem Laden anderswo geändert (z. B. in einem anderen Fenster). */
+  | { ok: false; reason: "missing" | "changed" | StorageFailure };
+
+/**
+ * Speichert eine Änderung an einem vorhandenen Set (TDD 10). Liest es in derselben Transaktion und
+ * schreibt nur, wenn `editCount` noch `expectedEditCount` ist (TAK-07); dann mit `editCount + 1` und
+ * `updatedAt`. Gespeichert ist erst nach Abschluss der Transaktion (TDD 6.5).
+ */
+export async function updateSet(
+  db: IDBDatabase,
+  set: StoredSet,
+  expectedEditCount: number,
+  now: string,
+): Promise<UpdateSetResult> {
+  const saved: StoredSet = { ...set, editCount: expectedEditCount + 1, updatedAt: now };
+  let refused: "missing" | "changed" | null = null;
+  try {
+    await runTransaction(db, "sets", "readwrite", (transaction) => {
+      const sets = transaction.objectStore("sets");
+      const request = sets.get(set.id);
+      request.onsuccess = () => {
+        const stored = request.result as StoredSet | undefined;
+        if (!stored) refused = "missing";
+        else if (stored.editCount !== expectedEditCount) refused = "changed";
+        if (refused) return transaction.abort();
+        sets.put(saved);
+      };
+    });
+    return { ok: true, set: saved };
+  } catch (error) {
+    if (refused) return { ok: false, reason: refused };
+    console.error("Set nicht gespeichert", error);
+    return { ok: false, reason: storageFailure(error) };
+  }
+}
+
 export type DeleteSetResult = { ok: true } | { ok: false; reason: "missing" | StorageFailure };
 
 /** Lernstand eines Sets für die Ankündigung vor dem Löschen (FR-02). */

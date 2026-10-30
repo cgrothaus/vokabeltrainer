@@ -583,6 +583,162 @@ h2:focus {
   margin-top: 2rem;
 }
 
+/* Zweitrangiger Link wie „Bearbeiten“: sieht aus wie eine zweitrangige Schaltfläche. */
+a.action.secondary {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--fg);
+}
+
+/* Set bearbeiten (TDD 10, D-41): Einträge als Liste von Links zum Formular. */
+.edit-set h2 {
+  margin-top: 2rem;
+  font-size: 1.25rem;
+}
+
+.edit-set h2 .count {
+  font-size: 1rem;
+  font-weight: 400;
+  opacity: 0.75;
+}
+
+.edit-entries {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.edit-entries a {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid var(--border);
+  overflow-wrap: anywhere;
+}
+
+/* Eintragseditor (TDD 10): Felder über die volle Breite, kein waagerechtes Scrollen (AK-12). */
+.editor {
+  overflow-wrap: anywhere;
+}
+
+.editor fieldset {
+  min-width: 0;
+  margin: 1rem 0 0;
+  padding: 0.5rem 1rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+}
+
+.editor legend {
+  padding: 0 0.25rem;
+  font-weight: 600;
+}
+
+.editor label {
+  margin-top: 0.75rem;
+}
+
+.editor input[type="text"],
+.editor select,
+.editor textarea.plain {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  margin: 0.25rem 0 0;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background-color: var(--surface);
+  color: var(--fg);
+  /* 16px verhindert das automatische Zoomen von iOS beim Fokussieren. */
+  font: inherit;
+  font-size: 1rem;
+}
+
+/* WebKit hält Auswahllisten in eigener Darstellung auf fester Höhe; ohne sie gilt die Mindesthöhe. Der
+   Pfeil entsteht aus zwei Verläufen. */
+.editor select {
+  appearance: none;
+  padding-right: 2.5rem;
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position:
+    calc(100% - 1.25rem) 50%,
+    calc(100% - 0.9rem) 50%;
+  background-size: 0.35rem 0.35rem;
+  background-repeat: no-repeat;
+}
+
+.editor [aria-invalid="true"] {
+  border: 2px solid var(--wrong);
+}
+
+/* Fehler am Feld: als Text, nicht nur über die Farbe des Rahmens (TDD 13.4). */
+.field-error {
+  margin: 0.25rem 0 0;
+  font-weight: 600;
+}
+
+.editor .row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.editor .row .grow {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.editor fieldset > button,
+.editor .example > button,
+.editor .fields > button {
+  margin-top: 0.75rem;
+}
+
+.editor .example + .example {
+  margin-top: 1rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.editor .hint-text {
+  margin: 0.25rem 0 0;
+  opacity: 0.75;
+}
+
+.editor .more {
+  margin-top: 1.5rem;
+}
+
+/* Ohne `display: flex`, sonst verschwindet das Dreieck zum Aufklappen; Höhe über den Innenabstand. */
+.editor .more summary {
+  padding: 0.6rem 0;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.editor .check {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 44px;
+}
+
+.editor .check input {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.editor form .actions {
+  margin-top: 1.5rem;
+}
+
 /* Backup (TDD 11.3, 11.4) und Einstellungen (TDD 13.5) */
 .backup h2,
 .settings h2 {
