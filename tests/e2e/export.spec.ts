@@ -145,8 +145,9 @@ test("Einzelne Sektion als Download und als kopierter Text", async ({ page }) =>
     page.waitForEvent("download"),
     page.getByRole("button", { name: "Datei speichern" }).click(),
   ]);
+  // WebKit unter Linux (CI) ersetzt Leerzeichen im Namen eines Downloads durch Unterstriche.
   expect(download.suggestedFilename()).toMatch(
-    /^Englisch – Stadt_Einkaufen_\d{4}-\d{2}-\d{2}\.json$/,
+    /^Englisch[ _]–[ _]Stadt_Einkaufen_\d{4}-\d{2}-\d{2}\.json$/,
   );
   await expect(page.getByText("Datei gespeichert.")).toBeVisible();
   const file = JSON.parse(await readFile(await download.path(), "utf8")) as ExportedFile;
