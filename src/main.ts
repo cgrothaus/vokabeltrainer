@@ -21,6 +21,7 @@ import {
   saveEntry,
   saveSetInfo,
 } from "./app/editSet";
+import { deliverExport, prepareExport } from "./app/exportSet";
 import { loadSpec, newSetPrompt, shareSpec } from "./app/help";
 import { loadOverview } from "./app/overview";
 import { previewImport, saveImport } from "./app/importText";
@@ -31,6 +32,7 @@ import { applyTheme, loadTheme, saveTheme } from "./app/theme";
 import { backupView } from "./app/views/backup";
 import { editSetView } from "./app/views/editSet";
 import { entryEditorView } from "./app/views/entryEditor";
+import { exportView } from "./app/views/export";
 import { newSetView, setInfoView } from "./app/views/setInfo";
 import { helpView } from "./app/views/help";
 import { importView } from "./app/views/import";
@@ -214,6 +216,8 @@ async function start(): Promise<void> {
       moveSection: (set, sectionId, step) => moveSectionIn(db, set, sectionId, step),
       moveEntry: (set, entryId, step) => moveEntryIn(db, set, entryId, step),
     });
+  const exportPage = (_signal: AbortSignal, id: string) =>
+    exportView({ loadSet: () => getSet(db, id), prepareExport, deliverExport, copyText }, id);
   // Sprachen vorhandener Sets für die Auswahl beim Anlegen und Bearbeiten (D-41).
   const loadLanguages = async () =>
     (await listSets(db)).flatMap((set) => [set.termLanguage, set.meaningLanguage]);
@@ -300,6 +304,7 @@ async function start(): Promise<void> {
       "/set/*": setPage,
       "/new-set": newSetPage,
       "/edit/*": editPage,
+      "/export/*": exportPage,
       "/set-info/*": setInfoPage,
       "/entry/*/*": entryPage,
       "/new-entry/*/*": newEntryPage,

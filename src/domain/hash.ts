@@ -1,7 +1,7 @@
 // Prüfwert `rev` (TDD 6.4, D-09): Inhalts-Hash über die kanonische Darstellung, nicht gespeichert.
 // Er erkennt Änderungen seit einem Export und ist kein Sicherheitsmerkmal.
 import { ID_ALPHABET } from "./ids";
-import type { StoredEntry } from "./model";
+import type { StoredEntry, StoredSection, StoredSet } from "./model";
 
 export const REV_LENGTH = 8;
 
@@ -69,8 +69,28 @@ function write(value: unknown): string {
   return JSON.stringify(value);
 }
 
+const rev = (content: unknown) => encodeRev(cyrb53(canonicalize(content)));
+
 /** Alle Felder außer `id` (TDD 6.4). */
 export function entryRev(entry: StoredEntry): string {
   const { id: _id, ...content } = entry;
-  return encodeRev(cyrb53(canonicalize(content)));
+  return rev(content);
+}
+
+/** Nur die Angaben zum Set, ohne Verwaltungsfelder und Sektionen (TDD 6.4). */
+export function setRev(set: StoredSet): string {
+  const {
+    id: _id,
+    editCount: _editCount,
+    createdAt: _createdAt,
+    updatedAt: _updatedAt,
+    sections: _sections,
+    ...content
+  } = set;
+  return rev(content);
+}
+
+/** Nur der Titel; die Einträge haben eigene Prüfwerte (TDD 6.4). */
+export function sectionRev(section: StoredSection): string {
+  return rev({ title: section.title });
 }

@@ -1,5 +1,6 @@
 // Set-Ansicht (TDD 13.1, FR-02, FR-03): Angaben des Sets, Lernstand (12.6), Sektionen zum Aufklappen
-// mit allen Angaben der Einträge, Lernen, Bearbeiten (eigene Ansicht, D-41) und Löschen.
+// mit allen Angaben der Einträge, Lernen, Bearbeiten (eigene Ansicht, D-41), Exportieren (D-42) und
+// Löschen.
 import { setSize } from "../../domain/library";
 import type { Answer, StoredEntry, StoredSection, StoredSet } from "../../domain/model";
 import { describeDay, type Overview, type SetStats } from "../../domain/stats";
@@ -91,6 +92,11 @@ function content(set: StoredSet, context: SetContext): Child[] {
         "a",
         { href: `#/edit/${encodeURIComponent(set.id)}`, class: "action secondary" },
         "Bearbeiten",
+      ),
+      h(
+        "a",
+        { href: `#/export/${encodeURIComponent(set.id)}`, class: "action secondary" },
+        "Exportieren",
       ),
     ),
     h("h2", null, "Lernstand"),

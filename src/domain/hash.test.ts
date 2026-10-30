@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { canonicalize, cyrb53, encodeRev, entryRev } from "./hash";
-import type { StoredEntry } from "./model";
+import { canonicalize, cyrb53, encodeRev, entryRev, sectionRev, setRev } from "./hash";
+import type { StoredEntry, StoredSection, StoredSet } from "./model";
 import { normalizeSetFile } from "./normalize";
 import type { FileAnswer, FileEntry, SetFile } from "./validate";
 
@@ -119,5 +119,72 @@ describe("entryRev", () => {
     expect(rev({ notes: "", examples: [], grammar: { forms: [] }, reviewStatus: null })).toBe(
       rev({}),
     );
+  });
+});
+
+describe("setRev", () => {
+  const set: StoredSet = {
+    id: "k3m9q2x7ab",
+    editCount: 4,
+    createdAt: "2026-10-19T17:00:00.000Z",
+    updatedAt: "2026-10-20T17:00:00.000Z",
+    title: "Lektion 4",
+    termLanguage: "en",
+    meaningLanguage: "de",
+    level: "Klasse 6",
+    sections: [{ id: "q7h3kd", title: "Unterwegs", entries: [] }],
+  };
+
+  it("ist eingefroren: exportierte Prüfwerte müssen gültig bleiben", () => {
+    expect(setRev(set)).toBe("fkpk5xa5");
+  });
+
+  it("hängt nicht von ID, Zählern, Zeitstempeln und Sektionen ab", () => {
+    expect(
+      setRev({
+        ...set,
+        id: "zzzzzzzzzz",
+        editCount: 9,
+        createdAt: "2027-01-01T00:00:00.000Z",
+        updatedAt: "2027-01-01T00:00:00.000Z",
+        sections: [],
+      }),
+    ).toBe(setRev(set));
+  });
+
+  it("ändert sich mit jeder Angabe zum Set", () => {
+    const revs = [
+      set,
+      { ...set, title: "Lektion 5" },
+      { ...set, termLanguage: "fr" },
+      { ...set, meaningLanguage: "en" },
+      { ...set, level: undefined },
+      { ...set, textbook: "Buch" },
+      { ...set, edition: "2026" },
+      { ...set, source: "Foto" },
+      { ...set, license: "CC0" },
+      { ...set, notes: "Notiz" },
+      { ...set, reviewStatus: "checked" as const },
+    ].map(setRev);
+    expect(new Set(revs).size).toBe(revs.length);
+  });
+});
+
+describe("sectionRev", () => {
+  const section: StoredSection = { id: "q7h3kd", title: "Unterwegs", entries: [] };
+
+  it("ist eingefroren: exportierte Prüfwerte müssen gültig bleiben", () => {
+    expect(sectionRev(section)).toBe("9j4yrfh2");
+  });
+
+  it("hängt nur vom Titel ab", () => {
+    expect(
+      sectionRev({
+        id: "w2n8vb",
+        title: "Unterwegs",
+        entries: [{ id: "a8f2kc", term: { text: "a" }, meanings: [{ text: "b" }] }],
+      }),
+    ).toBe(sectionRev(section));
+    expect(sectionRev({ ...section, title: "Einkaufen" })).not.toBe(sectionRev(section));
   });
 });
