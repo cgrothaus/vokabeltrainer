@@ -9,7 +9,15 @@ import { readBackup } from "./backup";
 import { openDatabase } from "./database";
 import { recordAnswer, startSession } from "./sessions";
 import { getSetting } from "./settings";
-import { addSet, countSetActivity, countSets, deleteSet, getSet, listSets } from "./sets";
+import {
+  addSet,
+  countSetActivity,
+  countSets,
+  deleteSet,
+  getSet,
+  listSets,
+  updateSet,
+} from "./sets";
 
 let db: IDBDatabase;
 
@@ -197,5 +205,52 @@ describe("deleteSet", () => {
       },
     } as unknown as IDBDatabase;
     expect(await deleteSet(full, "m4x8c2r9tw")).toEqual({ ok: false, reason: "quota" });
+  });
+});
+
+describe("updateSet", () => {
+  const now = "2026-10-30T09:00:00.000Z";
+
+  it("speichert die Änderung, erhöht editCount und setzt updatedAt", async () => {
+    const set = storedSet("m4x8c2r9tw");
+    await addSet(db, set);
+    const changed = { ...set, title: "Englisch – Wetter und Jahreszeiten" };
+    const saved = { ...changed, editCount: 1, updatedAt: now };
+    expect(await updateSet(db, changed, 0, now)).toEqual({ ok: true, set: saved });
+    expect(await getSet(db, "m4x8c2r9tw")).toEqual(saved);
+  });
+
+  it("schreibt nichts, wenn das Set inzwischen anderswo geändert wurde", async () => {
+    const set = storedSet("m4x8c2r9tw");
+    await addSet(db, set);
+    await updateSet(db, { ...set, title: "Anderes Fenster" }, 0, now);
+    expect(await updateSet(db, { ...set, title: "Veraltet" }, 0, now)).toEqual({
+      ok: false,
+      reason: "changed",
+    });
+    expect((await getSet(db, "m4x8c2r9tw"))?.title).toBe("Anderes Fenster");
+  });
+
+  it("legt kein gelöschtes Set wieder an", async () => {
+    expect(await updateSet(db, storedSet("m4x8c2r9tw"), 0, now)).toEqual({
+      ok: false,
+      reason: "missing",
+    });
+    expect(await listSets(db)).toEqual([]);
+  });
+
+  it("meldet eine verlorene Verbindung und ändert nichts", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const set = storedSet("m4x8c2r9tw");
+    await addSet(db, set);
+    db.close();
+    expect(await updateSet(db, { ...set, title: "Neu" }, 0, now)).toEqual({
+      ok: false,
+      reason: "connection",
+    });
+    const reopened = await openDatabase({ appVersion: "test" });
+    if (!reopened.ok) throw new Error(reopened.reason);
+    db = reopened.db;
+    expect(await getSet(db, "m4x8c2r9tw")).toEqual(set);
   });
 });

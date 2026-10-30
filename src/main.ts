@@ -10,6 +10,7 @@ import {
 import { mountUpdateNotice, showUpdateNotice } from "./app/components/updateNotice";
 import { dataScope, removeAllData } from "./app/deleteAll";
 import { deletionScope, removeSet } from "./app/deleteSet";
+import { removeEntry, saveEntry } from "./app/editSet";
 import { loadSpec, newSetPrompt, shareSpec } from "./app/help";
 import { loadOverview } from "./app/overview";
 import { previewImport, saveImport } from "./app/importText";
@@ -18,6 +19,8 @@ import { beginPractice, currentPractice, loadSetup } from "./app/practice";
 import { startRouter } from "./app/router";
 import { applyTheme, loadTheme, saveTheme } from "./app/theme";
 import { backupView } from "./app/views/backup";
+import { editSetView } from "./app/views/editSet";
+import { entryEditorView } from "./app/views/entryEditor";
 import { helpView } from "./app/views/help";
 import { importView } from "./app/views/import";
 import { learnView } from "./app/views/learn";
@@ -30,6 +33,7 @@ import { storageErrorView } from "./app/views/storageError";
 import { canReadClipboard, copyText, readClipboard } from "./platform/clipboard";
 import { isInstalled, isIos } from "./platform/device";
 import { persistenceState, requestPersistence } from "./platform/persistence";
+import type { EntryForm } from "./domain/entryForm";
 import type { StoredSet } from "./domain/model";
 import type { PracticeSetup } from "./domain/practiceSetup";
 import { protectionNotice } from "./domain/storageProtection";
@@ -190,6 +194,18 @@ async function start(): Promise<void> {
         location.hash = "#/";
       },
     });
+  const editPage = (_signal: AbortSignal, id: string) =>
+    editSetView({ loadSet: () => getSet(db, id) });
+  const entryContext = (setId: string) => ({
+    loadSet: () => getSet(db, setId),
+    saveEntry: (set: StoredSet, form: EntryForm, entryId?: string) =>
+      saveEntry(db, set, form, entryId),
+    removeEntry: (set: StoredSet, entryId: string) => removeEntry(db, set, entryId),
+  });
+  const entryPage = (signal: AbortSignal, setId: string, entryId: string) =>
+    entryEditorView(entryContext(setId), signal, setId, { entryId });
+  const newEntryPage = (signal: AbortSignal, setId: string, sectionId: string) =>
+    entryEditorView(entryContext(setId), signal, setId, { sectionId });
   const learnPage = (_signal: AbortSignal, id: string) =>
     learnView({
       loadSet: () => getSet(db, id),
@@ -240,10 +256,13 @@ async function start(): Promise<void> {
     root!,
     {
       "/": library,
-      "/set/": setPage,
+      "/set/*": setPage,
+      "/edit/*": editPage,
+      "/entry/*/*": entryPage,
+      "/new-entry/*/*": newEntryPage,
       "/import": importPage,
       "/help": helpPage,
-      "/learn/": learnPage,
+      "/learn/*": learnPage,
       "/practice": practicePage,
       "/backup": backupPage,
       "/settings": settingsPage,

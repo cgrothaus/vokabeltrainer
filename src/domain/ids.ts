@@ -25,20 +25,33 @@ export function createId(length: number, randomBytes: RandomBytes): string {
 
 export type SetWithIds = Omit<StoredSet, "editCount" | "createdAt" | "updatedAt">;
 
-/** Behält IDs aus der Datei; neue Sektions- und Eintrags-IDs werden gegen alle IDs des Sets geprüft. */
-export function assignIds(set: NewSet, randomBytes: RandomBytes): SetWithIds {
+interface WithIds {
+  sections: readonly { id?: string; entries: readonly { id?: string }[] }[];
+}
+
+/** Alle Sektions- und Eintrags-IDs eines Sets; neue werden gegen sie geprüft (TDD 6.3). */
+export function idsInSet(set: WithIds): Set<string> {
   const used = new Set<string>();
   for (const section of set.sections) {
     if (section.id !== undefined) used.add(section.id);
     for (const entry of section.entries) if (entry.id !== undefined) used.add(entry.id);
   }
-  const fresh = (length: number) => {
-    let id: string;
-    do id = createId(length, randomBytes);
-    while (used.has(id));
-    used.add(id);
-    return id;
-  };
+  return used;
+}
+
+/** Zieht neu, bis die ID in `used` frei ist, und nimmt sie dort auf. */
+export function freshId(used: Set<string>, length: number, randomBytes: RandomBytes): string {
+  let id: string;
+  do id = createId(length, randomBytes);
+  while (used.has(id));
+  used.add(id);
+  return id;
+}
+
+/** Behält IDs aus der Datei; neue Sektions- und Eintrags-IDs werden gegen alle IDs des Sets geprüft. */
+export function assignIds(set: NewSet, randomBytes: RandomBytes): SetWithIds {
+  const used = idsInSet(set);
+  const fresh = (length: number) => freshId(used, length, randomBytes);
 
   return {
     ...set,

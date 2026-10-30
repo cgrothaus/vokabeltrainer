@@ -1,30 +1,45 @@
 // Hash-Routing (TDD 3.2): funktioniert in einer einzelnen HTML-Datei unter jedem Pfad.
 
 /**
- * `signal` wird abgebrochen, sobald die Ansicht verlassen wird oder das Routing endet. `param` ist
- * bei Routen mit abschließendem `/` (z. B. `/set/`) der Rest des Pfads, sonst leer.
+ * `signal` wird abgebrochen, sobald die Ansicht verlassen wird oder das Routing endet. `params` sind
+ * die Pfadteile an den Stellen mit `*` im Muster, dekodiert.
  */
-export type View = (signal: AbortSignal, param: string) => Node;
+export type View = (signal: AbortSignal, ...params: string[]) => Node;
 
 /**
- * Feste Pfade haben einen Teil (`/import`). Ein Schlüssel wie `/set/` nimmt genau einen weiteren,
- * nicht leeren Pfadteil als Parameter an; ohne ihn ist er nicht erreichbar.
+ * Muster sind Pfade wie `/import`; `*` steht für genau einen nicht leeren Pfadteil, z. B. `/set/*`,
+ * auch mehrfach (Eintragseditor: Set und Eintrag). Passt die Zahl der Teile nicht, ist die Route nicht
+ * erreichbar.
  */
-function resolve(path: string, routes: Record<string, View>): [View, string] | null {
-  const slash = path.lastIndexOf("/");
-  if (slash === 0) {
-    const view = routes[path];
-    return view ? [view, ""] : null;
+function resolve(path: string, routes: Record<string, View>): [View, string[]] | null {
+  const parts = path.split("/");
+  for (const [pattern, view] of Object.entries(routes)) {
+    const keys = pattern.split("/");
+    if (keys.length !== parts.length) continue;
+    const params: string[] = [];
+    const matches = keys.every((key, index) => {
+      const part = parts[index]!;
+      if (key !== "*") return key === part;
+      if (part === "") return false;
+      try {
+        params.push(decodeURIComponent(part));
+        return true;
+      } catch {
+        // Kaputte Prozentkodierung, z. B. von Hand eingetippt.
+        return false;
+      }
+    });
+    if (matches) return [view, params];
   }
-  const view = routes[path.slice(0, slash + 1)];
-  const rest = path.slice(slash + 1);
-  if (!view || rest === "") return null;
-  try {
-    return [view, decodeURIComponent(rest)];
-  } catch {
-    // Kaputte Prozentkodierung, z. B. von Hand eingetippt.
-    return null;
-  }
+  return null;
+}
+
+/** Wie viele Ansichten seit dem Start gezeigt wurden; ab zwei liegt eine davon im Verlauf davor. */
+let shownViews = 0;
+
+/** Ob die aktuelle Ansicht nicht die erste seit dem Laden ist, z. B. für „Zurück“ statt eines Links. */
+export function hasPreviousView(): boolean {
+  return shownViews > 1;
 }
 
 const APP_TITLE = "Vokabeltrainer";
@@ -66,8 +81,9 @@ export function startRouter(
     leave?.abort();
     leave = new AbortController();
     const path = location.hash.slice(1) || "/";
-    const [view, param] = resolve(path, routes) ?? [notFound, ""];
-    root.replaceChildren(view(leave.signal, param));
+    const [view, params] = resolve(path, routes) ?? [notFound, []];
+    shownViews++;
+    root.replaceChildren(view(leave.signal, ...params));
     announce(root, leave.signal, path === "/");
   };
   window.addEventListener("hashchange", render);

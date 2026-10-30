@@ -238,6 +238,43 @@ test("Beispielset: Set-Ansicht mit Lernstand, Multiple Choice mit Rückmeldung",
   expect(errors).toEqual([]);
 });
 
+test("Bearbeiten: Set bearbeiten, Eintragsformular, Fehler, Frage beim Verlassen", async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  const findings: string[] = [];
+  await page.goto("./");
+  await page.getByRole("button", { name: "Beispielset ausprobieren" }).click();
+  await page.getByRole("link", { name: "Bearbeiten" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("bearbeiten");
+  findings.push(...(await audit(page, "Set bearbeiten")));
+
+  // Ein Eintrag mit Varianten, Grammatik und Beispielen: „Weitere Angaben“ ist dann aufgeklappt.
+  const entries = page.locator(".edit-entries a");
+  const count = await entries.count();
+  for (let index = 0; index < count; index++) {
+    await entries.nth(index).click();
+    await expect(page.getByRole("heading", { name: "Eintrag bearbeiten" })).toBeVisible();
+    if ((await page.locator("details.more[open] .example").count()) > 0) break;
+    await page.goBack();
+  }
+  await expect(page.locator("details.more[open] .example").first()).toBeVisible();
+  findings.push(...(await audit(page, "Eintrag bearbeiten")));
+
+  const term = page.getByRole("group", { name: "Wort", exact: true }).getByLabel("Text");
+  await term.fill("");
+  await page.getByRole("button", { name: "Speichern", exact: true }).click();
+  await expect(page.getByRole("main").getByRole("alert").first()).toContainText("Das Wort fehlt.");
+  findings.push(...(await audit(page, "Eintrag mit Fehler")));
+
+  await page.goBack();
+  await expect(page.getByRole("button", { name: "Weiter bearbeiten" })).toBeVisible();
+  findings.push(...(await audit(page, "Frage beim Verlassen")));
+
+  expect(findings).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
 test("Nach einem Seitenwechsel: Fokus auf der Überschrift, Seitentitel nennt die Ansicht", async ({
   page,
 }) => {
