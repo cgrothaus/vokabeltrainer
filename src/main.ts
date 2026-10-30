@@ -27,7 +27,7 @@ import { loadOverview } from "./app/overview";
 import { previewImport, saveImport } from "./app/importText";
 import { loadSampleSet } from "./app/sampleSet";
 import { beginPractice, currentPractice, loadSetup } from "./app/practice";
-import { startRouter } from "./app/router";
+import { type Router, startRouter } from "./app/router";
 import { applyTheme, loadTheme, saveTheme } from "./app/theme";
 import { backupView } from "./app/views/backup";
 import { editSetView } from "./app/views/editSet";
@@ -43,6 +43,7 @@ import { practiceView } from "./app/views/practice";
 import { setView } from "./app/views/set";
 import { settingsView } from "./app/views/settings";
 import { storageErrorView } from "./app/views/storageError";
+import { announceChange, onChangeElsewhere } from "./platform/broadcast";
 import { canReadClipboard, copyText, readClipboard } from "./platform/clipboard";
 import { isInstalled, isIos } from "./platform/device";
 import { persistenceState, requestPersistence } from "./platform/persistence";
@@ -55,6 +56,7 @@ import { registerServiceWorker } from "./platform/serviceWorker";
 import { keepConnected } from "./storage/connection";
 import { type OpenOptions, type OpenResult, openDatabase } from "./storage/database";
 import { getMeta, setMeta } from "./storage/meta";
+import type { StoreName } from "./storage/schema";
 import { discardExpiredPreMigrationCopy } from "./storage/preMigrationCopy";
 import { interruptActiveSessions } from "./storage/sessions";
 import { countSets, getSet, listSets } from "./storage/sets";
@@ -72,14 +74,17 @@ mountUpdateNotice(notice);
 registerServiceWorker(showUpdateNotice);
 mountStorageNotice(storageNotice);
 
+/** Stores, deren Änderung andere Tabs neu zeichnen lässt (TDD 3.4). */
+const CHANGES_ELSEWHERE = new Set<StoreName>(["sets", "settings"]);
+
 /** Für Schreibvorgänge im Hintergrund, die keine eigene Meldung am Ort haben (D-32). */
 const SOMETHING_NOT_SAVED = "Gerade konnte etwas nicht gespeichert werden.";
 
-let stopRouter: (() => void) | null = null;
+let router: Router | null = null;
 
 function show(view: Node): void {
-  stopRouter?.();
-  stopRouter = null;
+  router?.stop();
+  router = null;
   root!.replaceChildren(view);
 }
 
@@ -116,7 +121,11 @@ async function start(): Promise<void> {
         show(storageErrorView(failed));
       else reportStorageUnreachable();
     },
-    onSaved: clearStorageProblem,
+    onSaved: (stores) => {
+      clearStorageProblem();
+      // Andere Tabs zeichnen ihre Leseansichten neu (TDD 3.4); Antworten allein lösen nichts aus.
+      if (stores.some((store) => CHANGES_ELSEWHERE.has(store))) announceChange();
+    },
   });
   // Ohne Meldung: Die Person kann nichts tun, und der nächste Start versucht es wieder (TDD 7.3).
   discardExpiredPreMigrationCopy(db, new Date()).catch((error: unknown) =>
@@ -297,7 +306,7 @@ async function start(): Promise<void> {
       persistence,
     });
   const helpPage = () => helpView({ prompt: newSetPrompt(), copyText, loadSpec, shareSpec });
-  stopRouter = startRouter(
+  router = startRouter(
     root!,
     {
       "/": library,
@@ -316,7 +325,15 @@ async function start(): Promise<void> {
       "/settings": settingsPage,
     },
     notFoundView,
+    // Reine Leseansichten; Formulare, Sitzung, Import und Backup behalten ihren Stand (D-43).
+    ["/", "/set/*", "/edit/*"],
   );
+  onChangeElsewhere(() => {
+    loadTheme(db).then(showTheme, (error: unknown) =>
+      console.warn("Darstellung nicht neu gelesen", error),
+    );
+    router?.refresh();
+  });
 }
 
 void start();

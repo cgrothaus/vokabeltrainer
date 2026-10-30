@@ -4,14 +4,18 @@
 // die `db` festhalten (z. B. eine laufende Lernsitzung), weiterarbeiten.
 import type { OpenResult } from "./database";
 import { isConnectionLost } from "./errors";
+import type { StoreName } from "./schema";
 
 export interface KeepConnectedOptions {
   /** Öffnet die Datenbank wie beim Start, mit denselben Rückrufen. */
   reopen: () => Promise<OpenResult>;
   /** Das erneute Öffnen ist gescheitert; der Zugriff, der es auslöste, scheitert mit. */
   onReopenFailed?: (result: Extract<OpenResult, { ok: false }>) => void;
-  /** Nach jeder abgeschlossenen Schreibtransaktion: Der Speicher funktioniert (wieder). */
-  onSaved?: () => void;
+  /**
+   * Nach jeder abgeschlossenen Schreibtransaktion mit ihren Stores: Der Speicher funktioniert
+   * (wieder), und andere Tabs können davon erfahren (TDD 3.4).
+   */
+  onSaved?: (stores: StoreName[]) => void;
 }
 
 interface Connection {
@@ -68,6 +72,7 @@ const markLost = (connection: Connection, db: IDBDatabase, error: unknown) => {
  */
 export async function withConnection(
   db: IDBDatabase,
+  stores: StoreName[],
   mode: IDBTransactionMode,
   start: (db: IDBDatabase) => Promise<void>,
 ): Promise<void> {
@@ -96,5 +101,5 @@ export async function withConnection(
     markLost(connection, current, error);
     throw error;
   }
-  if (mode === "readwrite") connection.options.onSaved?.();
+  if (mode === "readwrite") connection.options.onSaved?.(stores);
 }

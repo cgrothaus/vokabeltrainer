@@ -18,6 +18,19 @@ export function isConnectionLost(error: unknown): boolean {
   return name === "InvalidStateError" || name === "UnknownError";
 }
 
+/**
+ * Kein Speicherfehler: Das Set, zu dem geschrieben werden sollte, gibt es nicht mehr, z. B. weil es in
+ * einem anderen Tab gelöscht wurde (TDD 3.4). Geschrieben wurde nichts.
+ */
+export class SetMissingError extends Error {
+  constructor() {
+    super("Set nicht mehr vorhanden");
+    this.name = "SetMissingError";
+  }
+}
+
+export const isSetMissing = (error: unknown): boolean => error instanceof SetMissingError;
+
 export function storageFailure(error: unknown): StorageFailure {
   if (errorName(error) === "QuotaExceededError") return "quota";
   return isConnectionLost(error) ? "connection" : "failed";

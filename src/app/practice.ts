@@ -23,10 +23,11 @@ import {
   storedSetup,
 } from "../domain/practiceSetup";
 import { randomBytes } from "../platform/random";
+import { isSetMissing } from "../storage/errors";
 import { finishSession, recordAnswer, startSession } from "../storage/sessions";
 import { getSetting } from "../storage/settings";
 import { reportStorageProblem } from "./components/storageNotice";
-import { failureMessage } from "./storageMessages";
+import { failureMessage, SET_MISSING } from "./storageMessages";
 
 /** Wie die aktuelle Karte gestellt wird (TDD 12.3). */
 export type Question =
@@ -37,7 +38,8 @@ export type Question =
       readonly correct: number;
     };
 
-export type AnswerOutcome = { ok: true } | { ok: false; error: string };
+/** `setGone`: Das Set wurde inzwischen gelöscht, die Sitzung ist damit zu Ende (TDD 3.4). */
+export type AnswerOutcome = { ok: true } | { ok: false; error: string; setGone?: true };
 
 export interface PracticeSession {
   readonly set: StoredSet;
@@ -161,6 +163,8 @@ function run(
   };
   const close = (status: "completed" | "ended") =>
     finishSession(db, session.id, status, new Date().toISOString()).catch((error: unknown) => {
+      // Mit dem Set gelöscht: Es gibt nichts mehr abzuschließen.
+      if (isSetMissing(error)) return;
       // Beim nächsten Start wird die Sitzung als unterbrochen vermerkt.
       console.warn("Ende der Sitzung nicht gespeichert", error);
       reportStorageProblem(error, "Das Ende der Lernsitzung wurde nicht gespeichert.");
@@ -198,6 +202,12 @@ function run(
       try {
         await recordAnswer(db, event);
       } catch (error) {
+        if (isSetMissing(error)) {
+          // Ohne Set gibt es nichts weiter zu speichern; auch das Ende der Sitzung nicht.
+          ended = true;
+          if (current === practice) current = null;
+          return { ok: false, error: `${SET_MISSING} Die Lernsitzung ist beendet.`, setGone: true };
+        }
         console.error("Antwort nicht gespeichert", error);
         unsaved++;
         const consequence = "Die Antwort wurde nicht gespeichert.";

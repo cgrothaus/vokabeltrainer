@@ -168,7 +168,8 @@ function describeSection(overview: Overview, now: Date): string {
 function sectionView(section: StoredSection, set: StoredSet, stats: HTMLElement): Node {
   return h(
     "details",
-    { class: "section" },
+    // Mit `id`, damit ein Neuzeichnen (TDD 3.4) sie aufgeklappt lässt.
+    { class: "section", id: `section-${section.id}` },
     h(
       "summary",
       null,

@@ -14,7 +14,8 @@ export function runTransaction(
   mode: IDBTransactionMode,
   work: (transaction: IDBTransaction) => void,
 ): Promise<void> {
-  return withConnection(db, mode, (current) => attempt(current, stores, mode, work));
+  const names = Array.isArray(stores) ? stores : [stores];
+  return withConnection(db, names, mode, (current) => attempt(current, names, mode, work));
 }
 
 /** Wirft synchron, wenn die Transaktion nicht beginnen kann (z. B. `InvalidStateError`). */

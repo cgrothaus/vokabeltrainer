@@ -53,7 +53,7 @@ function installHint(hasSets: boolean): Node {
     ),
     h(
       "details",
-      null,
+      { id: "home-screen-steps" },
       h("summary", null, "So kommt die App auf den Home-Bildschirm"),
       h("ol", null, steps),
     ),
