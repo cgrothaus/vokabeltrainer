@@ -57,10 +57,13 @@
   box-sizing: border-box;
 }
 
+/* Wörter, die allein breiter als die Zeile sind, brechen um, etwa „Wiederherstellung“ bei 200 % Schrift
+   mit breiter Systemschrift (TDD 13.4); bei normaler Größe ändert sich nichts. */
 body {
   margin: 0;
   background: var(--bg);
   color: var(--fg);
+  overflow-wrap: break-word;
 }
 
 main {
