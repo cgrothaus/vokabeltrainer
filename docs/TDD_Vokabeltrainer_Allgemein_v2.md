@@ -1,6 +1,6 @@
 # TDD: Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.36 – Sets und Sektionen verwalten  
+**Version:** 2.37 – Set- und Sektionsexport  
 **Stand:** 30. Oktober 2026  
 **Bezug:** PRD 2.6 (`PRD_Vokabeltrainer_Allgemein_v2.md`), Formatspezifikation Version 1 (`Formatspezifikation_Vokabelset_v1.md`), Review-Notizen (`20261019_TDD_v1_Review_Notizen.md`)  
 **Status:** Entwurf; Grundlage für M0 (Walking Skeleton)  
@@ -538,10 +538,12 @@ Ungültiges JSON, unbekannte Formatversion, Validierungsfehler, widersprüchlich
 
 ### 11.1 Set- und Sektionsexport (FR-18)
 
-- Erzeugt eine Datei nach der Formatspezifikation mit `exportedAt`, `scope`, allen IDs und `rev`-Werten.
-- Antworten ohne Varianten werden in Kurzform geschrieben; leere optionale Felder entfallen.
-- Keine Lernhistorie, keine Einstellungen.
-- Dateiname: `<Titel>_<JJJJ-MM-TT>.json`, problematische Zeichen ersetzt, höchstens 80 Zeichen.
+- Erzeugt eine Datei nach der Formatspezifikation mit `exportedAt`, `scope`, allen IDs und `rev`-Werten (`domain/exportSet.ts`), Felder in der Reihenfolge der Spezifikation. Die Set-Angaben samt `id` und `rev` stehen auch im Teil-Export, damit ein Rückimport das Set erkennt.
+- Antworten ohne Varianten werden in Kurzform geschrieben, Beispiele ohne Übersetzung ebenso; leere optionale Felder entfallen.
+- Keine Lernhistorie, keine Einstellungen, keine Verwaltungsfelder (`editCount`, `createdAt`, `updatedAt`).
+- **Teil-Export:** `scope.type = "sections"` mit den gewählten Sektionen in der Reihenfolge des Sets. Er lässt sich nicht als neues Set importieren (9.2), erst mit M4 in das vorhandene.
+- Dateiname: `<Titel>_<JJJJ-MM-TT>.json`, beim Teil-Export mit dem Titel der Sektion bzw. „<n> Sektionen“ dazwischen; `\ / : * ? " < > |` und Steuerzeichen werden durch `-` ersetzt, Leerraum zu einem Leerzeichen; höchstens 80 Zeichen, gekürzt wird der Titel, nie das Datum.
+- **Ansicht „Exportieren“** (`#/export/<id>`, D-42), erreichbar aus der Set-Ansicht: ab zwei Sektionen Wahl „Ganzes Set“ (Standard) oder „Einzelne Sektionen“ mit Kästchen und dem Hinweis, dass sich ein Teil nicht als neues Set importieren lässt; darunter der Umfang („Ganzes Set: 4 Sektionen mit 57 Einträgen.“). „Datei speichern“ liefert die Datei nach 11.2 aus, „Text kopieren“ legt denselben Inhalt in die Zwischenablage, z. B. für einen Chat; scheitert das, erscheint der Text markiert in einem Feld zum Selbstkopieren. Ohne gewählte Sektion sind beide gesperrt. Die Datei entsteht erst im Tippen, synchron vor `share()` (11.2).
 
 ### 11.2 Datei ausliefern (D-17, T-22)
 
@@ -703,7 +705,7 @@ Kein Algorithmus für verteiltes Wiederholen in dieser Version. Die Events entha
 
 - Die Bibliothek zeigt Sets gruppiert nach Lernsprache (Anzeige über `Intl.DisplayNames`), innerhalb der Gruppe nach Lernstufe und Titel sortiert. Gruppiert wird nach dem kanonischen Code; Varianten wie `en-GB` bilden eine eigene Gruppe. Sortiert wird deutsch und mit Zahlen der Größe nach („Klasse 5“ vor „Klasse 10“); Sets ohne Lernstufe stehen am Ende der Gruppe.
 - Jede Zeile zeigt Titel (Link zur Set-Ansicht), Lernstufe und Zahl der Einträge sowie „Lernen“ als Abkürzung.
-- **Set-Ansicht** (`#/set/<id>`): Titel, Sprachpaar, Zahl der Einträge, vorhandene optionale Angaben (Lernstufe, Lehrwerk mit Ausgabe, Herkunft, Lizenz, Notiz, Prüfstatus), „Lernen“, der Lernstand des Sets (12.6), darunter die Sektionen als aufklappbare Abschnitte (anfangs zugeklappt) mit Titel, Zahl der Einträge und einer Zeile mit ihrem Lernstand, die auch zugeklappt sichtbar ist. Der Lernstand wird nachgeladen; scheitert das, erscheint ein Hinweis, der Rest der Ansicht bleibt nutzbar. Ein Eintrag zeigt Wort und Bedeutungen mit Varianten („auch: …“), „ungeprüft“ als umrandeten Text, Grammatik (bekannte Wortarten und Genus-Kürzel deutsch, z. B. „Nomen“, „maskulin“; andere Werte wie im Set, D-34), Beispiele und Notiz. Neben „Lernen“ führt „Bearbeiten“ zur Ansicht „Set bearbeiten“ (10). Am Ende „Set löschen“ (10).
+- **Set-Ansicht** (`#/set/<id>`): Titel, Sprachpaar, Zahl der Einträge, vorhandene optionale Angaben (Lernstufe, Lehrwerk mit Ausgabe, Herkunft, Lizenz, Notiz, Prüfstatus), „Lernen“, der Lernstand des Sets (12.6), darunter die Sektionen als aufklappbare Abschnitte (anfangs zugeklappt) mit Titel, Zahl der Einträge und einer Zeile mit ihrem Lernstand, die auch zugeklappt sichtbar ist. Der Lernstand wird nachgeladen; scheitert das, erscheint ein Hinweis, der Rest der Ansicht bleibt nutzbar. Ein Eintrag zeigt Wort und Bedeutungen mit Varianten („auch: …“), „ungeprüft“ als umrandeten Text, Grammatik (bekannte Wortarten und Genus-Kürzel deutsch, z. B. „Nomen“, „maskulin“; andere Werte wie im Set, D-34), Beispiele und Notiz. Neben „Lernen“ führt „Bearbeiten“ zur Ansicht „Set bearbeiten“ (10) und „Exportieren“ zum Export (11.1). Am Ende „Set löschen“ (10).
 - **Leere Bibliothek:**
   - kurzer Satz, was die App kann,
   - primäre Aktion „Erstes Vokabelset importieren“,
@@ -717,7 +719,7 @@ Kein Algorithmus für verteiltes Wiederholen in dieser Version. Die Events entha
   - die Vorlage (`NEW_SET_PROMPT` in `src/content/help.ts`, nur in der App, D-35) mit eingesetzter Adresse der veröffentlichten Spezifikation (`formatspezifikation.md` relativ zur App) und „Vorlage kopieren“; scheitert das Kopieren, ist die Vorlage markiert und ein Hinweis erklärt, sie selbst zu kopieren;
   - „Formatbeschreibung teilen“ für Chats, die den Link nicht öffnen: Die Spezifikation wird beim Öffnen der Ansicht geladen (offline aus dem Cache) und über das Teilen-Menü bzw. als Download übergeben, als `Formatbeschreibung-Vokabeltrainer.txt` (Chromium teilt keine `.md`-Dateien);
   - aufklappbar das Formatbeispiel aus Kapitel 1 der Spezifikation.
-  Beispiel und Vorlage stehen in `src/content/help.ts`; ein Test hält das Beispiel gleich mit der Spezifikation. Die Korrekturvorlage kommt mit dem Set-Export (S-32), ebenfalls nur in die App.
+  Beispiel und Vorlage stehen in `src/content/help.ts`; ein Test hält das Beispiel gleich mit der Spezifikation. Die Korrekturvorlage kommt erst mit dem Rückimport bekannter Sets (S-36, D-42), ebenfalls nur in die App.
 - Hinweise zu Speicherschutz und Backup erscheinen als ruhige Hinweise oberhalb der Liste, eine neue Version (5.3) und Speicherprobleme (6.5) als Leisten am unteren Rand, der Speicherhinweis über dem Update-Hinweis; nie als blockierender Dialog.
 
 ### 13.2 Beispielset (FR-32)
@@ -798,7 +800,8 @@ Für diese Module werden Tests vor der Implementierung geschrieben:
 
 - `extract.ts`: Codeblöcke, Begleittext, BOM, kein JSON;
 - `validate.ts` und `normalize.ts`: Pflichtfelder, Kurzformen, `meaning` (Einzahl), unbekannte Felder, Sprachcodes, Grenzen, Fundstellen in Meldungen;
-- `ids.ts` und `hash.ts`: Alphabet, Kollisionsprüfung, stabile kanonische Darstellung (Schlüsselreihenfolge, Kurz- vs. Langform ergeben denselben `rev`);
+- `ids.ts` und `hash.ts`: Alphabet, Kollisionsprüfung, stabile kanonische Darstellung (Schlüsselreihenfolge, Kurz- vs. Langform ergeben denselben `rev`), eingefrorene Prüfwerte für Eintrag, Sektion und Set-Angaben;
+- `exportSet.ts`: Feldreihenfolge, Kurzform, IDs und `rev`, keine Verwaltungsfelder, Rundweg über `validateSetFile` und `normalizeSetFile`, Teil-Export in Set-Reihenfolge, Dateiname; dazu exportiert das Beispielset gegen Schema und Validator (`tests/format/setfile.test.ts`);
 - `diff.ts` und `merge.ts`: Tabelle 9.5 vollständig, Sonderfälle 9.6, Aktualisieren vs. Ersetzen, `null`-Löschung, Reihenfolgeregeln, Scope-Schutz;
 - `duplicates.ts`: Schwellenwert, Sprachpaar, Ausgabe;
 - `entryForm.ts`: Formular ↔ Eintrag, Pflichtfelder, leere Zeilen, Längengrenzen nach Trimmen und NFC, Prüfstatus, Erkennen von Änderungen ohne Leerraum;
@@ -862,11 +865,12 @@ Projekte: `mobile-chromium` (Pixel-Emulation) und `mobile-webkit` (iPhone-Emulat
 | E2E-17 Darstellung: „Dunkel“ bei hellem Gerät ergibt dieselben Farben wie ein dunkles Gerät (beide Blöcke gleich), `color-scheme` und `theme-color` folgen, die Wahl bleibt nach dem Neuladen; „Hell“ bei dunklem Gerät; „Wie auf dem Gerät“ folgt einem Wechsel sofort; ein wiederhergestelltes Backup bringt seine Darstellung mit | M1 | FR-21, FR-25, AK-10 |
 | E2E-18 Alle Daten löschen: Ankündigung mit Umfang, „Abbrechen“ ändert nichts, danach leere Bibliothek mit Meldung, alle Stores des Backups leer, `persistRequested` bleibt, Darstellung wieder wie auf dem Gerät | M1 | FR-06, TDD 10 |
 | E2E-19 Speicherfehler (`storageFailure.spec.ts`; Speicher per Init-Skript gestört, in Chromium zusätzlich echt voll über das Kontingent): Import, Wiederherstellen und Löschen melden den Fehler und ändern nichts; eine nicht gespeicherte Antwort zeigt einen Hinweis, die Sitzung läuft weiter, das Ergebnis nennt sie; ein nicht gespeichertes Sitzungsende zeigt den Speicherhinweis bis zum nächsten erfolgreichen Schreibvorgang; nach verlorener Verbindung speichern Import und laufende Sitzung ohne Meldung weiter; ein nicht gespeicherter Eintrag wird gemeldet, das Formular behält die Eingabe (seit S-30); eine nicht gespeicherte Verschiebung wird gemeldet, die Reihenfolge bleibt (seit S-31) | M1 | AK-26, FR-23, 6.5 |
-| E2E-20 Durchsicht (`a11y.spec.ts`): 36 Zustände aller Ansichten bei 320 px, hell und dunkel, ohne Verstöße von axe (WCAG 2.2 AA), ohne horizontales Scrollen auch bei 200 % Schrift, Ziele ab 44 × 44 außer Links im Fließtext, genau eine `h1`; nach Seitenwechseln Fokus auf der Überschrift und Seitentitel mit der Ansicht | M1 | FR-24, NFR-09–NFR-13, AK-12 |
+| E2E-20 Durchsicht (`a11y.spec.ts`): 38 Zustände aller Ansichten bei 320 px, hell und dunkel, ohne Verstöße von axe (WCAG 2.2 AA), ohne horizontales Scrollen auch bei 200 % Schrift, Ziele ab 44 × 44 außer Links im Fließtext, genau eine `h1`; nach Seitenwechseln Fokus auf der Überschrift und Seitentitel mit der Ansicht | M1 | FR-24, NFR-09–NFR-13, AK-12 |
 | E2E-21 Wiederherstellen auf einem Gerät mit Daten (`backup.spec.ts`): Warnung mit dem Umfang auf dem Gerät, „Abbrechen“ ändert nichts, „Vorher Backup speichern“ liefert den Bestand aus und setzt `lastBackupAt`, danach ersetzt „Alle Daten ersetzen“ alles; auf einem leeren Gerät (E2E-02) keine Warnung | M2 | AK-10, FR-19 |
 | E2E-22 Speicherschutz (`protection.spec.ts`; Gerät und `persist()` per Init-Skript gespielt): iOS im Browser zeigt die Anleitung schon im Empty State, mit Sets samt Umzug per Backup; sonst ohne Sets kein Hinweis, mit Sets der Hinweis auf Backups; gewährter Speicher ohne Hinweis; die Einstellungen nennen den Stand; installiert wird beim Start erneut angefragt, im Tab nicht; nach dem Wiederherstellen in der frisch installierten App wird angefragt | M2 | AK-20, FR-31 |
 | E2E-23 Backup-Erinnerung (`reminder.spec.ts`, Uhr per `page.clock.setFixedTime`): ohne Antworten keine Erinnerung, nach der ersten Antwort schon; „Später“ stellt um 3 Tage zurück; „Backup speichern“ liefert aus und setzt `lastBackupAt`; 15 Tage später ohne Lernen keine Erinnerung, nach einer neuen Antwort wieder | M2 | AK-20, FR-31 |
 | E2E-24 Sets und Sektionen (`sections.spec.ts`): leeres Set anlegen (ohne Titel nichts gespeichert, Sprache aus der Liste), Sektionen umbenennen, anlegen und verschieben, Einträge ergänzen und verschieben; nach dem Neuladen gleiche Reihenfolge; Zurück führt nach dem Anlegen zur Bibliothek; die einzige Sektion ohne Löschen; leere Sektion ohne Rückfrage gelöscht, mit Einträgen erst nach Ankündigung, „Abbrechen“ ändert nichts; Angaben bearbeiten mit „Andere Sprache …“, ungültiger Code wird gemeldet | M3 | AK-25, FR-02, FR-03 |
+| E2E-25 Export (`export.spec.ts`; Teilen-Menü und Zwischenablage per Init-Skript): ganzes Set über das Teilen-Menü mit IDs, `rev` und `scope.type = "set"`, ohne Lernstand; auf demselben Gerät bis M4 als „schon vorhanden“ abgelehnt, auf einem anderen Gerät dasselbe Set mit denselben IDs; einzelne Sektion als Download nur mit dieser Sektion, ohne Auswahl beide Knöpfe gesperrt; „Text kopieren“ mit demselben Inhalt, scheitert es, steht der Text markiert da | M3 | FR-18 |
 
 Playwright-WebKit entspricht nicht Safari auf iOS. Speicherlöschung, Installation, `persist()` und Teilen-Menü werden manuell geprüft (15.5).
 
@@ -974,6 +978,7 @@ Ergebnisse (LLM-App, Modell, Datum, Befund) werden im Umsetzungsplan bei S-15 fe
 | D-39 | Backup-Erinnerung nur bei Antworten, die kein Backup enthält (ohne Backup: alle; sonst aus Sitzungen nach dem Backup), und Backup fehlt oder ist mindestens 14 Tage alt; Sets allein lösen nichts aus; „Backup speichern“ liefert direkt aus; neben der Erinnerung entfällt der Speicherschutz-Hinweis auf Backups | 6.6 | Nutzerentscheidungen bei der Planung von S-27, 29. Oktober 2026: Sets lassen sich aus dem Chat neu importieren, der Lernstand nicht; ohne Lernen seit dem Backup ist nichts zu sichern |
 | D-40 | Erste Auslieferung unter der Subdomain `vokabeltrainer.cgrothaus.de` (CNAME auf GitHub Pages, Domain im Konto verifiziert); die frühere Adresse leitet um, Testdaten dort werden ohne Umzugshinweis verworfen. Fixtures je Version aus der App erzeugt statt von Hand, das DB-Fixture mit Struktur der Stores, das Backup bytegenau; Fixtures für jede Version bis `DB_VERSION`, nicht nur für Vorgängerstände | 4.4, 7.4, 15.3 | Nutzerentscheidungen bei der Planung von S-29, 29. Oktober 2026: eine eigene Adresse trennt den Speicher von anderen Pages-Projekten; Betatester fangen neu an |
 | D-41 | Bearbeiten in einer eigenen Ansicht „Set bearbeiten“ neben der Set-Ansicht, die Leseansicht bleibt; jedes Set hat mindestens eine Sektion (ein neues startet mit einer, die letzte lässt sich nicht löschen); Reihenfolge mit Auf/Ab-Schaltflächen, in eine andere Sektion über die Auswahl im Eintragsformular (ans Ende), kein Ziehen; Sprachen beim Anlegen aus einer Liste mit deutschen Namen plus „Andere Sprache …“ mit Sprachcode. Das Eintragsformular ist eine eigene Route mit zusätzlichem Verlaufseintrag wie die Lernsitzung (D-29); leere Zeilen fallen still weg; jedes Speichern prüft `editCount` | 3.2, 10, 13.1 | Nutzerentscheidungen bei der Planung von S-30 und S-31, 30. Oktober 2026; Formular und Verlaufseintrag selbst festgelegt |
+| D-42 | Export in einer eigenen Ansicht „Exportieren“ aus der Set-Ansicht: ganzes Set oder einzelne Sektionen, als Datei (Teilen-Menü bzw. Download) oder als kopierter Text. Die Korrekturvorlage und der Test mit echten KI-Apps (O-09) kommen erst mit dem Rückimport in M4 (S-36); bis dahin würde der Weg an der Ablehnung bekannter Sets enden | 11.1, 13.1 | Nutzerentscheidungen bei der Planung von S-32 und S-33, 30. Oktober 2026 |
 
 ---
 
@@ -989,7 +994,7 @@ Ergebnisse (LLM-App, Modell, Datum, Befund) werden im Umsetzungsplan bei S-15 fe
 | O-06 | Wachstum der Review-Events über Jahre | Messung TAK-15 (S-24): Bei 50.000 Events in einem Set erscheint der Lernstand nach bis zu 0,9 s, vor allem wegen des Lesens; bei Bedarf Zwischenspeicher im Arbeitsspeicher (S-38, zurückgestellt), gespeicherter Cache oder Archivierung mit Backup-Konzept |
 | O-07 | Schwellenwert der Duplikaterkennung (0,8) | Mit Beispielsets und echten Daten in M1 prüfen |
 | O-08 | iOS graut im Dateiwähler Dateien aus, deren Typ nicht zu `accept` passt; ob `.json` mit `accept=".json,application/json,text/plain"` wählbar ist, ist nicht belegt (Quellen 26, 27) | Geprüft am 21. Oktober 2026 (S-11): auf iPhone und iPad wählbar, `accept` bleibt |
-| O-09 | Reicht die Formatspezifikation allein, damit ein LLM aus Fotos oder einer Wortliste ein gültiges Set erzeugt oder ein exportiertes Set korrigiert (AK-13)? | Geklärt am 21. Oktober 2026 (S-15): ja für neue Sets (Nutzertest mit Foto und Link, Vortest mit drei Modellen) und für die Korrektur im Vortest; Vorlagen auf einen Link verkürzt. Korrektur mit LLM-Apps und echtem Export prüfen, sobald es den Set-Export gibt (S-32) |
+| O-09 | Reicht die Formatspezifikation allein, damit ein LLM aus Fotos oder einer Wortliste ein gültiges Set erzeugt oder ein exportiertes Set korrigiert (AK-13)? | Geklärt am 21. Oktober 2026 (S-15): ja für neue Sets (Nutzertest mit Foto und Link, Vortest mit drei Modellen) und für die Korrektur im Vortest; Vorlagen auf einen Link verkürzt. Korrektur mit LLM-Apps und echtem Export prüfen, sobald der Rückimport geht (S-36, D-42) |
 | O-10 | Sets in Lektionsgröße (PRD Kap. 4, D-35): Lernen geht nur innerhalb eines Sets (FR-07), also nicht über mehrere Lektionen, etwa vor einer Klassenarbeit; bei vielen Sets wird die Bibliothek lang, Lehrwerke sind dort nicht sichtbar | Offen; PRD Kap. 11 nennt beides als mögliche Ausbaustufe. Wiederaufnehmen bei Rückmeldungen aus dem Betatest oder bei der Planung von M3 |
 
 ---
@@ -1071,6 +1076,7 @@ Geprüft am 18. bis 20. Oktober 2026.
 | 2.34 | 30. Oktober 2026 | Eintragseditor (S-30): Ansicht „Set bearbeiten“, Eintragsformular mit Frage beim Verlassen, Speichern mit `editCount`-Prüfung, Routen als Muster mit mehreren Parametern (3.2, 10, 13.1, 15.2, 15.4); D-41; E2E-07 bei S-30 statt S-33 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.35 | 30. Oktober 2026 | S-29 abgeschlossen: Umschalten der Domain, Live-Prüfung und Gerätechecks in Kap. 21 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.36 | 30. Oktober 2026 | Sets und Sektionen verwalten (S-31): leeres Set anlegen mit erster Sektion, Angaben bearbeiten mit Sprachliste und Sprachcode, Sektionen anlegen, umbenennen, verschieben und löschen, Einträge verschieben (3.1, 3.2, 10, 13.1, 15.2, 15.4); E2E-24 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.37 | 30. Oktober 2026 | Set- und Sektionsexport (S-32): Ansicht „Exportieren“, Teil-Export, Dateiname, Text kopieren (11.1, 13.1, 15.2, 15.4); Korrekturvorlage und O-09 zu S-36; D-42; E2E-25 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 
 ---
 
@@ -1181,14 +1187,16 @@ Ziel: Jeder riskante Teil läuft einmal von vorn bis hinten, in einfachster Form
 - ✅ **S-31** Leeres Set anlegen, Sektionen anlegen/umbenennen/verschieben/löschen, Einträge verschieben – FR-02, FR-03, AK-25  
   Erledigt am 30. Oktober 2026, nach den Entscheidungen aus der gemeinsamen Planung mit S-30 (D-41). Domain testgetrieben: `editSet.ts` um leeres Set, Angaben, Sektionen und das Verschieben von Einträgen erweitert, neu `setInfoForm.ts` (normalisiert über `normalizeSetFile` mit leerer Sektionsliste wie beim Import). `app/editSet.ts` verbindet beides mit `addSet` bzw. `updateSet`; Verschieben am Rand speichert nichts. Neu in der Oberfläche: `views/setInfo.ts` („Leeres Set anlegen“ und „Angaben bearbeiten“), `components/setInfoFields.ts` (Felder samt Sprachauswahl, Fehler werden gesetzt statt neu gezeichnet, damit „Andere Sprache …“ und der eingetippte Code bleiben), `components/leaveQuestion.ts` (Frage beim Verlassen, auch im Eintragseditor), `leaveTo` in `unsavedGuard.ts`; „Set bearbeiten“ hat jetzt Sektions- und Eintragswerkzeuge, Bibliothek und Empty State „Leeres Set anlegen“. Die erste Sektion wird mit angelegt statt still erzeugt, damit ihr Titel sichtbar gewählt wird. AK-25 „nach Export und Reimport“ prüft erst S-32. E2E-24 (drei Tests in `sections.spec.ts`) läuft in mobile-chromium und mobile-webkit, E2E-19 prüft eine gescheiterte Verschiebung, E2E-20 fünf neue Zustände. Gegenproben: `deleteSection` ohne Schutz der letzten Sektion lässt einen Unit-Test scheitern, ein Löschen-Knopf auch bei der einzigen Sektion E2E-24, nach dem Anlegen ein normaler Wechsel statt `leaveTo` E2E-24 (Zurück landet wieder im leeren Formular). Mit `playwright-cli` (mobiles Chromium, 320 px, hell und dunkel) geprüft: kein horizontales Scrollen, Werkzeuge der Sektion brechen um, Pfeile am Rand gesperrt; E2E-20 auch mit Verdana ohne Befund. Die volle E2E-Suite lief wegen einer parallelen Sitzung auf Port 4180 über eine eigene Konfiguration auf 4182.  
   Offen für den Gerätecheck (summarisch mit S-30): Anlegen eines Sets mit Bildschirmtastatur und Sprachauswahl auf iPhone, iPad und Galaxy A34, Auf/Ab und Umbenennen per Tippen, Zurück nach dem Anlegen.
-- 🔲 **S-32** Set- und Sektionsexport mit `scope`, IDs und `rev` – FR-18
+- ✅ **S-32** Set- und Sektionsexport mit `scope`, IDs und `rev` – FR-18  
+  Erledigt am 30. Oktober 2026. Nutzerentscheidungen bei der Planung von S-32 und S-33 (D-42): eigene Ansicht mit Auswahl, Datei und Text; Korrekturvorlage erst mit S-36; beide Pakete nach dem Merge von S-31. Domain testgetrieben: `hash.ts` um `setRev` und `sectionRev` (eingefrorene Werte), neu `exportSet.ts` (Datei und Dateiname). `app/exportSet.ts` bereitet die Datei synchron vor und liefert sie über `deliverFile` aus; `views/export.ts` nutzt die Auswahl-Stile der Einrichtung. E2E-25 (drei Tests in `export.spec.ts`) und zwei neue Zustände in E2E-20 laufen in mobile-chromium und mobile-webkit; ein Formattest prüft das exportierte Beispielset gegen Schema und Validator. Gegenproben: Sektions-`rev` aus den Set-Angaben lässt zwei Unit-Tests scheitern, ein Teil-Export, der die Auswahl übergeht, drei. Mit `playwright-cli` (mobiles Chromium, 320 px, hell und dunkel) geprüft: kein horizontales Scrollen, Seitentitel nennt das Set.  
+  Offen für den Gerätecheck (summarisch): Teilen-Menü mit dem `.json`-Export auf iPhone und iPad (in „Dateien“ sichern), Download auf dem Galaxy A34, „Text kopieren“ und Einfügen in eine Chat-App.
 - 🔲 **S-33** Mehrere Tabs: `BroadcastChannel` (3.4); eigener E2E-Test (E2E-07 prüft seit S-30 das Bearbeiten)
 
 ### M4 – Korrigieren und aktualisieren
 
 - 🔲 **S-34** `diff.ts`/`merge.ts` testgetrieben: Aktualisieren, Ersetzen, Konflikttabelle, Sonderfälle – FR-15, FR-17, FR-29, TAK-16
 - 🔲 **S-35** Vorschau für bekannte Sets mit Konflikten und Löschungen; `editCount`-Prüfung – FR-14, FR-16, TAK-07
-- 🔲 **S-36** Übernahme in einer Transaktion; E2E-08, E2E-09 – AK-04, AK-05, AK-06, AK-18
+- 🔲 **S-36** Übernahme in einer Transaktion; E2E-08, E2E-09; Korrekturvorlage in der App und Test der Korrektur mit KI-Apps und echtem Export (O-09, D-42) – AK-04, AK-05, AK-06, AK-13, AK-18
 - 🔲 **S-37** Abschließende Gerätechecks aller Meilensteine (15.5)
 
 ### Zurückgestellt

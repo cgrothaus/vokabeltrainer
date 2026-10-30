@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import Ajv2020 from "ajv/dist/2020";
 import { describe, expect, it } from "vitest";
+import { type ExportScope, exportSetFile } from "../../src/domain/exportSet";
 import { extractJson } from "../../src/domain/extract";
 import { prepareNewSet } from "../../src/domain/importSet";
 import { KNOWN_FIELDS, validateSetFile } from "../../src/domain/validate";
@@ -217,6 +218,29 @@ describe("Beispielset (TDD 13.2, FR-32)", () => {
     expect(examples.some((example) => typeof example === "string")).toBe(true);
     expect(examples.some((example) => typeof example === "object")).toBe(true);
     expect(entries.some((entry) => "notes" in entry)).toBe(true);
+  });
+
+  it("bleibt exportiert gültig, als ganzes Set und als Teil (TDD 11.1)", () => {
+    const prepared = prepareNewSet(text, {
+      now: "2026-10-22T00:00:00.000Z",
+      randomBytes: (count) => new Uint8Array(randomBytes(count)),
+    });
+    if (!prepared.ok) throw new Error(prepared.errors.join("\n"));
+    const { set } = prepared;
+    const at = new Date("2026-10-30T12:00:00.000Z");
+    const scopes: ExportScope[] = [
+      { type: "set" },
+      { type: "sections", sectionIds: [set.sections[1]!.id] },
+    ];
+    for (const scope of scopes) {
+      const exported = JSON.parse(JSON.stringify(exportSetFile(set, scope, at))) as unknown;
+      expect(validateSetFile(exported), scope.type).toEqual({
+        ok: true,
+        file: expect.anything(),
+        warnings: [],
+      });
+      expect(schemaAccepts(exported), ajv.errorsText(schemaAccepts.errors)).toBe(true);
+    }
   });
 });
 

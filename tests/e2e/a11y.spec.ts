@@ -220,6 +220,14 @@ test("Beispielset: Set-Ansicht mit Lernstand, Multiple Choice mit Rückmeldung",
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Beispielset");
   findings.push(...(await audit(page, "Set-Ansicht Beispielset")));
 
+  await page.getByRole("link", { name: "Exportieren" }).click();
+  await expect(page.getByText(/^Ganzes Set: /)).toBeVisible();
+  findings.push(...(await audit(page, "Export")));
+  await page.getByRole("radio", { name: "Einzelne Sektionen" }).check();
+  await page.getByRole("checkbox").first().check();
+  findings.push(...(await audit(page, "Export, einzelne Sektionen")));
+  await page.getByRole("link", { name: "Zurück zum Set" }).click();
+
   await page
     .getByRole("link", { name: /lernen$/ })
     .first()
