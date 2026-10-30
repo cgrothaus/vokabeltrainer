@@ -157,6 +157,8 @@ test("E2E-19 Ende der Sitzung nicht gespeichert: Speicherhinweis bis zum nächst
   await failWrites(page, null);
   await page.getByRole("link", { name: "Zurück zur Bibliothek" }).click();
   await startLearning(page, "Englisch – Wetter");
+  // Erst wenn die Sitzung gespeichert ist; sonst träfe die Störung schon ihren Start.
+  await expect(page.getByText("0 von 3 geschafft")).toBeVisible();
   await failWrites(page, FULL, "sessions");
   await page.getByRole("button", { name: "Beenden" }).click();
   await expect(notice(page)).toContainText("Das Ende der Lernsitzung wurde nicht gespeichert.");

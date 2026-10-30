@@ -6,6 +6,7 @@ import { openDatabase } from "./database";
 import { setMeta } from "./meta";
 import { readReminderState } from "./reminder";
 import { recordAnswer, startSession } from "./sessions";
+import { addSet } from "./sets";
 
 let db: IDBDatabase;
 
@@ -14,6 +15,17 @@ beforeEach(async () => {
   const result = await openDatabase({ appVersion: "test" });
   if (!result.ok) throw new Error(result.reason);
   db = result.db;
+  // Sitzungen gibt es nur zu vorhandenen Sets (TDD 3.4).
+  await addSet(db, {
+    id: "m4x8c2r9tw",
+    editCount: 0,
+    createdAt: "2026-10-01T17:00:00.000Z",
+    updatedAt: "2026-10-01T17:00:00.000Z",
+    title: "Wetter",
+    termLanguage: "en",
+    meaningLanguage: "de",
+    sections: [{ id: "q7h3kd", title: "Wetter", entries: [] }],
+  });
 });
 
 afterEach(() => db.close());

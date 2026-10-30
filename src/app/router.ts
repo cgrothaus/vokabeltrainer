@@ -11,7 +11,10 @@ export type View = (signal: AbortSignal, ...params: string[]) => Node;
  * auch mehrfach (Eintragseditor: Set und Eintrag). Passt die Zahl der Teile nicht, ist die Route nicht
  * erreichbar.
  */
-function resolve(path: string, routes: Record<string, View>): [View, string[]] | null {
+function resolve(
+  path: string,
+  routes: Record<string, View>,
+): [pattern: string, View, string[]] | null {
   const parts = path.split("/");
   for (const [pattern, view] of Object.entries(routes)) {
     const keys = pattern.split("/");
@@ -29,7 +32,7 @@ function resolve(path: string, routes: Record<string, View>): [View, string[]] |
         return false;
       }
     });
-    if (matches) return [view, params];
+    if (matches) return [pattern, view, params];
   }
   return null;
 }
@@ -48,16 +51,18 @@ const APP_TITLE = "Vokabeltrainer";
  * Nach einem Wechsel (TDD 13.4): Sobald die Ansicht ihre `h1` hat – manche laden erst nach –, nennt
  * der Seitentitel sie, und die Überschrift bekommt den Fokus, damit Screenreader die neue Seite
  * ansagen. Hat die Ansicht schon selbst etwas in sich fokussiert (Karte, Meldung), bleibt es dabei.
+ * Beim Neuzeichnen (`redrawn`) bleibt die Scrollposition, und den Fokus bekommt die Überschrift nur,
+ * wenn er vorher in der Ansicht lag.
  */
-function announce(root: HTMLElement, signal: AbortSignal, home: boolean): void {
+function announce(root: HTMLElement, signal: AbortSignal, home: boolean, redrawn?: Redrawn): void {
   const attempt = (): boolean => {
     const heading = root.querySelector("h1");
     if (!heading) return false;
     const name = heading.textContent?.trim();
     document.title = home || !name || name === APP_TITLE ? APP_TITLE : `${name} – ${APP_TITLE}`;
-    if (!root.contains(document.activeElement)) {
+    if (!root.contains(document.activeElement) && (!redrawn || redrawn.hadFocus)) {
       if (!heading.hasAttribute("tabindex")) heading.tabIndex = -1;
-      heading.focus();
+      heading.focus({ preventScroll: redrawn !== undefined });
     }
     return true;
   };
@@ -70,26 +75,96 @@ function announce(root: HTMLElement, signal: AbortSignal, home: boolean): void {
   });
 }
 
-/** Liefert eine Funktion, die das Routing beendet, z. B. wenn die Datenbank nicht mehr nutzbar ist. */
+/** Was beim Neuzeichnen wiederhergestellt wird; aufklappbare Abschnitte nur, wenn sie eine `id` haben. */
+interface Redrawn {
+  scrollY: number;
+  hadFocus: boolean;
+  openDetails: string[];
+}
+
+/**
+ * Die neu gezeichnete Ansicht lädt ihren Inhalt nach und ist anfangs kürzer: Aufgeklappte Abschnitte
+ * werden wieder geöffnet und die alte Position wieder eingenommen, sobald die Seite lang genug ist,
+ * längstens für zwei Sekunden.
+ */
+function restore(root: HTMLElement, signal: AbortSignal, redrawn: Redrawn): void {
+  // Fertig erst, wenn alle Abschnitte wieder da sind; die Ansicht zeichnet ihren Inhalt oft später.
+  const reached = () => {
+    let found = 0;
+    for (const id of redrawn.openDetails) {
+      const details = document.getElementById(id);
+      if (!(details instanceof HTMLDetailsElement) || !root.contains(details)) continue;
+      details.open = true;
+      found++;
+    }
+    scrollTo(0, redrawn.scrollY);
+    return found === redrawn.openDetails.length && Math.abs(scrollY - redrawn.scrollY) < 1;
+  };
+  if (reached()) return;
+  const observer = new MutationObserver(() => reached() && observer.disconnect());
+  observer.observe(root, { childList: true, subtree: true });
+  signal.addEventListener("abort", () => observer.disconnect());
+  setTimeout(() => observer.disconnect(), 2000);
+}
+
+export interface Router {
+  /** Beendet das Routing, z. B. wenn die Datenbank nicht mehr nutzbar ist. */
+  stop: () => void;
+  /**
+   * Zeichnet die aktuelle Ansicht neu, wenn ihr Muster in `redrawable` steht, z. B. nach einer
+   * Änderung in einem anderen Tab (TDD 3.4). Ein verborgener Tab zeichnet erst, wenn er sichtbar wird.
+   */
+  refresh: () => void;
+}
+
+/**
+ * `redrawable`: Muster reiner Leseansichten. Formulare, Sitzung, Import und Backup zeichnen sich nie
+ * von selbst neu, sonst gingen Eingaben verloren.
+ */
 export function startRouter(
   root: HTMLElement,
   routes: Record<string, View>,
   notFound: View,
-): () => void {
+  redrawable: string[] = [],
+): Router {
   let leave: AbortController | null = null;
-  const render = () => {
+  let current: string | null = null;
+  let stale = false;
+  const render = (redraw = false) => {
+    const redrawn = redraw
+      ? {
+          scrollY,
+          hadFocus: root.contains(document.activeElement),
+          openDetails: [...root.querySelectorAll("details[open][id]")].map((details) => details.id),
+        }
+      : undefined;
+    stale = false;
     leave?.abort();
     leave = new AbortController();
     const path = location.hash.slice(1) || "/";
-    const [view, params] = resolve(path, routes) ?? [notFound, []];
-    shownViews++;
+    const [pattern, view, params] = resolve(path, routes) ?? [null, notFound, []];
+    current = pattern;
+    if (!redraw) shownViews++;
     root.replaceChildren(view(leave.signal, ...params));
-    announce(root, leave.signal, path === "/");
+    announce(root, leave.signal, path === "/", redrawn);
+    if (redrawn) restore(root, leave.signal, redrawn);
   };
-  window.addEventListener("hashchange", render);
+  const navigate = () => render();
+  const redrawIfStale = () => {
+    if (stale && !document.hidden && current !== null && redrawable.includes(current)) render(true);
+  };
+  window.addEventListener("hashchange", navigate);
+  document.addEventListener("visibilitychange", redrawIfStale);
   render();
-  return () => {
-    window.removeEventListener("hashchange", render);
-    leave?.abort();
+  return {
+    stop: () => {
+      window.removeEventListener("hashchange", navigate);
+      document.removeEventListener("visibilitychange", redrawIfStale);
+      leave?.abort();
+    },
+    refresh: () => {
+      stale = true;
+      redrawIfStale();
+    },
   };
 }

@@ -122,6 +122,10 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
       const saved = await practice.answer(result);
       saving = false;
       if (signal.aborted) return false;
+      if (!saved.ok && saved.setGone) {
+        showGone(saved.error);
+        return false;
+      }
       problem.textContent = saved.ok ? "" : saved.error;
       // Inzwischen zum Zwischenstand gewechselt: mit dem neuen Stand zeigen, statt vorzurücken.
       if (shown !== at && screen === "pause") {
@@ -371,6 +375,15 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
     problem.textContent = "";
     const heading = h("h1", { tabindex: -1 }, "Geschafft");
     show("result", heading, ...quota(), ...mistakes(true), problem, toLibrary());
+    focusSoon(heading);
+  };
+
+  /** Das Set wurde inzwischen gelöscht, z. B. in einem anderen Tab (TDD 3.4): Es geht nicht weiter. */
+  const showGone = (message: string) => {
+    setUpdateBlocked(false);
+    problem.textContent = "";
+    const heading = h("h1", { tabindex: -1 }, "Lernsitzung beendet");
+    show("result", heading, h("p", null, message), toLibrary());
     focusSoon(heading);
   };
 

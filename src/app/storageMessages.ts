@@ -1,6 +1,6 @@
 // Meldungen bei Speicherfehlern (TDD 6.5, AK-26, FR-27): Ursache, was nicht gespeichert wurde, und
 // was als Nächstes hilft – ohne technische Begriffe. Eingeordnet wird in storage/errors.ts.
-import { type StorageFailure, storageFailure } from "../storage/errors";
+import { isSetMissing, type StorageFailure, storageFailure } from "../storage/errors";
 
 const CAUSE: Record<StorageFailure, string> = {
   quota: "Der Speicher auf diesem Gerät ist voll.",
@@ -28,7 +28,12 @@ export function storageMessage(
   return [CAUSE[failure], consequence, next].filter(Boolean).join(" ");
 }
 
+/** Kein Speicherfehler: Neu laden hilft nicht, es gibt nichts mehr, wohin gespeichert werden kann. */
+export const SET_MISSING =
+  "Dieses Set gibt es nicht mehr, es wurde zum Beispiel in einem anderen Tab gelöscht.";
+
 /** Für Abläufe, deren Speichern einen Fehler wirft statt ein Ergebnis zu liefern. */
 export function failureMessage(error: unknown, consequence: string, next?: string): string {
+  if (isSetMissing(error)) return `${SET_MISSING} ${consequence}`;
   return storageMessage(storageFailure(error), consequence, next);
 }

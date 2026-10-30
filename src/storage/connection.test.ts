@@ -116,12 +116,16 @@ describe("keepConnected", () => {
     keepConnected(db, { reopen: open, onSaved });
     await setMeta(db, "persistRequested", true);
     expect(onSaved).toHaveBeenCalledOnce();
+    // Mit den Stores der Transaktion, z. B. für die Nachricht an andere Tabs (TDD 3.4).
+    expect(onSaved).toHaveBeenCalledWith(["meta"]);
     await getMeta(db, "persistRequested");
     const failing = runTransaction(db, "meta", "readwrite", () => {
       throw new Error("erzwungener Fehler");
     });
     await expect(failing).rejects.toThrow("erzwungener Fehler");
     expect(onSaved).toHaveBeenCalledOnce();
+    await runTransaction(db, ["sets", "settings"], "readwrite", () => {});
+    expect(onSaved).toHaveBeenLastCalledWith(["sets", "settings"]);
   });
 
   it("lässt Verbindungen ohne Anmeldung unverändert scheitern", async () => {
