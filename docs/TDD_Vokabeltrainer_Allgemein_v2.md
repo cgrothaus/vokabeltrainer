@@ -1,6 +1,6 @@
 # TDD: Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.32 – Erste Auslieferung  
+**Version:** 2.33 – Umbruch langer Wörter  
 **Stand:** 29. Oktober 2026  
 **Bezug:** PRD 2.6 (`PRD_Vokabeltrainer_Allgemein_v2.md`), Formatspezifikation Version 1 (`Formatspezifikation_Vokabelset_v1.md`), Review-Notizen (`20261019_TDD_v1_Review_Notizen.md`)  
 **Status:** Entwurf; Grundlage für M0 (Walking Skeleton)  
@@ -731,7 +731,7 @@ Kurze Erklärungen direkt am Schritt, insbesondere bei: Import (neu oder bekannt
 
 ### 13.4 Mobile first und Barrierearmut (FR-24, NFR-09–NFR-13)
 
-- Kein horizontales Scrollen bei 320 CSS-Pixeln Breite, auch bei doppelter Schriftgröße: Überschriften und Schaltflächen trennen lange Wörter (`hyphens: auto`, `overflow-wrap: anywhere`).
+- Kein horizontales Scrollen bei 320 CSS-Pixeln Breite, auch bei doppelter Schriftgröße: Überschriften und Schaltflächen trennen lange Wörter (`hyphens: auto`, `overflow-wrap: anywhere`); im übrigen Text brechen Wörter um, die allein breiter als die Zeile sind (`overflow-wrap: break-word` am `body`). Ob es passt, hängt von der Systemschrift ab: Unter Linux (CI) ist sie breiter als unter macOS.
 - Touch-Ziele mindestens 44 × 44 CSS-Pixel als Designziel (WCAG 2.2 AA verlangt mindestens 24 × 24), auch aufklappbare Titel (`summary`); Links im Fließtext sind ausgenommen (WCAG 2.5.8).
 - Sichtbarer Fokus, logische Fokusreihenfolge, Fokus nach Dialogen zurück zum auslösenden Element.
 - Nach jedem Seitenwechsel bekommt die `h1` der neuen Ansicht den Fokus, auch wenn die Ansicht erst nachlädt, damit Screenreader die neue Seite ansagen – außer die Ansicht setzt ihn selbst (Karte, Meldung, Vorschau). Überschriften zeigen dabei keinen Fokusrahmen, bedienen lässt sich an ihnen nichts. Der Seitentitel nennt die Ansicht („Wetter – Vokabeltrainer“), in der Bibliothek nur „Vokabeltrainer“ (D-34). Beides regelt der Router (`app/router.ts`), Fokus innerhalb einer Ansicht der Helfer `focusSoon` (`app/dom.ts`).
@@ -1057,6 +1057,7 @@ Geprüft am 18. bis 20. Oktober 2026.
 | 2.30 | 29. Oktober 2026 | Speicherschutz-Hinweise (S-26): Hinweis je nach Gerät und Bestand, Anleitung zum Home-Bildschirm mit Umzug per Backup, getrennter Speicher auf iOS, Anfrage nach dem Wiederherstellen und beim Start der installierten App (6.6, D-38); Stand in den Einstellungen (13.6); `storageProtection.ts` und `platform/device.ts` (3.1, 15.2); E2E-22, E2E-20 mit 26 Zuständen (15.4); Gerätecheck (15.5) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.31 | 29. Oktober 2026 | Backup-Erinnerung (S-27): nur bei ungesicherten Antworten, Ermittlung ohne Zeitindex, direkte Auslieferung, Vorrang vor dem Hinweis auf Backups (6.6, D-39); `backupReminder.ts` (3.1, 15.2); E2E-23, E2E-20 mit 27 Zuständen (15.4); Bezug PRD 2.6 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.32 | 29. Oktober 2026 | Erste Auslieferung (S-29): Adresse `vokabeltrainer.cgrothaus.de`, frühere Adresse leitet um, Testdaten werden verworfen (4.4, D-40, Quelle 28); Datenmodell, Backupformat und Set-Format eingefroren (7.4); Fixtures v1 aus der App mit Übernahmetest (15.3) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.33 | 30. Oktober 2026 | Umbruch langer Wörter im übrigen Text (13.4), gefunden beim ersten CI-Lauf von E2E-20 unter Linux; Stand in Kap. 21 bei S-29 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 
 ---
 
@@ -1156,6 +1157,7 @@ Ziel: Jeder riskante Teil läuft einmal von vorn bis hinten, in einfachster Form
 - 🔶 **S-29** Erste Auslieferung vorbereiten: eigene Domain, `DB_VERSION` und Formate einfrieren, Fixtures v1 anlegen – FR-33, T-23  
   Das Fixture `tests/fixtures/db/v1.json` ist die Grundlage für E2E-04 bei der ersten Erhöhung von `DB_VERSION` (7.4, S-10).  
   Stand 29. Oktober 2026: Fixtures, Test und Dokumente fertig; es fehlen das Umschalten der Domain und die Gerätechecks. Nutzerentscheidungen bei der Planung (D-40): Subdomain `vokabeltrainer.cgrothaus.de`; Testdaten unter der alten Adresse werden verworfen, ohne Umzugshinweis in der App; Beginn erst nach S-39, weil S-39 die Formatspezifikation noch änderte. Die Fixtures v1 hat ein Playwright-Skript in mobile-chromium gegen den Stand nach S-27 erzeugt (15.3): 2 Sets, 4 Sitzungen (eine Wiederholung mit `repeatOf`, eine abgebrochen), 21 Antworten, 3 Einstellungen, 3 Meta-Einträge; das Backup davor mit 3 Sitzungen und 20 Antworten. `preMigrationCopyAt` fehlt im Fixture, weil es ohne Migration nicht entsteht. `tests/format/fixtures.test.ts` prüft Vollständigkeit, Struktur, Übernahme und bytegleiches Schreiben. Gegenproben: ein umbenannter Index in Schritt 1 lässt den Strukturtest scheitern, ein neues Pflichtfeld in `validateRecords` die Übernahme von Datenbank und Backup, `DB_VERSION` 2 ohne Fixture den Vollständigkeitstest, ein zusätzliches Feld in der Backup-Hülle den Bytevergleich. Das JSON Schema trägt die endgültige Adresse als `$id`. Formatspezifikation, Betatest-Anleitung und README nennen die neue Adresse.  
+  Beim Deployment am 30. Oktober 2026 lief E2E-20 (S-23) zum ersten Mal in der CI und scheiterte in sechs Tests: Bei 200 % Schrift waren Bibliothek, Einstellungen und Hilfe 325 bzw. 362 px breit, weil „Wiederherstellung“ im Link zum Backup und „Formatbeschreibung“ in der Hilfe unter Linux nicht in eine Zeile passten; lokal unter macOS ist die Systemschrift schmaler. Behoben mit `overflow-wrap: break-word` am `body` (13.4). Lokal nachgestellt mit Verdana per Init-Skript: ohne die Regel dieselben Befunde (323 bzw. 360 px), mit ihr besteht E2E-20.  
   Offen, nur mit dem Nutzer: DNS-Eintrag `vokabeltrainer CNAME cgrothaus.github.io.` und Verifizieren von `cgrothaus.de` im GitHub-Konto; dann die Domain in Pages eintragen, HTTPS erzwingen, nach `production` deployen, live prüfen (Start, Offline-Start, Spezifikation und Schema, Weiterleitung der alten Adresse) und auf iPhone 17, iPad Air und Galaxy A34 neu installieren.
 
 ### M3 – Inhalte pflegen und teilen
