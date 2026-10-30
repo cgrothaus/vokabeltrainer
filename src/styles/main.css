@@ -608,13 +608,47 @@ a.action.secondary {
   list-style: none;
 }
 
-.edit-entries a {
+.edit-entries li {
   display: flex;
   align-items: center;
-  min-height: 44px;
+  gap: 0.5rem;
   padding: 0.25rem 0;
   border-bottom: 1px solid var(--border);
+}
+
+.edit-entries a {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  min-width: 0;
+  min-height: 44px;
   overflow-wrap: anywhere;
+}
+
+/* Auf/Ab, Umbenennen, Löschen (D-41): brechen bei schmaler Breite um. */
+.edit-set .tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.edit-entries .tools {
+  flex: none;
+  flex-wrap: nowrap;
+}
+
+/* Pfeile statt Wörtern, damit je Eintrag zwei Schaltflächen neben den Text passen. */
+button.icon {
+  min-width: 44px;
+  padding: 0.5rem;
+}
+
+.edit-set .add-section {
+  margin-top: 2rem;
+}
+
+.edit-set form button {
+  margin-top: 0.75rem;
 }
 
 /* Eintragseditor (TDD 10): Felder über die volle Breite, kein waagerechtes Scrollen (AK-12). */
@@ -640,6 +674,7 @@ a.action.secondary {
 }
 
 .editor input[type="text"],
+.edit-set input[type="text"],
 .editor select,
 .editor textarea.plain {
   display: block;

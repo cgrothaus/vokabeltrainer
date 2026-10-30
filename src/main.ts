@@ -10,7 +10,17 @@ import {
 import { mountUpdateNotice, showUpdateNotice } from "./app/components/updateNotice";
 import { dataScope, removeAllData } from "./app/deleteAll";
 import { deletionScope, removeSet } from "./app/deleteSet";
-import { removeEntry, saveEntry } from "./app/editSet";
+import {
+  addSectionTo,
+  createSet,
+  moveEntryIn,
+  moveSectionIn,
+  removeEntry,
+  removeSection,
+  renameSectionIn,
+  saveEntry,
+  saveSetInfo,
+} from "./app/editSet";
 import { loadSpec, newSetPrompt, shareSpec } from "./app/help";
 import { loadOverview } from "./app/overview";
 import { previewImport, saveImport } from "./app/importText";
@@ -21,6 +31,7 @@ import { applyTheme, loadTheme, saveTheme } from "./app/theme";
 import { backupView } from "./app/views/backup";
 import { editSetView } from "./app/views/editSet";
 import { entryEditorView } from "./app/views/entryEditor";
+import { newSetView, setInfoView } from "./app/views/setInfo";
 import { helpView } from "./app/views/help";
 import { importView } from "./app/views/import";
 import { learnView } from "./app/views/learn";
@@ -195,7 +206,37 @@ async function start(): Promise<void> {
       },
     });
   const editPage = (_signal: AbortSignal, id: string) =>
-    editSetView({ loadSet: () => getSet(db, id) });
+    editSetView({
+      loadSet: () => getSet(db, id),
+      addSection: (set, title) => addSectionTo(db, set, title),
+      renameSection: (set, sectionId, title) => renameSectionIn(db, set, sectionId, title),
+      removeSection: (set, sectionId) => removeSection(db, set, sectionId),
+      moveSection: (set, sectionId, step) => moveSectionIn(db, set, sectionId, step),
+      moveEntry: (set, entryId, step) => moveEntryIn(db, set, entryId, step),
+    });
+  // Sprachen vorhandener Sets für die Auswahl beim Anlegen und Bearbeiten (D-41).
+  const loadLanguages = async () =>
+    (await listSets(db)).flatMap((set) => [set.termLanguage, set.meaningLanguage]);
+  const newSetPage = (signal: AbortSignal) =>
+    newSetView(
+      {
+        loadLanguages,
+        createSet: (form, sectionTitle) => createSet(db, form, sectionTitle),
+        // TDD 6.6: wie nach einem Import.
+        onCreated: () => void askOnceAfterSave(),
+      },
+      signal,
+    );
+  const setInfoPage = (signal: AbortSignal, id: string) =>
+    setInfoView(
+      {
+        loadSet: () => getSet(db, id),
+        loadLanguages,
+        saveSetInfo: (set, form) => saveSetInfo(db, set, form),
+      },
+      signal,
+      id,
+    );
   const entryContext = (setId: string) => ({
     loadSet: () => getSet(db, setId),
     saveEntry: (set: StoredSet, form: EntryForm, entryId?: string) =>
@@ -257,7 +298,9 @@ async function start(): Promise<void> {
     {
       "/": library,
       "/set/*": setPage,
+      "/new-set": newSetPage,
       "/edit/*": editPage,
+      "/set-info/*": setInfoPage,
       "/entry/*/*": entryPage,
       "/new-entry/*/*": newEntryPage,
       "/import": importPage,

@@ -13,6 +13,7 @@ import {
 } from "../../domain/entryForm";
 import type { StoredSet } from "../../domain/model";
 import { GENDERS, PARTS_OF_SPEECH } from "../components/entryDetails";
+import { leaveQuestion } from "../components/leaveQuestion";
 import { guardUnsaved, type UnsavedGuard } from "../components/unsavedGuard";
 import type { EditOutcome, EntryOutcome } from "../editSet";
 import { type Child, focusSoon, h } from "../dom";
@@ -480,47 +481,23 @@ export function entryEditorView(
 
     // Frage beim Verlassen mit Änderungen (Zurück-Taste).
     function showQuestion() {
-      const text = h("p", null, "Deine Änderungen an diesem Eintrag sind noch nicht gespeichert.");
       question.replaceChildren(
-        h(
-          "div",
-          { class: "confirm" },
-          text,
-          h(
-            "div",
-            { class: "actions" },
-            h(
-              "button",
-              {
-                type: "button",
-                onclick: async () => {
-                  hideQuestion();
-                  if (await save()) {
-                    original = structuredClone(form);
-                    guard.leave();
-                  } else guard.stay();
-                },
-              },
-              "Speichern",
-            ),
-            h("button", { type: "button", class: "secondary", onclick: discard }, "Verwerfen"),
-            h(
-              "button",
-              {
-                type: "button",
-                class: "secondary",
-                onclick: () => {
-                  hideQuestion();
-                  guard.stay();
-                  document.getElementById("term")?.focus();
-                },
-              },
-              "Weiter bearbeiten",
-            ),
-          ),
-        ),
+        leaveQuestion("Deine Änderungen an diesem Eintrag sind noch nicht gespeichert.", {
+          save: async () => {
+            hideQuestion();
+            if (await save()) {
+              original = structuredClone(form);
+              guard.leave();
+            } else guard.stay();
+          },
+          discard,
+          stay: () => {
+            hideQuestion();
+            guard.stay();
+            document.getElementById("term")?.focus();
+          },
+        }),
       );
-      focusSoon(text);
     }
 
     function hideQuestion() {
