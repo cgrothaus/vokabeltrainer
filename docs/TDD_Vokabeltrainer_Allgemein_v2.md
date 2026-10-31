@@ -1,7 +1,7 @@
 # TDD: Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.38 – Mehrere Tabs  
-**Stand:** 30. Oktober 2026  
+**Version:** 2.39 – M4 geplant  
+**Stand:** 31. Oktober 2026  
 **Bezug:** PRD 2.6 (`PRD_Vokabeltrainer_Allgemein_v2.md`), Formatspezifikation Version 1 (`Formatspezifikation_Vokabelset_v1.md`), Review-Notizen (`20261019_TDD_v1_Review_Notizen.md`)  
 **Status:** Entwurf; Grundlage für M0 (Walking Skeleton)  
 **Entstehung und Autorenschaft:** siehe Kapitel 20 (Änderungshistorie)
@@ -472,14 +472,14 @@ Gilt nur innerhalb des Scopes der Datei.
 - **Eintrag mit bekannter ID:** Felder aus der Datei überschreiben die lokalen. Fehlende Felder bleiben, `null` löscht ein optionales Feld. Arrays (`meanings`, `acceptedVariants`, `examples`, `grammar.forms`) werden als Ganzes ersetzt, wenn sie vorhanden sind.
 - **Eintrag ohne ID:** wird neu angelegt.
 - **Nicht enthaltene Einträge und Sektionen** bleiben unverändert erhalten.
-- **Reihenfolge:** Innerhalb einer Sektion gilt die Reihenfolge der Datei. Nicht enthaltene lokale Einträge folgen in ihrer bisherigen relativen Reihenfolge. Neue Sektionen werden ans Ende gehängt.
+- **Reihenfolge:** Innerhalb einer Sektion gilt die Reihenfolge der Datei. Nicht enthaltene lokale Einträge folgen in ihrer bisherigen relativen Reihenfolge. Bekannte Sektionen behalten ihre Position im Set, neue Sektionen werden ans Ende gehängt. Ändert sich so die Reihenfolge einer Sektion, nennt die Vorschau sie („Reihenfolge geändert“, D-44), damit eine in der App seit dem Export umsortierte Sektion nicht still zurückgestellt wird.
 
 ### 9.4 Bekanntes Set: Ersetzen
 
-- `scope.type = "set"`: Set-Angaben, Sektionen und Einträge entsprechen danach genau der Datei.
-- `scope.type = "sections"`: Nur die in `sectionIds` genannten Sektionen werden genau wie in der Datei übernommen. Eine dort genannte Sektion, die im Inhalt fehlt, wird gelöscht. Andere Sektionen und Set-Angaben bleiben unberührt. Neue Sektionen ohne ID werden ergänzt.
+- `scope.type = "set"`: Set-Angaben, Sektionen und Einträge entsprechen danach genau der Datei, auch in der Reihenfolge der Sektionen.
+- `scope.type = "sections"`: Nur die in `sectionIds` genannten Sektionen werden genau wie in der Datei übernommen. Eine dort genannte Sektion, die im Inhalt fehlt, wird gelöscht. Andere Sektionen und Set-Angaben bleiben unberührt. Neue Sektionen ohne ID werden ergänzt. Bekannte Sektionen behalten ihre Position, neue kommen ans Ende.
 - Beim Ersetzen bedeutet ein fehlendes optionales Feld: Feld entfernen.
-- Löschungen werden in der Vorschau einzeln aufgeführt und gesondert bestätigt (FR-06).
+- Löschungen werden in der Vorschau einzeln aufgeführt und gesondert bestätigt (FR-06): Die Schaltfläche nennt die Folge („Ersetzen und 3 Einträge löschen“, D-44), wie beim Löschen eines Sets.
 
 ### 9.5 Konflikte seit dem Export (FR-29, R-08, D-09)
 
@@ -505,16 +505,18 @@ Konflikte zeigt die Vorschau gesondert mit beiden Fassungen („In der App“ / 
 | Eintrag stammt lokal aus einer Sektion außerhalb des Scopes | Eintrag wird **nicht** übernommen, weil sonst eine Sektion außerhalb des Scopes verändert würde. Vorschau: „Kann nicht übernommen werden“ mit Erklärung. |
 | Sektions-ID im Scope ist lokal unbekannt | Fehler: widersprüchlicher Scope; Import wird abgelehnt. |
 | Sektion außerhalb des Scopes, aber mit bekannter ID im Inhalt | Fehler: widersprüchlicher Scope; Import wird abgelehnt. |
+| Sektion mit lokal unbekannter ID bei `scope.type = "set"` | Sektion wurde lokal gelöscht. Sie gilt mit allen Einträgen als „Nicht mehr vorhanden“ (D-44). Wird ein Eintrag daraus als neu übernommen, wird die Sektion mit neuer ID und dem Titel aus der Datei am Ende neu angelegt. |
+| Set-Angaben in einem Teil-Export (`scope.type = "sections"`) geändert | Werden nicht übernommen (9.3); die Vorschau warnt (D-44). |
 | Doppelte IDs in der Datei | Fehler; Import wird abgelehnt. |
 | Sektion oder Eintrag in der Datei ohne ID, mit gleichem Text wie ein lokaler | Wird als neu behandelt; keine Zuordnung über Texte. |
 
 ### 9.7 Vorschau und Übernahme (FR-16, AK-06)
 
-- `diff.ts` liefert eine Liste von Aktionen pro Objekt (`unchanged`, `changed`, `added`, `removed`, `moved`, `conflict`, `missingLocally`, `notApplicable`) und daraus Zähler.
+- `diff.ts` liefert eine Liste von Aktionen pro Objekt (`unchanged`, `changed`, `added`, `removed`, `moved`, `conflict`, `missingLocally`, `notApplicable`), die Sektionen mit geänderter Reihenfolge und daraus Zähler. Konflikte tragen beide Fassungen. `merge.ts` setzt die Aktionen mit den Entscheidungen der Nutzenden (je Konflikt „In der App behalten“ oder „Datei übernehmen“, je „Nicht mehr vorhanden“ „nicht anlegen“ oder „als neu übernehmen“) zum neuen Set-Dokument um; neue IDs werden gegen alle IDs des Sets geprüft (6.3).
 - Die Vorschau zeigt Ziel (Set, Scope), Zähler und eine aufklappbare Liste je Kategorie, oben die Warnungen.
-- Bei bekannten Sets wählen Nutzende „Aktualisieren“ (Standard) oder „Ersetzen“; die Vorschau wird für die gewählte Art berechnet.
-- Beim Öffnen der Vorschau wird `editCount` des Zielsets gemerkt. Beim Bestätigen liest die Read-Write-Transaktion das Set erneut. Hat sich `editCount` geändert, wird abgebrochen und die Vorschau neu berechnet (TAK-07).
-- Die Übernahme schreibt das neue Set-Dokument in einer Transaktion. Review-Events gelöschter Einträge bleiben erhalten (Historie), fließen aber nicht in den aktuellen Lernstand ein.
+- Bei bekannten Sets wählen Nutzende „Aktualisieren“ (Standard) oder „Ersetzen“; die Vorschau wird für die gewählte Art berechnet. Ändert die Datei nichts, sagt die Vorschau „Die Datei enthält keine Änderungen.“, und es gibt nichts zu übernehmen.
+- Beim Öffnen der Vorschau wird `editCount` des Zielsets gemerkt. Beim Bestätigen liest die Read-Write-Transaktion das Set erneut. Hat sich `editCount` geändert (auch durch einen anderen Tab), wird abgebrochen und die Vorschau neu berechnet, mit dem Hinweis „Das Set wurde inzwischen geändert. Prüfe die Vorschau noch einmal.“; getroffene Entscheidungen gelten dann nicht mehr (TAK-07, D-44).
+- Die Übernahme schreibt das neue Set-Dokument in einer Transaktion. Review-Events gelöschter Einträge bleiben erhalten (Historie), fließen aber nicht in den aktuellen Lernstand ein. Danach öffnet die App die Set-Ansicht mit einer Meldung, z. B. „„Lektion 4“ aktualisiert: 2 geändert, 1 neu.“
 
 ### 9.8 Fehlerfälle
 
@@ -722,7 +724,7 @@ Kein Algorithmus für verteiltes Wiederholen in dieser Version. Die Events entha
   - die Vorlage (`NEW_SET_PROMPT` in `src/content/help.ts`, nur in der App, D-35) mit eingesetzter Adresse der veröffentlichten Spezifikation (`formatspezifikation.md` relativ zur App) und „Vorlage kopieren“; scheitert das Kopieren, ist die Vorlage markiert und ein Hinweis erklärt, sie selbst zu kopieren;
   - „Formatbeschreibung teilen“ für Chats, die den Link nicht öffnen: Die Spezifikation wird beim Öffnen der Ansicht geladen (offline aus dem Cache) und über das Teilen-Menü bzw. als Download übergeben, als `Formatbeschreibung-Vokabeltrainer.txt` (Chromium teilt keine `.md`-Dateien);
   - aufklappbar das Formatbeispiel aus Kapitel 1 der Spezifikation.
-  Beispiel und Vorlage stehen in `src/content/help.ts`; ein Test hält das Beispiel gleich mit der Spezifikation. Die Korrekturvorlage kommt erst mit dem Rückimport bekannter Sets (S-36, D-42), ebenfalls nur in die App.
+  Beispiel und Vorlage stehen in `src/content/help.ts`; ein Test hält das Beispiel gleich mit der Spezifikation. Die Korrekturvorlage (`CORRECTION_PROMPT`, S-36, D-42, D-44) steht ebenfalls nur in der App: in „Exportieren“ im Abschnitt „Mit KI-Chat korrigieren“ und in der Hilfe im Abschnitt „Set korrigieren“, jeweils mit „Vorlage kopieren“.
 - Hinweise zu Speicherschutz und Backup erscheinen als ruhige Hinweise oberhalb der Liste, eine neue Version (5.3) und Speicherprobleme (6.5) als Leisten am unteren Rand, der Speicherhinweis über dem Update-Hinweis; nie als blockierender Dialog.
 
 ### 13.2 Beispielset (FR-32)
@@ -856,8 +858,8 @@ Projekte: `mobile-chromium` (Pixel-Emulation) und `mobile-webkit` (iPhone-Emulat
 | E2E-05 Empty State → Beispielset → Sitzung mit Multiple Choice → Ergebnis (in `sample.spec.ts`; Multiple Choice mit einem zweiten Set in anderer Lernsprache seit S-18, Ergebnisliste und „Nur Fehler üben“ seit S-19) | M1 | AK-08, AK-14, AK-22, AK-23 |
 | E2E-06 Import mit Begleittext und Zusatzfeld (Datei) → Warnung sichtbar | M1 | AK-01 |
 | E2E-07 Bearbeiten → Neuladen → Änderung da (`edit.spec.ts`): Eintrag ändern (zweite Bedeutung, Notiz) und neue Einträge mit „Speichern und nächster Eintrag“ bleiben nach dem Neuladen; leeres Wort wird gemeldet und nicht gespeichert; Zurück mit Änderungen fragt, „Weiter bearbeiten“ behält die Eingabe, „Verwerfen“ ändert nichts, „Speichern“ aus der Frage speichert; Löschen mit Ankündigung; Verschieben in eine andere Sektion | M3 (S-30; Sektionen mit S-31) | AK-03, AK-25 |
-| E2E-08 Teil-Export → Datei ändern → Aktualisieren; andere Sektionen unverändert | M4 | AK-04, AK-05 |
-| E2E-09 Konflikt: lokal und in Datei geändert → Vorschau zeigt Konflikt | M4 | AK-18 |
+| E2E-08 Teil-Export → Datei ändern (Eintrag korrigiert, einer ergänzt) → Aktualisieren; andere Sektionen unverändert, der Lernstand bleibt beim korrigierten Eintrag; Ersetzen führt die Löschung auf, die Schaltfläche nennt sie | M4 | AK-04, AK-05, AK-06 |
+| E2E-09 Konflikt: lokal und in Datei geändert → Vorschau zeigt beide Fassungen; ohne Wahl bleibt die Fassung der App, „Datei übernehmen“ übernimmt | M4 | AK-18 |
 | E2E-10 Datensatz mit `<img onerror>` im Text → wird in Bibliothek und Set-Ansicht als Text angezeigt | M1 (seit S-14) | TAK-03, DF-08 |
 | E2E-11 Update: neue Version wird gefunden, bleibt auch nach Neuladen wartend, wird erst nach „Jetzt aktualisieren“ aktiv | M0 | NFR-05, TAK-12 (ohne Sitzung) |
 | E2E-12 Neuere Datenbankversion aus einem anderen Tab: App gibt die Verbindung frei und bittet ums Neuladen; nach dem Neuladen bleibt die neuere Datenbank unverändert | M0 | 3.4, 7.2, TAK-08 (Teil) |
@@ -984,6 +986,7 @@ Ergebnisse (LLM-App, Modell, Datum, Befund) werden im Umsetzungsplan bei S-15 fe
 | D-41 | Bearbeiten in einer eigenen Ansicht „Set bearbeiten“ neben der Set-Ansicht, die Leseansicht bleibt; jedes Set hat mindestens eine Sektion (ein neues startet mit einer, die letzte lässt sich nicht löschen); Reihenfolge mit Auf/Ab-Schaltflächen, in eine andere Sektion über die Auswahl im Eintragsformular (ans Ende), kein Ziehen; Sprachen beim Anlegen aus einer Liste mit deutschen Namen plus „Andere Sprache …“ mit Sprachcode. Das Eintragsformular ist eine eigene Route mit zusätzlichem Verlaufseintrag wie die Lernsitzung (D-29); leere Zeilen fallen still weg; jedes Speichern prüft `editCount` | 3.2, 10, 13.1 | Nutzerentscheidungen bei der Planung von S-30 und S-31, 30. Oktober 2026; Formular und Verlaufseintrag selbst festgelegt |
 | D-42 | Export in einer eigenen Ansicht „Exportieren“ aus der Set-Ansicht: ganzes Set oder einzelne Sektionen, als Datei (Teilen-Menü bzw. Download) oder als kopierter Text. Die Korrekturvorlage und der Test mit echten KI-Apps (O-09) kommen erst mit dem Rückimport in M4 (S-36); bis dahin würde der Weg an der Ablehnung bekannter Sets enden | 11.1, 13.1 | Nutzerentscheidungen bei der Planung von S-32 und S-33, 30. Oktober 2026 |
 | D-43 | Mehrere Tabs: Nachricht über `BroadcastChannel` zentral nach jeder Schreibtransaktion mit `sets` oder `settings`, ohne Set-ID; andere Tabs zeichnen nur reine Leseansichten neu (Bibliothek, Set-Ansicht, „Set bearbeiten“) und übernehmen die Darstellung, alles mit Eingaben bleibt. Schreibvorgänge einer Lernsitzung prüfen in derselben Transaktion, ob Set bzw. Sitzung noch existieren | 3.4, 12.5 | Nutzerentscheidung bei der Planung von S-32 und S-33, 30. Oktober 2026 (Neuzeichnen statt Hinweisleiste); Schutz der Sitzung selbst festgelegt |
+| D-44 | M4 nach Schichten zugeschnitten: S-34 Domain (Abgleich, Übernahme, Entscheidungen), S-35 Vorschau und Übernahme bekannter Sets, S-36 Korrekturvorlage, Test mit KI-Apps und Messung, damit `main` nie eine Vorschau ohne Übernahme hat. Korrekturvorlage in „Exportieren“ und in der Hilfe. Löschungen beim Ersetzen nennt die Schaltfläche („Ersetzen und 3 Einträge löschen“). Beim Aktualisieren gilt innerhalb einer Sektion die Reihenfolge der Datei, die Vorschau nennt geänderte Reihenfolgen. Selbst festgelegt: bekannte Sektionen behalten ihre Position (außer beim Ersetzen des ganzen Sets); eine lokal gelöschte Sektion gilt bei `scope.type = "set"` als „Nicht mehr vorhanden“; geänderte Set-Angaben in einem Teil-Export werden mit Warnung übergangen; ohne Änderungen nichts zu übernehmen; nach der Übernahme die Set-Ansicht mit Meldung; eine veraltete Vorschau wird neu berechnet | 9.3–9.7, 13.1, 21 | Nutzerentscheidungen bei der Planung von S-34 bis S-36, 30. Oktober 2026 |
 
 ---
 
@@ -1083,6 +1086,7 @@ Geprüft am 18. bis 20. Oktober 2026.
 | 2.36 | 30. Oktober 2026 | Sets und Sektionen verwalten (S-31): leeres Set anlegen mit erster Sektion, Angaben bearbeiten mit Sprachliste und Sprachcode, Sektionen anlegen, umbenennen, verschieben und löschen, Einträge verschieben (3.1, 3.2, 10, 13.1, 15.2, 15.4); E2E-24 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.37 | 30. Oktober 2026 | Set- und Sektionsexport (S-32): Ansicht „Exportieren“, Teil-Export, Dateiname, Text kopieren (11.1, 13.1, 15.2, 15.4); Korrekturvorlage und O-09 zu S-36; D-42; E2E-25 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.38 | 30. Oktober 2026 | Mehrere Tabs (S-33): Nachricht und Neuzeichnen der Leseansichten, Lernsitzung zu einem in einem anderen Tab gelöschten Set (3.4, 12.5, 15.2, 15.4); D-43; E2E-26 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.39 | 31. Oktober 2026 | M4 geplant: Zuschnitt von S-34 bis S-36 nach Schichten, Reihenfolge und Sektionen beim Aktualisieren und Ersetzen, Bestätigen von Löschungen, unbekannte Sektionen, Set-Angaben im Teil-Export, veraltete Vorschau, Ort der Korrekturvorlage (9.3–9.7, 13.1, 15.4, 21); D-44 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 
 ---
 
@@ -1201,9 +1205,11 @@ Ziel: Jeder riskante Teil läuft einmal von vorn bis hinten, in einfachster Form
 
 ### M4 – Korrigieren und aktualisieren
 
-- 🔲 **S-34** `diff.ts`/`merge.ts` testgetrieben: Aktualisieren, Ersetzen, Konflikttabelle, Sonderfälle – FR-15, FR-17, FR-29, TAK-16
-- 🔲 **S-35** Vorschau für bekannte Sets mit Konflikten und Löschungen; `editCount`-Prüfung – FR-14, FR-16, TAK-07
-- 🔲 **S-36** Übernahme in einer Transaktion; E2E-08, E2E-09; Korrekturvorlage in der App und Test der Korrektur mit KI-Apps und echtem Export (O-09, D-42) – AK-04, AK-05, AK-06, AK-13, AK-18
+Zuschnitt nach der Planung vom 30. Oktober 2026 (D-44); die Pakete bauen aufeinander auf und werden nacheinander umgesetzt.
+
+- 🔲 **S-34** `diff.ts`/`merge.ts` testgetrieben: Aktualisieren, Ersetzen, Konflikttabelle, Sonderfälle, Reihenfolge, Scope-Schutz, Umsetzen mit Entscheidungen und neuen IDs; Datei mit Löschmarkierung lesen (`readSetFile`, Datei-Darstellung in `normalize.ts`). Keine Oberfläche – FR-15, FR-17, FR-29, TAK-16
+- 🔲 **S-35** Vorschau und Übernahme bekannter Sets: Wahl Aktualisieren/Ersetzen, Zähler und Listen, Konflikte mit beiden Fassungen, Löschungen auf der Schaltfläche, `editCount`-Prüfung mit neu berechneter Vorschau, Set-Ansicht mit Meldung; Integrationstests, E2E-08, E2E-09, E2E-13 und E2E-25 auf die Vorschau umgestellt, E2E-19, E2E-20 – FR-06, FR-14, FR-16, TAK-06, TAK-07, AK-04, AK-05, AK-06, AK-18
+- 🔲 **S-36** Korrekturvorlage in „Exportieren“ und Hilfe; Vortest der Korrektur mit Unteragenten und echtem Export, Test mit KI-Apps durch den Nutzer (O-09, D-42); Abgleich mit `?perf` messen (15.6) – AK-13, TAK-15
 - 🔲 **S-37** Abschließende Gerätechecks aller Meilensteine (15.5)
 
 ### Zurückgestellt
