@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeSetFile } from "./normalize";
+import { normalizeImportFile, normalizeSetFile } from "./normalize";
 import type { SetFile } from "./validate";
 
 const base = { title: "Englisch", termLanguage: "en", meaningLanguage: "de" };
@@ -215,6 +215,86 @@ describe("normalizeSetFile", () => {
           ],
         },
       ],
+    });
+  });
+});
+
+describe("normalizeImportFile", () => {
+  it("behält `null` als Löschmarkierung, dazu IDs, Prüfwerte und den Scope", () => {
+    const file: SetFile = {
+      scope: { type: "sections", sectionIds: ["q7h3kd"] },
+      set: { ...base, id: "k3m9q2x7ab", rev: "abcdefgh", level: null, notes: " Neu " },
+      sections: [
+        {
+          id: "q7h3kd",
+          rev: "hgfedcba",
+          title: " Wetter ",
+          entries: [
+            {
+              id: "a8f2kc",
+              rev: "aaaaaaaa",
+              term: "rain",
+              meaning: "Regen",
+              notes: null,
+              examples: null,
+              grammar: { plural: null, forms: ["rains"] },
+              reviewStatus: null,
+            },
+            { term: "snow", meanings: ["Schnee"], grammar: null },
+          ],
+        },
+      ],
+    };
+    expect(normalizeImportFile(file)).toStrictEqual({
+      scope: { type: "sections", sectionIds: ["q7h3kd"] },
+      set: { ...base, id: "k3m9q2x7ab", rev: "abcdefgh", level: null, notes: "Neu" },
+      sections: [
+        {
+          id: "q7h3kd",
+          rev: "hgfedcba",
+          title: "Wetter",
+          entries: [
+            {
+              id: "a8f2kc",
+              rev: "aaaaaaaa",
+              term: { text: "rain" },
+              meanings: [{ text: "Regen" }],
+              notes: null,
+              examples: null,
+              grammar: { plural: null, forms: ["rains"] },
+              reviewStatus: null,
+            },
+            { term: { text: "snow" }, meanings: [{ text: "Schnee" }], grammar: null },
+          ],
+        },
+      ],
+    });
+  });
+
+  it("nimmt ohne Scope das ganze Set an und lässt leere Felder weg wie bei einem neuen Set", () => {
+    const file: SetFile = {
+      set: { ...base, level: "  " },
+      sections: [
+        { title: "S", entries: [{ term: "a", meanings: ["b"], notes: "", examples: [] }] },
+      ],
+    };
+    expect(normalizeImportFile(file)).toStrictEqual({
+      scope: { type: "set" },
+      set: base,
+      sections: [{ title: "S", entries: [{ term: { text: "a" }, meanings: [{ text: "b" }] }] }],
+    });
+  });
+
+  it("lässt eine Grammatik, die nur aus leeren Angaben besteht, weg", () => {
+    const file: SetFile = {
+      set: base,
+      sections: [
+        { title: "S", entries: [{ term: "a", meanings: ["b"], grammar: { plural: "" } }] },
+      ],
+    };
+    expect(normalizeImportFile(file).sections[0]!.entries[0]).toStrictEqual({
+      term: { text: "a" },
+      meanings: [{ text: "b" }],
     });
   });
 });

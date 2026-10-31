@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_IMPORT_SIZE, prepareNewSet } from "./importSet";
+import { MAX_IMPORT_SIZE, prepareNewSet, readSetFile } from "./importSet";
 
 const now = "2026-10-20T18:00:00.000Z";
 // Fortlaufende Bytes ergeben verschiedene IDs.
@@ -113,6 +113,38 @@ describe("prepareNewSet", () => {
   it("lehnt zu große Texte ab, ohne sie zu lesen", () => {
     const text = `{"x": "${"a".repeat(MAX_IMPORT_SIZE)}"}`;
     expect(prepareNewSet(text, { now, randomBytes })).toEqual({
+      ok: false,
+      errors: ["Der Text ist zu groß. Ein Vokabelset darf höchstens 10 MB haben."],
+    });
+  });
+});
+
+describe("readSetFile", () => {
+  it("liefert die geprüfte Datei mit Warnungen, auch einen Teil-Export", () => {
+    const text = JSON.stringify({
+      scope: { type: "sections", sectionIds: ["q7h3kd"] },
+      set: { id: "k3m9q2x7ab", title: "T", termLanguage: "en", meaningLanguage: "de" },
+      sections: [{ id: "q7h3kd", title: "S", entries: [] }],
+    });
+    const result = readSetFile(text);
+    if (!result.ok) throw new Error(result.errors.join("\n"));
+    expect(result.file.scope).toEqual({ type: "sections", sectionIds: ["q7h3kd"] });
+    expect(result.file.set.id).toBe("k3m9q2x7ab");
+    expect(result.trimmed).toBe(false);
+    expect(result.warnings).toEqual(["Die Formatversion fehlt; die App nimmt Version 1 an."]);
+  });
+
+  it("meldet, dass Begleittext entfernt wurde", () => {
+    expect(readSetFile(answer)).toMatchObject({ ok: true, trimmed: true, warnings: [] });
+  });
+
+  it("meldet Fehler beim Herauslösen, bei der Prüfung und bei zu großen Texten", () => {
+    expect(readSetFile("Leider kein Set.").ok).toBe(false);
+    expect(readSetFile('{"set": {}, "sections": []}')).toMatchObject({
+      ok: false,
+      errors: expect.arrayContaining(["Set-Angaben: Es fehlt der Titel („title“)."]),
+    });
+    expect(readSetFile(`{"x": "${"a".repeat(MAX_IMPORT_SIZE)}"}`)).toEqual({
       ok: false,
       errors: ["Der Text ist zu groß. Ein Vokabelset darf höchstens 10 MB haben."],
     });

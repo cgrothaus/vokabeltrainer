@@ -69,7 +69,10 @@ function write(value: unknown): string {
   return JSON.stringify(value);
 }
 
-const rev = (content: unknown) => encodeRev(cyrb53(canonicalize(content)));
+/** Prüfwert eines Inhalts ohne `id` und `rev`, z. B. eines Objekts aus einer Importdatei (TDD 9.5). */
+export const contentRev = (content: unknown) => encodeRev(cyrb53(canonicalize(content)));
+
+const rev = contentRev;
 
 /** Alle Felder außer `id` (TDD 6.4). */
 export function entryRev(entry: StoredEntry): string {
