@@ -1,6 +1,6 @@
 # TDD: Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.39 – M4 geplant  
+**Version:** 2.40 – Abgleich bekannter Sets  
 **Stand:** 31. Oktober 2026  
 **Bezug:** PRD 2.6 (`PRD_Vokabeltrainer_Allgemein_v2.md`), Formatspezifikation Version 1 (`Formatspezifikation_Vokabelset_v1.md`), Review-Notizen (`20261019_TDD_v1_Review_Notizen.md`)  
 **Status:** Entwurf; Grundlage für M0 (Walking Skeleton)  
@@ -74,9 +74,9 @@ src/
 │   ├── extract.ts       JSON aus eingefügtem Text herauslösen
 │   ├── validate.ts      Validierung mit deutschen Meldungen
 │   ├── normalize.ts     Kurzformen auflösen, trimmen, NFC
-│   ├── importSet.ts     neues Set aus Text: herauslösen, prüfen, normalisieren, IDs ergänzen
-│   ├── diff.ts          Vergleich Datei ↔ Bestand, Konflikte
-│   ├── merge.ts         Anwenden von Aktualisieren/Ersetzen
+│   ├── importSet.ts     Datei lesen (herauslösen, prüfen); neues Set: normalisieren, IDs ergänzen
+│   ├── diff.ts          Vergleich Datei ↔ Bestand, Konflikte, Aufbau des Ergebnisses
+│   ├── merge.ts         Regeln für Aktualisieren/Ersetzen, Umsetzen mit Entscheidungen
 │   ├── duplicates.ts    Duplikaterkennung
 │   ├── entryForm.ts     Eintragsformular: Eintrag ↔ Formular, Prüfen, ungespeicherte Änderungen
 │   ├── editSet.ts       Änderungen am Set: leeres Set, Angaben, Sektionen, Einträge (ersetzen, verschieben, löschen)
@@ -505,7 +505,7 @@ Konflikte zeigt die Vorschau gesondert mit beiden Fassungen („In der App“ / 
 | Eintrag stammt lokal aus einer Sektion außerhalb des Scopes | Eintrag wird **nicht** übernommen, weil sonst eine Sektion außerhalb des Scopes verändert würde. Vorschau: „Kann nicht übernommen werden“ mit Erklärung. |
 | Sektions-ID im Scope ist lokal unbekannt | Fehler: widersprüchlicher Scope; Import wird abgelehnt. |
 | Sektion außerhalb des Scopes, aber mit bekannter ID im Inhalt | Fehler: widersprüchlicher Scope; Import wird abgelehnt. |
-| Sektion mit lokal unbekannter ID bei `scope.type = "set"` | Sektion wurde lokal gelöscht. Sie gilt mit allen Einträgen als „Nicht mehr vorhanden“ (D-44). Wird ein Eintrag daraus als neu übernommen, wird die Sektion mit neuer ID und dem Titel aus der Datei am Ende neu angelegt. |
+| Sektion mit lokal unbekannter ID bei `scope.type = "set"` | Sektion wurde lokal gelöscht. Vorschau: „Nicht mehr vorhanden“ (D-44); sie wird wie eine neue Sektion behandelt, aber nur angelegt (mit neuer ID, am Ende), wenn danach Einträge darin stehen. Ihre Einträge mit unbekannter ID sind „Nicht mehr vorhanden“, solche mit bekannter ID werden in sie verschoben. |
 | Set-Angaben in einem Teil-Export (`scope.type = "sections"`) geändert | Werden nicht übernommen (9.3); die Vorschau warnt (D-44). |
 | Doppelte IDs in der Datei | Fehler; Import wird abgelehnt. |
 | Sektion oder Eintrag in der Datei ohne ID, mit gleichem Text wie ein lokaler | Wird als neu behandelt; keine Zuordnung über Texte. |
@@ -807,7 +807,8 @@ Für diese Module werden Tests vor der Implementierung geschrieben:
 - `validate.ts` und `normalize.ts`: Pflichtfelder, Kurzformen, `meaning` (Einzahl), unbekannte Felder, Sprachcodes, Grenzen, Fundstellen in Meldungen;
 - `ids.ts` und `hash.ts`: Alphabet, Kollisionsprüfung, stabile kanonische Darstellung (Schlüsselreihenfolge, Kurz- vs. Langform ergeben denselben `rev`), eingefrorene Prüfwerte für Eintrag, Sektion und Set-Angaben;
 - `exportSet.ts`: Feldreihenfolge, Kurzform, IDs und `rev`, keine Verwaltungsfelder, Rundweg über `validateSetFile` und `normalizeSetFile`, Teil-Export in Set-Reihenfolge, Dateiname; dazu exportiert das Beispielset gegen Schema und Validator (`tests/format/setfile.test.ts`);
-- `diff.ts` und `merge.ts`: Tabelle 9.5 vollständig, Sonderfälle 9.6, Aktualisieren vs. Ersetzen, `null`-Löschung, Reihenfolgeregeln, Scope-Schutz;
+- `diff.ts` und `merge.ts` (Tests in `diff.test.ts`, über `exportSetFile` und `readSetFile` wie beim echten Rundweg): Tabelle 9.5 vollständig für Eintrag, Sektionstitel und Set-Angaben, ohne `rev`, Kurz- und Langform; Sonderfälle 9.6 samt D-44; Aktualisieren vs. Ersetzen, `null`-Löschung (auch einzeln in der Grammatik), Listen als Ganzes; Reihenfolgeregeln und geänderte Reihenfolge; Scope-Schutz; Entscheidungen und neue IDs; unveränderter Export ergibt keine Änderungen;
+- `importSet.ts` und `normalize.ts`: Datei unabhängig vom Ziel lesen (`readSetFile`), Datei-Darstellung mit Löschmarkierung (`normalizeImportFile`);
 - `duplicates.ts`: Schwellenwert, Sprachpaar, Ausgabe;
 - `entryForm.ts`: Formular ↔ Eintrag, Pflichtfelder, leere Zeilen, Längengrenzen nach Trimmen und NFC, Prüfstatus, Erkennen von Änderungen ohne Leerraum;
 - `editSet.ts`: Eintrag ersetzen, ergänzen, löschen, in eine andere Sektion verschieben, freie IDs; leeres Set mit einer Sektion, Angaben ersetzen, Sektionen anlegen, umbenennen, verschieben (Rand) und löschen (nie die letzte), Einträge verschieben;
@@ -1087,6 +1088,7 @@ Geprüft am 18. bis 20. Oktober 2026.
 | 2.37 | 30. Oktober 2026 | Set- und Sektionsexport (S-32): Ansicht „Exportieren“, Teil-Export, Dateiname, Text kopieren (11.1, 13.1, 15.2, 15.4); Korrekturvorlage und O-09 zu S-36; D-42; E2E-25 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.38 | 30. Oktober 2026 | Mehrere Tabs (S-33): Nachricht und Neuzeichnen der Leseansichten, Lernsitzung zu einem in einem anderen Tab gelöschten Set (3.4, 12.5, 15.2, 15.4); D-43; E2E-26 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.39 | 31. Oktober 2026 | M4 geplant: Zuschnitt von S-34 bis S-36 nach Schichten, Reihenfolge und Sektionen beim Aktualisieren und Ersetzen, Bestätigen von Löschungen, unbekannte Sektionen, Set-Angaben im Teil-Export, veraltete Vorschau, Ort der Korrekturvorlage (9.3–9.7, 13.1, 15.4, 21); D-44 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.40 | 31. Oktober 2026 | Abgleich bekannter Sets (S-34): Module in 3.1, lokal gelöschte Sektion in 9.6 genauer, Tests in 15.2 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 
 ---
 
@@ -1207,7 +1209,8 @@ Ziel: Jeder riskante Teil läuft einmal von vorn bis hinten, in einfachster Form
 
 Zuschnitt nach der Planung vom 30. Oktober 2026 (D-44); die Pakete bauen aufeinander auf und werden nacheinander umgesetzt.
 
-- 🔲 **S-34** `diff.ts`/`merge.ts` testgetrieben: Aktualisieren, Ersetzen, Konflikttabelle, Sonderfälle, Reihenfolge, Scope-Schutz, Umsetzen mit Entscheidungen und neuen IDs; Datei mit Löschmarkierung lesen (`readSetFile`, Datei-Darstellung in `normalize.ts`). Keine Oberfläche – FR-15, FR-17, FR-29, TAK-16
+- ✅ **S-34** `diff.ts`/`merge.ts` testgetrieben: Aktualisieren, Ersetzen, Konflikttabelle, Sonderfälle, Reihenfolge, Scope-Schutz, Umsetzen mit Entscheidungen und neuen IDs; Datei mit Löschmarkierung lesen (`readSetFile`, Datei-Darstellung in `normalize.ts`). Keine Oberfläche – FR-15, FR-17, FR-29, TAK-16  
+  Erledigt am 31. Oktober 2026. `readSetFile` liest die Datei unabhängig vom Ziel, `prepareNewSet` baut darauf auf (`newSetFromFile` für die App). `normalizeImportFile` behält `null` als Löschmarkierung sowie IDs, `rev` und Scope; `normalizeSetFile` und `normalizeEntry` teilen sich den Code mit ihr. `diffImport` liefert je Objekt die Art aus Tabelle 9.5 bzw. 9.6, Zähler, Warnungen, geänderte Reihenfolgen und den Aufbau des Ergebnisses; `applyImport` setzt ihn mit den Entscheidungen um, ohne `editCount` zu ändern. `hash.ts` gibt dafür `contentRev` her. Beim Umsetzen vereinfacht: Eine lokal gelöschte Sektion wird wie eine neue behandelt, die nur entsteht, wenn danach etwas darin steht (9.6). 31 Tests in `diff.test.ts` bauen die Dateien mit `exportSetFile` und lesen sie mit `readSetFile`, wie im echten Rundweg; ein eigenes `merge.test.ts` entfiel, die Regeln je Objekt prüfen dieselben Tests über `applyImport`. Gegenproben: Schritt 3 vor Schritt 1 lässt neun Tests scheitern, ohne Scope-Schutz drei.
 - 🔲 **S-35** Vorschau und Übernahme bekannter Sets: Wahl Aktualisieren/Ersetzen, Zähler und Listen, Konflikte mit beiden Fassungen, Löschungen auf der Schaltfläche, `editCount`-Prüfung mit neu berechneter Vorschau, Set-Ansicht mit Meldung; Integrationstests, E2E-08, E2E-09, E2E-13 und E2E-25 auf die Vorschau umgestellt, E2E-19, E2E-20 – FR-06, FR-14, FR-16, TAK-06, TAK-07, AK-04, AK-05, AK-06, AK-18
 - 🔲 **S-36** Korrekturvorlage in „Exportieren“ und Hilfe; Vortest der Korrektur mit Unteragenten und echtem Export, Test mit KI-Apps durch den Nutzer (O-09, D-42); Abgleich mit `?perf` messen (15.6) – AK-13, TAK-15
 - 🔲 **S-37** Abschließende Gerätechecks aller Meilensteine (15.5)

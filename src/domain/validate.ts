@@ -12,6 +12,8 @@ export type FileExample = string | { text: string; translation?: string | null }
 // Optionale Felder dürfen `null` sein (Löschmarkierung beim Aktualisieren, D-10).
 export interface FileEntry {
   id?: string;
+  /** Prüfwert aus dem Export (TDD 6.4). */
+  rev?: string;
   term: FileAnswer;
   /** Fehlt genau dann, wenn `meaning` (Einzahl) angegeben ist. */
   meanings?: FileAnswer[];
@@ -29,12 +31,14 @@ export interface FileEntry {
 
 export interface FileSection {
   id?: string;
+  rev?: string;
   title: string;
   entries: FileEntry[];
 }
 
 export interface FileSetInfo {
   id?: string;
+  rev?: string;
   title: string;
   termLanguage: string;
   meaningLanguage: string;
