@@ -8,9 +8,16 @@ export const SPEC_FILE = "formatspezifikation.md";
 /** Platzhalter in der Vorlage; die App setzt die Adresse der veröffentlichten Spezifikation ein. */
 export const LINK_PLACEHOLDER = "[Link zur Formatbeschreibung]";
 
-/** Vorlage für ein neues Set aus Fotos. Die Korrekturvorlage folgt mit dem Rückimport (S-36, D-42). */
+/** Vorlage für ein neues Set aus Fotos. */
 export const NEW_SET_PROMPT = `Hier ist die Formatbeschreibung für meinen Vokabeltrainer: ${LINK_PLACEHOLDER}
 Mach aus den Vokabeln auf den angehängten Fotos ein Vokabelset in diesem Format.`;
+
+/**
+ * Vorlage zum Korrigieren eines exportierten Sets (D-42, D-44). Kurz wie die erste: Was eine Korrektur
+ * erhalten muss (IDs, Prüfwerte, Umfang), erklärt die Spezifikation selbst (D-35).
+ */
+export const CORRECTION_PROMPT = `Hier ist die Formatbeschreibung für meinen Vokabeltrainer: ${LINK_PLACEHOLDER}
+Prüf das angehängte Vokabelset aus der App und korrigiere die Fehler.`;
 
 /** Formatspezifikation Kapitel 1. */
 export const FORMAT_EXAMPLE = `{

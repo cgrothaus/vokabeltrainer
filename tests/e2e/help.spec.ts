@@ -61,9 +61,16 @@ test("E2E-16 Empty State → Hilfe → Vorlage kopieren und Formatbeschreibung t
   await expect(prompt).toContainText(link);
   await expect(prompt).not.toContainText("[Link zur Formatbeschreibung]");
 
-  await page.getByRole("button", { name: "Vorlage kopieren" }).click();
+  await page.getByRole("button", { name: "Vorlage kopieren", exact: true }).click();
   await expect(page.getByText("Vorlage kopiert.", { exact: true })).toBeVisible();
   expect((await recorded(page)).copied).toBe(await prompt.textContent());
+
+  // Die Korrekturvorlage steht mit demselben Link darunter (D-44).
+  const correction = page.locator("#help-correction-prompt");
+  await expect(correction).toContainText(link);
+  await page.getByRole("button", { name: "Korrekturvorlage kopieren" }).click();
+  await expect(page.getByText("Korrekturvorlage kopiert.", { exact: true })).toBeVisible();
+  expect((await recorded(page)).copied).toBe(await correction.textContent());
 
   await page.getByRole("button", { name: "Formatbeschreibung teilen" }).click();
   await expect(page.getByText("Formatbeschreibung geteilt.", { exact: true })).toBeVisible();
@@ -84,7 +91,7 @@ test("E2E-16 Empty State → Hilfe → Vorlage kopieren und Formatbeschreibung t
 test("Kopieren scheitert → Hinweis, Vorlage ist markiert", async ({ page }) => {
   await withStubs(page, "fail");
   await page.goto("./#/help");
-  await page.getByRole("button", { name: "Vorlage kopieren" }).click();
+  await page.getByRole("button", { name: "Vorlage kopieren", exact: true }).click();
   await expect(page.getByText("Kopieren hat nicht geklappt.")).toBeVisible();
   const selected = await page.evaluate(() => getSelection()?.toString());
   expect(selected).toBe(await page.locator("#help-prompt").textContent());

@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { PUBLISHED_DOCS } from "../../scripts/precache";
 import { validateSetFile } from "../../src/domain/validate";
 import {
+  CORRECTION_PROMPT,
   FORMAT_EXAMPLE,
   LINK_PLACEHOLDER,
   NEW_SET_PROMPT,
@@ -35,8 +36,9 @@ describe("Hilfe", () => {
     expect(validateSetFile(JSON.parse(FORMAT_EXAMPLE))).toMatchObject({ ok: true, warnings: [] });
   });
 
-  it("die Vorlage enthält den Platzhalter für den Link genau einmal", () => {
+  it("die Vorlagen enthalten den Platzhalter für den Link genau einmal", () => {
     expect(NEW_SET_PROMPT.split(LINK_PLACEHOLDER)).toHaveLength(2);
+    expect(CORRECTION_PROMPT.split(LINK_PLACEHOLDER)).toHaveLength(2);
   });
 
   it("verweist auf die veröffentlichte Formatspezifikation", () => {
@@ -53,5 +55,6 @@ describe("Formatspezifikation", () => {
   it("enthält keine Vorlage für den KI-Chat", () => {
     expect(spec).not.toContain(LINK_PLACEHOLDER);
     expect(spec).not.toContain(NEW_SET_PROMPT.split("\n")[1]);
+    expect(spec).not.toContain(CORRECTION_PROMPT.split("\n")[1]);
   });
 });

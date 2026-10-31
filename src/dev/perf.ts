@@ -1,8 +1,11 @@
 // Performance-Messung (TDD 15.6, TAK-15) für den Dev-Schalter `?perf` (nur `npm run dev`, nicht im
 // Build). Läuft auf einer eigenen Datenbank über die echten Wege der App: Import über Vorschau und
-// Speichern, Lernüberblick wie in der Set-Ansicht (`loadOverview`: Lesen und Berechnen).
+// Speichern, Abgleich mit dem vorhandenen Set über einen Export mit Änderungen, Lernüberblick wie in der
+// Set-Ansicht (`loadOverview`: Lesen und Berechnen).
 import { h } from "../app/dom";
-import { previewImport, saveImport } from "../app/importText";
+import { previewImport, saveImport, saveKnownImport } from "../app/importText";
+import { exportSetFile } from "../domain/exportSet";
+import { NO_DECISIONS } from "../domain/merge";
 import type { StoredSet } from "../domain/model";
 import { computeStats } from "../domain/stats";
 import { copyText } from "../platform/clipboard";
@@ -72,7 +75,27 @@ async function measure(report: (line: string) => void): Promise<void> {
     report(
       `  Erneut prüfen mit Duplikathinweis: ${ms.format(againTime)} ms → ${verdict(againTime + saveTime, LIMIT.import)} (mit Speichern geschätzt)`,
     );
-    report("  Abgleich mit vorhandenem Set (Diff) gibt es erst mit M4 – dort nachmessen.");
+    await breathe();
+    // Rückimport eines Exports, in dem jeder zehnte Eintrag korrigiert wurde (TDD 15.6).
+    const exported = exportSetFile(preview.set, { type: "set" }, new Date());
+    let changed = 0;
+    for (const section of exported.sections)
+      for (const [index, entry] of section.entries.entries())
+        if (index % 10 === 0) {
+          entry.notes = `Korrektur ${changed++}`;
+        }
+    const correction = JSON.stringify(exported);
+    const [known, knownTime] = await timed(() => previewImport(db, correction));
+    if (!known.ok || known.kind !== "known") throw new Error("Abgleich fehlt");
+    if (known.diffs.update.counts.changed !== changed) throw new Error("Abgleich zählt falsch");
+    const [updated, updateTime] = await timed(() =>
+      saveKnownImport(db, known, "update", NO_DECISIONS),
+    );
+    if (!updated.ok) throw new Error("Übernahme gescheitert");
+    const diffTime = knownTime + updateTime;
+    report(
+      `  Abgleich mit ${count.format(changed)} Änderungen: Vorschau ${ms.format(knownTime)} ms + Übernahme ${ms.format(updateTime)} ms = ${ms.format(diffTime)} ms → ${verdict(diffTime, LIMIT.import)}`,
+    );
     report("");
 
     const set: StoredSet = preview.set;

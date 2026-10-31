@@ -933,8 +933,10 @@ button.icon {
   font-size: 1.25rem;
 }
 
-/* Hilfe (TDD 13.1): Vorlage und Beispiel brechen um statt die Seite seitlich scrollen zu lassen. */
-.help h2 {
+/* Hilfe (TDD 13.1): Vorlage und Beispiel brechen um statt die Seite seitlich scrollen zu lassen. Die
+   Korrekturvorlage steht auch in „Exportieren“. */
+.help h2,
+.export h2 {
   margin-top: 2rem;
   font-size: 1.25rem;
 }
@@ -943,7 +945,8 @@ button.icon {
   margin-top: 0.25rem;
 }
 
-.help pre {
+.help pre,
+pre.prompt {
   margin: 0.5rem 0 0.75rem;
   padding: 0.75rem;
   border: 1px solid var(--border);
@@ -958,7 +961,7 @@ button.icon {
   overflow-wrap: anywhere;
 }
 
-.help .prompt {
+pre.prompt {
   font-size: 1rem;
 }
 

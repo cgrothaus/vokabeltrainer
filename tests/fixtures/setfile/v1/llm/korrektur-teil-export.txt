@@ -1,0 +1,58 @@
+Ich habe die Datei gegen die Formatbeschreibung und inhaltlich geprüft. Es ist ein Teil-Export (`scope.type: "sections"` mit der Sektion `a4jvgb`). `scope`, `exportedAt` sowie alle `id`- und `rev`-Werte habe ich deshalb unverändert gelassen. Die Struktur ist gültig. Gefunden habe ich vier inhaltliche Fehler:
+
+| Eintrag | Fehler | Korrektur |
+|---|---|---|
+| `free time` | Tippfehler „Freizeyt“ | „Freizeit“ |
+| `hobby` | Falscher Plural „hobbys“ | `hobbies` |
+| `to play` | Bedeutung steht in der 3. Person („spielt“) statt im Infinitiv | „spielen“ |
+| `to win` | Falsche Stammformen „winned, winned“ | `win`, `won`, `won` |
+
+Die übrigen Einträge sind in Ordnung (u. a. swim/swam/swum, lose/lost/lost, meet/met/met, die Mehrfachbedeutungen bei `to meet`, `match` und `to miss` sowie die Varianten bei `football` und `to practise`).
+
+Hier ist die vollständige, korrigierte Datei:
+
+```json
+{
+  "format": "vokabeltrainer-set",
+  "formatVersion": 1,
+  "exportedAt": "2026-10-31T01:00:00.000Z",
+  "scope": { "type": "sections", "sectionIds": ["a4jvgb"] },
+  "set": {
+    "id": "fhukgvj7u5",
+    "rev": "5k5ajaeb",
+    "title": "Englisch – Grundwortschatz (Beispielset)",
+    "termLanguage": "en",
+    "meaningLanguage": "de",
+    "level": "Klasse 6",
+    "source": "Eigene Zusammenstellung",
+    "license": "CC0",
+    "notes": "Beispielset zum Ausprobieren der App. Eigene Zusammenstellung aus allgemeinem Grundwortschatz, frei verwendbar (CC0).",
+    "reviewStatus": "checked"
+  },
+  "sections": [
+    {
+      "id": "a4jvgb",
+      "rev": "2agu5au5",
+      "title": "Freizeit und Sport",
+      "entries": [
+        { "id": "2h22bn", "rev": "njgzufyh", "term": "free time", "meanings": ["Freizeit"] },
+        { "id": "d9hsj6", "rev": "gjgqfwtm", "term": "hobby", "meanings": ["Hobby"], "grammar": { "partOfSpeech": "noun", "plural": "hobbies" } },
+        { "id": "8r8d2q", "rev": "q7s9pa99", "term": { "text": "football", "acceptedVariants": ["soccer"] }, "meanings": ["Fußball"], "notes": "„soccer“ sagt man vor allem in den USA." },
+        { "id": "8gees3", "rev": "ftrh8jc8", "term": "team", "meanings": [{ "text": "Mannschaft", "acceptedVariants": ["Team"] }] },
+        { "id": "awftfw", "rev": "66u76gmd", "term": "to play", "meanings": ["spielen"] },
+        { "id": "jsdw6n", "rev": "bue3k2yj", "term": "to win", "meanings": ["gewinnen"], "grammar": { "partOfSpeech": "verb", "forms": ["win", "won", "won"] } },
+        { "id": "vxjzbf", "rev": "mwgw69fs", "term": "to lose", "meanings": ["verlieren"], "grammar": { "partOfSpeech": "verb", "forms": ["lose", "lost", "lost"] } },
+        { "id": "abnz2a", "rev": "pakajh35", "term": "to swim", "meanings": ["schwimmen"], "grammar": { "partOfSpeech": "verb", "forms": ["swim", "swam", "swum"] } },
+        { "id": "w54bwv", "rev": "xajgy66b", "term": { "text": "bike", "acceptedVariants": ["bicycle"] }, "meanings": [{ "text": "Fahrrad", "acceptedVariants": ["Rad"] }] },
+        { "id": "a29zjb", "rev": "muyebbk7", "term": "to meet", "meanings": ["treffen", "kennenlernen"], "examples": ["Let's meet after school."], "grammar": { "partOfSpeech": "verb", "forms": ["meet", "met", "met"] } },
+        { "id": "gxekgh", "rev": "pr3wngqd", "term": "match", "meanings": [{ "text": "Spiel (Wettkampf)", "acceptedVariants": ["Spiel"] }, "Streichholz"] },
+        { "id": "dwxnb7", "rev": "ffrb488f", "term": { "text": "to practise", "acceptedVariants": ["to practice"] }, "meanings": ["üben"], "notes": "„to practice“ ist die amerikanische Schreibweise." },
+        { "id": "zapx7r", "rev": "2u8q7duq", "term": "weekend", "meanings": ["Wochenende"], "examples": [{ "text": "What did you do at the weekend?", "translation": "Was hast du am Wochenende gemacht?" }] },
+        { "id": "jzhayk", "rev": "kybug766", "term": "to miss", "meanings": ["vermissen", "verpassen"], "examples": [{ "text": "I miss my friends.", "translation": "Ich vermisse meine Freunde." }] }
+      ]
+    }
+  ]
+}
+```
+
+Hinweis: Ich habe die Einträge zur besseren Lesbarkeit je Zeile geschrieben; Reihenfolge, IDs und Prüfwerte sind unverändert. Weil es ein Teil-Export ist, bleiben andere Sektionen des Sets beim Import unberührt.
