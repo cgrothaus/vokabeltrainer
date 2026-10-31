@@ -22,7 +22,7 @@ import {
   saveSetInfo,
 } from "./app/editSet";
 import { deliverExport, prepareExport } from "./app/exportSet";
-import { loadSpec, newSetPrompt, shareSpec } from "./app/help";
+import { correctionPrompt, loadSpec, newSetPrompt, shareSpec } from "./app/help";
 import { loadOverview } from "./app/overview";
 import { previewImport, saveImport, saveKnownImport } from "./app/importText";
 import { loadSampleSet } from "./app/sampleSet";
@@ -233,7 +233,16 @@ async function start(): Promise<void> {
       moveEntry: (set, entryId, step) => moveEntryIn(db, set, entryId, step),
     });
   const exportPage = (_signal: AbortSignal, id: string) =>
-    exportView({ loadSet: () => getSet(db, id), prepareExport, deliverExport, copyText }, id);
+    exportView(
+      {
+        loadSet: () => getSet(db, id),
+        prepareExport,
+        deliverExport,
+        copyText,
+        correctionPrompt: correctionPrompt(),
+      },
+      id,
+    );
   // Sprachen vorhandener Sets für die Auswahl beim Anlegen und Bearbeiten (D-41).
   const loadLanguages = async () =>
     (await listSets(db)).flatMap((set) => [set.termLanguage, set.meaningLanguage]);
@@ -312,7 +321,14 @@ async function start(): Promise<void> {
       appVersion: __APP_VERSION__,
       persistence,
     });
-  const helpPage = () => helpView({ prompt: newSetPrompt(), copyText, loadSpec, shareSpec });
+  const helpPage = () =>
+    helpView({
+      prompt: newSetPrompt(),
+      correctionPrompt: correctionPrompt(),
+      copyText,
+      loadSpec,
+      shareSpec,
+    });
   router = startRouter(
     root!,
     {

@@ -1,8 +1,10 @@
 // Set exportieren (TDD 11.1, FR-18, D-42): ganzes Set oder einzelne Sektionen als Datei über das
-// Teilen-Menü bzw. als Download, oder als Text in die Zwischenablage, z. B. für einen Chat.
+// Teilen-Menü bzw. als Download, oder als Text in die Zwischenablage, z. B. für einen Chat. Darunter die
+// Korrekturvorlage für den KI-Chat (D-44).
 import type { ExportScope } from "../../domain/exportSet";
 import type { StoredSet } from "../../domain/model";
 import type { Delivery } from "../../platform/deliverFile";
+import { promptBox } from "../components/promptBox";
 import type { PreparedExport } from "../exportSet";
 import { type Child, focusSoon, h } from "../dom";
 
@@ -15,6 +17,8 @@ export interface ExportContext {
   deliverExport: (prepared: PreparedExport) => Promise<Delivery>;
   /** Muss direkt im Klick aufgerufen werden (Nutzergeste). */
   copyText: (text: string) => Promise<boolean>;
+  /** Mit eingesetztem Link auf die Formatspezifikation. */
+  correctionPrompt: string;
 }
 
 const NOT_LOADED = "Das Vokabelset konnte nicht geladen werden. Lade die Seite neu.";
@@ -220,5 +224,21 @@ function content(set: StoredSet, context: ExportContext): Child[] {
     result,
     problem,
     fallback,
+    promptBox(
+      {
+        id: "export-correction",
+        heading: "Mit KI-Chat korrigieren",
+        prompt: context.correctionPrompt,
+        label: "Korrekturvorlage kopieren",
+        copyText: context.copyText,
+      },
+      h(
+        "p",
+        null,
+        "Ein KI-Chat kann das Set prüfen und korrigieren. Speichere die Datei, kopiere diese Vorlage in den Chat und hänge die Datei an – oder füge den kopierten Text unter der Vorlage ein. Die Antwort fügst du unter ",
+        h("a", { href: "#/import" }, "Vokabelset importieren"),
+        " ein; die App zeigt vorher, was sich ändert.",
+      ),
+    ),
   ];
 }

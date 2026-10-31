@@ -1,12 +1,16 @@
 // Hilfe „Wie bekomme ich ein Vokabelset?“ (TDD 13.1, FR-20, FR-28): Weg über einen KI-Chat, Vorlage zum
-// Kopieren, Formatbeschreibung als Datei für Chats ohne Linkzugriff und ein Beispiel des Formats.
+// Kopieren, Formatbeschreibung als Datei für Chats ohne Linkzugriff, ein Beispiel des Formats und der Weg
+// zum Korrigieren eines Sets (D-44).
 import { FORMAT_EXAMPLE } from "../../content/help";
 import type { Delivery } from "../../platform/deliverFile";
+import { promptBox } from "../components/promptBox";
 import { h } from "../dom";
 
 export interface HelpContext {
   /** Vorlage mit eingesetztem Link auf die Formatspezifikation. */
   prompt: string;
+  /** Korrekturvorlage, ebenfalls mit Link. */
+  correctionPrompt: string;
   /** Muss direkt im Klick aufgerufen werden (Nutzergeste). */
   copyText: (text: string) => Promise<boolean>;
   loadSpec: () => Promise<Blob>;
@@ -14,8 +18,6 @@ export interface HelpContext {
   shareSpec: (spec: Blob) => Promise<Delivery>;
 }
 
-const NOT_COPIED =
-  "Kopieren hat nicht geklappt. Die Vorlage ist jetzt markiert – kopiere sie über das Menü deines Geräts.";
 const NOT_LOADED =
   "Die Formatbeschreibung konnte nicht geladen werden. Lade die Seite neu und versuche es noch einmal.";
 const DELIVERED = {
@@ -50,7 +52,13 @@ export function helpView(context: HelpContext): Node {
         " ein. Du siehst vor dem Speichern, was übernommen wird.",
       ),
     ),
-    promptSection(context),
+    promptBox({
+      id: "help",
+      heading: "Vorlage für den KI-Chat",
+      prompt: context.prompt,
+      label: "Vorlage kopieren",
+      copyText: context.copyText,
+    }),
     shareSection(context),
     h(
       "details",
@@ -63,34 +71,22 @@ export function helpView(context: HelpContext): Node {
       ),
       h("pre", null, FORMAT_EXAMPLE),
     ),
+    promptBox(
+      {
+        id: "help-correction",
+        heading: "Ein Set korrigieren",
+        prompt: context.correctionPrompt,
+        label: "Korrekturvorlage kopieren",
+        copyText: context.copyText,
+      },
+      h(
+        "p",
+        null,
+        "Ein KI-Chat kann ein Set auch prüfen und korrigieren. Exportiere es dazu in der Set-Ansicht unter „Exportieren“, kopiere diese Vorlage in den Chat und hänge die Datei an. Die Antwort fügst du wie ein neues Set unter „Vokabelset importieren“ ein – die App erkennt das Set und zeigt, was sich ändert.",
+      ),
+    ),
     h("p", null, h("a", { href: "#/import", class: "action" }, "Vokabelset importieren")),
     h("p", null, h("a", { href: "#/" }, "Zurück zur Bibliothek")),
-  );
-}
-
-function promptSection(context: HelpContext): Node {
-  const text = h("pre", { class: "prompt", id: "help-prompt" }, context.prompt);
-  const status = h("p", { "aria-live": "polite" });
-  const copy = h(
-    "button",
-    {
-      type: "button",
-      onclick: async () => {
-        // Ohne vorheriges `await` schreiben, sonst verfällt die Nutzergeste.
-        const copied = await context.copyText(context.prompt);
-        status.textContent = copied ? "Vorlage kopiert." : NOT_COPIED;
-        if (!copied) getSelection()?.selectAllChildren(text);
-      },
-    },
-    "Vorlage kopieren",
-  );
-  return h(
-    "section",
-    { "aria-labelledby": "help-prompt-heading" },
-    h("h2", { id: "help-prompt-heading" }, "Vorlage für den KI-Chat"),
-    text,
-    copy,
-    status,
   );
 }
 

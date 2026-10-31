@@ -162,6 +162,12 @@ test("Einzelne Sektion als Download und als kopierter Text", async ({ page }) =>
   const { exportedAt: _, ...content } = JSON.parse(copied) as ExportedFile;
   const { exportedAt: __, ...fromFile } = file;
   expect(content).toEqual(fromFile);
+
+  // Darunter die Korrekturvorlage mit dem Link auf die Formatbeschreibung (D-44).
+  await page.getByRole("button", { name: "Korrekturvorlage kopieren" }).click();
+  await expect(page.getByText("Korrekturvorlage kopiert.", { exact: true })).toBeVisible();
+  const prompt = await page.evaluate(() => (window as unknown as { copied: string }).copied);
+  expect(prompt).toMatch(/formatspezifikation\.md\n.*korrigiere/);
   expect(errors, "Fehler in der Konsole").toEqual([]);
 });
 
