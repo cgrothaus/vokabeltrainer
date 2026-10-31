@@ -319,6 +319,57 @@ test("Sets und Sektionen: Anlegen, Angaben, Umbenennen, Sektion löschen", async
   expect(errors).toEqual([]);
 });
 
+test("Vorschau für ein vorhandenes Set: Konflikt, nicht mehr vorhanden, Ersetzen mit Löschungen", async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  const findings: string[] = [];
+  const file = (entries: unknown[]) =>
+    JSON.stringify({
+      set: {
+        id: "m4x8c2r9tw",
+        title: "Englisch – Wetter",
+        termLanguage: "en",
+        meaningLanguage: "de",
+      },
+      sections: [{ id: "q7h3kd", title: "Wetter", entries }],
+    });
+  await page.goto("./#/import");
+  await page.getByLabel("Text einfügen").fill(
+    file([
+      { id: "a8f2kc", term: "rain", meanings: ["Regen"], notes: "auch: Niederschlag" },
+      { id: "b3c4d5", term: "sun", meanings: ["Sonne"] },
+    ]),
+  );
+  await page.getByRole("button", { name: "Prüfen" }).click();
+  await page.getByRole("button", { name: "Importieren" }).click();
+  await expect(libraryMessage(page)).toBeVisible();
+
+  // Ohne Prüfwert und anders als in der App: Konflikt; dazu ein unbekannter und ein neuer Eintrag.
+  await page.goto("./#/import");
+  await page.getByLabel("Text einfügen").fill(
+    file([
+      {
+        id: "a8f2kc",
+        term: { text: "rain", acceptedVariants: ["shower"] },
+        meanings: ["Regen", "Regenschauer"],
+        examples: [{ text: "It rains a lot.", translation: "Es regnet viel." }],
+      },
+      { id: "gone11", term: "hail", meanings: ["Hagel"] },
+      { term: "fog", meanings: ["Nebel"] },
+    ]),
+  );
+  await page.getByRole("button", { name: "Prüfen" }).click();
+  await expect(page.getByRole("heading", { name: "Konflikte" })).toBeVisible();
+  findings.push(...(await audit(page, "Vorschau Aktualisieren mit Konflikt")));
+  await page.getByRole("radio", { name: "Ersetzen" }).check();
+  await expect(page.getByRole("button", { name: "Ersetzen und 1 Eintrag löschen" })).toBeVisible();
+  findings.push(...(await audit(page, "Vorschau Ersetzen mit Löschungen")));
+
+  expect(findings).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
 test("Nach einem Seitenwechsel: Fokus auf der Überschrift, Seitentitel nennt die Ansicht", async ({
   page,
 }) => {

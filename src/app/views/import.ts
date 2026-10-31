@@ -1,20 +1,36 @@
 // Import per eingefügtem Text, Zwischenablage oder Datei (TDD 8.1, FR-13). Zuerst zeigt eine Vorschau
-// das neue Set mit Warnungen und möglichen Duplikaten (TDD 9.2, FR-16, FR-30); gespeichert wird erst nach
-// Bestätigung. Bekannte Sets zu aktualisieren folgt mit M4.
+// das neue Set mit Warnungen und möglichen Duplikaten (TDD 9.2, FR-16, FR-30) bzw. bei einem vorhandenen
+// Set, was sich ändert (TDD 9.7, `importChanges`); gespeichert wird erst nach Bestätigung.
+import type { ImportMode } from "../../domain/diff";
 import { MAX_IMPORT_SIZE } from "../../domain/importSet";
+import type { ImportDecisions } from "../../domain/merge";
 import type { StoredSet } from "../../domain/model";
 import type { ClipboardResult } from "../../platform/clipboard";
+import { importChanges } from "../components/importChanges";
 import { focusSoon, h } from "../dom";
-import type { ImportPreview, PreviewOutcome, SaveOutcome } from "../importText";
+import type {
+  ImportPreview,
+  KnownPreview,
+  KnownSaveOutcome,
+  PreviewOutcome,
+  SaveOutcome,
+} from "../importText";
 import { languageName } from "../languages";
 
 export interface ImportContext {
   previewImport: (text: string) => Promise<PreviewOutcome>;
   saveImport: (set: StoredSet) => Promise<SaveOutcome>;
+  saveKnownImport: (
+    preview: KnownPreview,
+    mode: ImportMode,
+    decisions: ImportDecisions,
+  ) => Promise<KnownSaveOutcome>;
   /** `null`: Der Browser kann die Zwischenablage nicht lesen; die Schaltfläche entfällt. */
   readClipboard: (() => Promise<ClipboardResult>) | null;
   /** Nach dem Speichern, mit der Erfolgsmeldung für die Bibliothek. */
   onSaved: (message: string) => void;
+  /** Nach der Übernahme in ein vorhandenes Set, mit der Meldung für die Set-Ansicht. */
+  onUpdated: (setId: string, message: string) => void;
 }
 
 /** So viele Fehler werden einzeln gezeigt; bei LLM-Ausgaben wiederholt sich derselbe Fehler oft. */
@@ -88,6 +104,23 @@ export function importView(context: ImportContext): Node {
   const closePreview = () => {
     preview.replaceChildren();
     input.hidden = false;
+  };
+
+  const showKnown = (result: KnownPreview) => {
+    preview.replaceChildren(
+      importChanges(result, {
+        save: context.saveKnownImport,
+        onSaved: (setId, message) => {
+          text.value = "";
+          context.onUpdated(setId, message);
+        },
+        onCancel: () => {
+          closePreview();
+          text.focus();
+        },
+      }),
+    );
+    input.hidden = true;
   };
 
   const showPreview = (result: ImportPreview) => {
@@ -206,7 +239,8 @@ export function importView(context: ImportContext): Node {
       }
       const outcome = await context.previewImport(value);
       if (!outcome.ok) return showErrors(outcome.errors);
-      showPreview(outcome);
+      if (outcome.kind === "known") showKnown(outcome);
+      else showPreview(outcome);
     } catch (error) {
       console.error("Import fehlgeschlagen", error);
       showErrors([UNEXPECTED]);

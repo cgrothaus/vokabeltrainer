@@ -112,11 +112,11 @@ test("E2E-25 Ganzes Set exportieren → Datei mit Kennungen; ein anderes Gerät 
   );
   expect(shared!.text).not.toMatch(/editCount|createdAt|reviewEvents/);
 
-  // Auf demselben Gerät ist das Set schon vorhanden; Aktualisieren kommt erst mit M4.
+  // Auf demselben Gerät erkennt die App das Set wieder; unverändert gibt es nichts zu übernehmen.
   await page.goto("./#/import");
   await page.getByLabel("Text einfügen").fill(shared!.text);
   await page.getByRole("button", { name: "Prüfen" }).click();
-  await expect(page.getByText("Dieses Set ist schon vorhanden.", { exact: false })).toBeVisible();
+  await expect(page.getByText("Die Datei enthält keine Änderungen.")).toBeVisible();
   expect(await readStore(page, "sets")).toHaveLength(1);
   expect(errors, "Fehler in der Konsole").toEqual([]);
 

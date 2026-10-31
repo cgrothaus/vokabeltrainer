@@ -24,7 +24,7 @@ import {
 import { deliverExport, prepareExport } from "./app/exportSet";
 import { loadSpec, newSetPrompt, shareSpec } from "./app/help";
 import { loadOverview } from "./app/overview";
-import { previewImport, saveImport } from "./app/importText";
+import { previewImport, saveImport, saveKnownImport } from "./app/importText";
 import { loadSampleSet } from "./app/sampleSet";
 import { beginPractice, currentPractice, loadSetup } from "./app/practice";
 import { type Router, startRouter } from "./app/router";
@@ -170,6 +170,11 @@ async function start(): Promise<void> {
   showTheme(theme);
   // Meldung nach Import oder Löschen für die Bibliothek; lebt nur bis zum nächsten Anzeigen.
   let message: string | null = null;
+  const takeMessage = () => {
+    const taken = message;
+    message = null;
+    return taken;
+  };
   const library = () =>
     libraryView({
       protection: (hasSets) =>
@@ -188,21 +193,22 @@ async function start(): Promise<void> {
         }
         return outcome;
       },
-      takeMessage: () => {
-        const taken = message;
-        message = null;
-        return taken;
-      },
+      takeMessage,
     });
   const importPage = () =>
     importView({
       previewImport: (text) => previewImport(db, text),
       saveImport: (set) => saveImport(db, set),
+      saveKnownImport: (preview, mode, decisions) => saveKnownImport(db, preview, mode, decisions),
       readClipboard: canReadClipboard() ? readClipboard : null,
       onSaved: (saved) => {
         void askOnceAfterSave();
         message = saved;
         location.hash = "#/";
+      },
+      onUpdated: (setId, saved) => {
+        message = saved;
+        location.hash = `#/set/${encodeURIComponent(setId)}`;
       },
     });
   const setPage = (_signal: AbortSignal, id: string) =>
@@ -215,6 +221,7 @@ async function start(): Promise<void> {
         message = removed;
         location.hash = "#/";
       },
+      takeMessage,
     });
   const editPage = (_signal: AbortSignal, id: string) =>
     editSetView({

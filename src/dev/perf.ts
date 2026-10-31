@@ -58,6 +58,7 @@ async function measure(report: (line: string) => void): Promise<void> {
     await breathe();
     const [preview, previewTime] = await timed(() => previewImport(db, text));
     if (!preview.ok) throw new Error(preview.errors.join(" "));
+    if (preview.kind !== "new") throw new Error("Messset schon vorhanden");
     const [saved, saveTime] = await timed(() => saveImport(db, preview.set));
     if (!saved.ok) throw new Error(saved.error);
     const importTime = previewTime + saveTime;
@@ -66,7 +67,8 @@ async function measure(report: (line: string) => void): Promise<void> {
     );
     await breathe();
     const [again, againTime] = await timed(() => previewImport(db, text));
-    if (!again.ok || again.duplicates.length !== 1) throw new Error("Duplikathinweis fehlt");
+    if (!again.ok || again.kind !== "new" || again.duplicates.length !== 1)
+      throw new Error("Duplikathinweis fehlt");
     report(
       `  Erneut prüfen mit Duplikathinweis: ${ms.format(againTime)} ms → ${verdict(againTime + saveTime, LIMIT.import)} (mit Speichern geschätzt)`,
     );

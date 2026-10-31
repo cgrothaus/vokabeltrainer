@@ -7,6 +7,7 @@ import {
   collectErrors,
   failWrites,
   importSet,
+  importText,
   libraryMessage,
   loseConnection,
   readStore,
@@ -229,6 +230,33 @@ test("E2E-19 Eintrag speichern scheitert: Meldung, Eingabe bleibt, neuer Versuch
   expect((await readStore<StoredSet>(page, "sets"))[0]!.sections[0]!.entries[0]!.term.text).toBe(
     "drizzle",
   );
+});
+
+test("E2E-19 Übernahme in ein vorhandenes Set scheitert: Meldung, Set bleibt, neuer Versuch klappt", async ({
+  page,
+}) => {
+  await importText(
+    page,
+    setFile("Englisch – Wetter", "m4x8c2r9tw"),
+    "„Englisch – Wetter“ mit 3 Einträgen gespeichert.",
+  );
+  const [before] = await readStore<StoredSet>(page, "sets");
+  await page.goto("./#/import");
+  await page.getByLabel("Text einfügen").fill(setFile("Englisch – Wetter", "m4x8c2r9tw"));
+  await page.getByRole("button", { name: "Prüfen" }).click();
+  const preview = page.getByRole("region", { name: "Vorschau" });
+  await expect(preview.getByText("Dieses Set hast du schon.", { exact: false })).toBeVisible();
+  await failWrites(page, FULL);
+  await preview.getByRole("button", { name: "Aktualisieren" }).click();
+  await expect(preview.getByRole("alert")).toContainText(
+    "Die Änderungen wurden nicht gespeichert.",
+  );
+  expect(await readStore<StoredSet>(page, "sets")).toEqual([before]);
+
+  await failWrites(page, null);
+  await preview.getByRole("button", { name: "Aktualisieren" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Englisch – Wetter" })).toBeVisible();
+  expect((await readStore<StoredSet>(page, "sets"))[0]!.editCount).toBe(1);
 });
 
 test("E2E-19 Sektion verschieben scheitert: Meldung, Reihenfolge bleibt", async ({ page }) => {
