@@ -836,6 +836,67 @@ button.icon {
   padding-bottom: 1rem;
 }
 
+/* Vorschau für ein vorhandenes Set (TDD 9.7): Wahl der Art, Konflikte mit beiden Fassungen. */
+.changes fieldset {
+  min-width: 0;
+  margin: 1rem 0 0;
+  padding: 0;
+  border: none;
+}
+
+.changes legend {
+  margin-bottom: 0.5rem;
+  padding: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.changes input {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  flex: none;
+  accent-color: var(--accent);
+}
+
+.changes h3 {
+  margin-top: 1.5rem;
+  font-size: 1.125rem;
+}
+
+/* „Aktualisieren“ passt bei 200 % Schrift nicht in eine Kachel von 320 px. */
+.changes .choices label {
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+
+.changes .conflict {
+  margin: 1rem 0;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+/* Nebeneinander, solange Platz ist; `min()` hält die Spalte bei großer Schrift in der Breite. */
+.changes .versions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr));
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.changes .version {
+  padding: 0 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--bg);
+  overflow-wrap: anywhere;
+}
+
+.changes .version-label {
+  font-weight: 600;
+}
+
 /* Ruhige Hinweise über der Bibliotheksliste (TDD 13.1), z. B. zum Speicherschutz. */
 .hint {
   /* Hält die Abstände von Absätzen und Liste im Kasten. */

@@ -18,6 +18,8 @@ export interface SetContext {
   removeSet: (set: StoredSet) => Promise<DeleteOutcome>;
   /** Nach dem Löschen: Meldung für die Bibliothek und Wechsel dorthin. */
   onRemoved: (message: string) => void;
+  /** Meldung nach einer Übernahme aus einer Datei (TDD 9.7); nur beim ersten Anzeigen. */
+  takeMessage: () => string | null;
 }
 
 const NOT_LOADED = "Das Vokabelset konnte nicht geladen werden. Lade die Seite neu.";
@@ -33,10 +35,18 @@ const back = () => h("p", null, h("a", { href: "#/" }, "Zurück zur Bibliothek")
 
 export function setView(context: SetContext): Node {
   const main = h("main", { class: "set" });
+  // Gleich nehmen: Beim Neuzeichnen (anderer Tab) erschiene sie sonst nicht noch einmal.
+  const text = context.takeMessage();
+  const message = text && h("p", { role: "status", class: "message" }, text);
   void context.loadSet().then(
     // Ist die Ansicht schon verlassen, hängt `main` nirgends mehr; das Ersetzen bleibt dann folgenlos.
     (set) => {
-      if (set) return main.replaceWith(h("main", { class: "set" }, content(set, context)));
+      if (set) {
+        main.replaceWith(h("main", { class: "set" }, content(set, context, message)));
+        // Fokus auf die Meldung, damit Screenreader sie vorlesen (D-34).
+        if (message) focusSoon(message);
+        return;
+      }
       main.replaceChildren(
         h("h1", null, "Set nicht gefunden"),
         h("p", null, "Dieses Vokabelset gibt es nicht (mehr)."),
@@ -55,7 +65,7 @@ export function setView(context: SetContext): Node {
   return main;
 }
 
-function content(set: StoredSet, context: SetContext): Child[] {
+function content(set: StoredSet, context: SetContext, message: Child): Child[] {
   const { entries } = setSize(set);
   const overview = h("div", { class: "overview" });
   // Je Sektion eine Zeile im Titel, auch zugeklappt sichtbar; gefüllt, sobald der Lernstand da ist.
@@ -78,6 +88,7 @@ function content(set: StoredSet, context: SetContext): Child[] {
   );
   return [
     h("h1", { class: "set-title" }, set.title),
+    message,
     h(
       "p",
       { class: "languages" },

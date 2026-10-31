@@ -179,7 +179,8 @@ test("E2E-13 Ungültiger Import und bekanntes Set ändern nichts", async ({ page
   );
   await expect(alert).toContainText("Das Set braucht mindestens eine Sektion.");
 
-  // Dieselbe Datei mit Set-ID zweimal: Das zweite Mal wird schon beim Prüfen abgelehnt.
+  // Dieselbe Set-ID zweimal: Das zweite Mal zeigt die Vorschau für das vorhandene Set (TDD 9.7);
+  // „Abbrechen“ ändert nichts.
   await text.fill(setFile("Englisch – Bekannt", "m4x8c2r9tw"));
   await check.click();
   await page.getByRole("button", { name: "Importieren" }).click();
@@ -187,10 +188,10 @@ test("E2E-13 Ungültiger Import und bekanntes Set ändern nichts", async ({ page
   await page.goto("./#/import");
   await text.fill(setFile("Englisch – Überschrieben?", "m4x8c2r9tw"));
   await check.click();
-  await expect(alert).toContainText(
-    "Dieses Set ist schon vorhanden. Aktualisieren ist noch nicht möglich.",
-  );
-  await expect(page.getByRole("region", { name: "Vorschau" })).toHaveCount(0);
+  const preview = page.getByRole("region", { name: "Vorschau" });
+  await expect(preview.getByText("Dieses Set hast du schon.", { exact: false })).toBeVisible();
+  await preview.getByRole("button", { name: "Abbrechen" }).click();
+  await expect(preview).toHaveCount(0);
 
   await page.goto("./");
   await expect(library(page)).toHaveText(["Englisch – Bekannt 3 Einträge"]);

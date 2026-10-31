@@ -11,8 +11,11 @@ const FAILED =
 
 export async function loadSampleSet(db: IDBDatabase): Promise<SampleOutcome> {
   const preview = await previewImport(db, sampleText);
-  if (!preview.ok) {
-    console.error("Beispielset nicht importierbar", preview.errors);
+  if (!preview.ok || preview.kind !== "new") {
+    console.error(
+      "Beispielset nicht importierbar",
+      preview.ok ? "schon vorhanden" : preview.errors,
+    );
     return { ok: false, error: FAILED };
   }
   const saved = await saveImport(db, preview.set);
