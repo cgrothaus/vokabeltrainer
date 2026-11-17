@@ -2,8 +2,8 @@
 
 ## Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.6 – Backup-Erinnerung nur bei ungesichertem Lernstand  
-**Stand:** 29. Oktober 2026  
+**Version:** 2.7 – M5: Oberfläche als App, Lernen im Mittelpunkt  
+**Stand:** 17. November 2026  
 **Status:** Entwurf für die nächste Entwicklungsiteration  
 **Ausgangspunkt:** Bestehender HTML-Prototyp „Vokabeltrainer Englisch“  
 **Entstehung und Autorenschaft:** siehe Kapitel 13 (Änderungshistorie)
@@ -173,6 +173,7 @@ Die Liste fasst den Umfang zusammen; verbindlich sind die jeweils referenzierten
 - Ein rechtlich unbedenkliches Beispielset (Englisch–Deutsch, Niveau etwa 6. Klasse), das zugleich als Testdatensatz dient (FR-32). Die Vokabeln des Prototyps werden nicht unverändert übernommen.
 - Bereitstellung über statisches Hosting als installierbare, offline nutzbare Web-App (NFR-01–05).
 - Weiterarbeiten mit dem vorhandenen lokalen Bestand nach jedem App-Update (FR-33, DF-11).
+- Eine Oberfläche, die sich wie eine App bedient, mit Lernen im Mittelpunkt und einem Angebot zur Installation (FR-34, FR-35).
 
 ### 5.2 Bewusst nicht Teil dieser Version
 
@@ -197,6 +198,7 @@ Diese Tabelle legt nur Inhalt und Reihenfolge fest. Arbeitspakete und Umsetzungs
 | **M2 – Daten sichern** | Vollständiges Backup und Wiederherstellung, Speicherschutz und Backup-Erinnerung | FR-19, FR-31, FR-33 |
 | **M3 – Inhalte pflegen und teilen** | Vokabeleditor, leeres Set anlegen, Sektionen anlegen, umbenennen, umsortieren und löschen, Export von Sets und Sektionen | FR-02 (Leeres Set anlegen), FR-03 (Bearbeiten), FR-04, FR-18 |
 | **M4 – Korrigieren und aktualisieren** | Erkennen bekannter Sets, Aktualisieren und Ersetzen (auch einzelner Sektionen), Warnung bei lokalen Änderungen seit dem Export | FR-14, FR-15, FR-17, FR-29 |
+| **M5 – Oberfläche als App, Lernen im Mittelpunkt** | Eigene, kindgerechte Gestaltung mit App-Rahmen; Lernen als hervorgehobene Hauptaktion mit Lernstand in der Bibliothek und Schnellstart; Lernsitzung in Daumenreichweite; Installation und lokale Datenhaltung verständlich erklärt, Backup-Erinnerung später und ruhiger; Hinzufügen per Einfügen zuerst; aufgeräumte Pflege; eigenes Layout für Tablets. Grundlage ist eine UX/UI-Durchsicht nach M4 mit klickbarem Entwurf. Keine Änderung am gespeicherten Datenmodell | FR-08, FR-11, FR-24, FR-27, FR-28, FR-31, FR-34, FR-35 |
 
 FR-06 (Schutz vor Datenverlust) und FR-16 (Vorschau und Validierung) gelten in jedem Meilenstein für die dort hinzukommenden Aktionen. FR-33 gilt ab der ersten Auslieferung an Nutzende: Ab dann muss jede weitere Version den vorhandenen Bestand übernehmen. Das provisorische Deployment aus M0 dient nur Tests; die endgültige Adresse (eigene Domain) wird vor der ersten Auslieferung an Nutzende festgelegt, weil lokal gespeicherte Daten an die Adresse der App gebunden sind.
 
@@ -238,7 +240,7 @@ Löschungen und ersetzende Änderungen müssen vor der Übernahme verständlich 
 Lernende können ein Vokabelset, einzelne Sektionen oder mehrere Sektionen auswählen. Die verfügbaren Vokabelzahlen richten sich nach der Auswahl. Eine Auswahl aller oder keiner Sektion ist möglich.
 
 **FR-08 – Konfiguration einer Sitzung (MUST)**  
-Die Abfragerichtung lässt sich auf die beiden Sprachrichtungen oder gemischte Richtungen stellen. Die Anzahl der Vokabeln und der Anteil verschiedener Abfrageformen lassen sich festlegen. Der konkrete Standardwert für den Multiple-Choice-Anteil bleibt konfigurierbar.
+Die Abfragerichtung lässt sich auf die beiden Sprachrichtungen oder gemischte Richtungen stellen. Die Anzahl der Vokabeln und der Anteil verschiedener Abfrageformen lassen sich festlegen. Der konkrete Standardwert für den Multiple-Choice-Anteil bleibt konfigurierbar. Wer ein Set schon gelernt hat, startet eine neue Sitzung mit der zuletzt genutzten Einrichtung in einem Schritt, ohne sie erneut durchgehen zu müssen.
 
 **FR-09 – Abfrageformen und Bedienung (MUST)**  
 Die bestehende Kombination aus Karteikarten und Multiple Choice bleibt erhalten. Karteikarten können aufgedeckt und als „gewusst“ oder „nochmal“ bewertet werden.
@@ -257,7 +259,7 @@ Falsch beantwortete Vokabeln können innerhalb derselben Sitzung erneut abgefrag
 **FR-11 – Lernstand dauerhaft speichern (MUST)**  
 Die App speichert Lernresultate über Sitzungen hinweg als Protokoll **jeder einzelnen Antwort**. Pro Antwort werden mindestens gespeichert: der Eintrag, die Abfragerichtung, die Abfrageform (Karteikarte oder Multiple Choice), das Ergebnis, ob es der erste Versuch in der Sitzung war, die Sitzung und der Zeitpunkt. Dieses Protokoll ist die Grundlage für spätere Funktionen wie verteiltes Wiederholen (Kapitel 11) und darf deshalb nicht auf Zusammenfassungen verkürzt werden.
 
-Ein einfacher Überblick über bisherige Lernergebnisse muss möglich sein. Er zeigt mindestens pro Set und Sektion die Zahl der Sitzungen, das Datum der letzten Sitzung und die Erstversuchsquote der letzten Sitzungen. Der Lernstand darf nicht ausschließlich im flüchtigen Arbeitsspeicher existieren.
+Ein einfacher Überblick über bisherige Lernergebnisse muss möglich sein. Er zeigt mindestens pro Set und Sektion die Zahl der Sitzungen, das Datum der letzten Sitzung und die Erstversuchsquote der letzten Sitzungen. Schon die Bibliothek zeigt pro Set, wann zuletzt gelernt wurde und wie gut, damit Lernende ohne weiteren Schritt sehen, was als Nächstes dran ist. Der Lernstand darf nicht ausschließlich im flüchtigen Arbeitsspeicher existieren.
 
 **FR-12 – Sitzung unterbrechen und fortsetzen (MUST)**  
 Eine vorzeitig beendete Sitzung zeigt einen verständlichen Zwischenstand und erlaubt, die Sitzung fortzusetzen. Der aktuelle Sitzungszustand muss bei einem versehentlichen Neuladen nicht zwingend erhalten bleiben; abgeschlossene Lernergebnisse müssen aber dauerhaft gespeichert sein.
@@ -326,7 +328,10 @@ Die App verwendet IndexedDB oder eine für strukturierte lokale Daten nachweisli
 Wenn der Browser Daten nicht speichern kann oder eine Wiederherstellung scheitert, zeigt die App eine verständliche Meldung. Sie darf nicht fälschlich so tun, als seien Daten dauerhaft gespeichert worden.
 
 **FR-31 – Speicherschutz und Backup-Erinnerung (MUST)**  
-Gewährt der Browser keinen dauerhaften Speicher, erklärt die App kurz und verständlich, dass Daten bei längerer Nichtnutzung verloren gehen können, und empfiehlt den passenden Schutz – auf iOS/iPadOS insbesondere das Hinzufügen zum Home-Bildschirm, mit einer kurzen Anleitung für diesen Schritt. Gibt es Lernstand, den noch kein Backup enthält, und liegt der letzte Backup-Export länger als 14 Tage zurück oder wurde noch nie ein Backup erstellt, erinnert die App unaufdringlich daran und bietet den Backup-Export direkt an. Sets allein lösen keine Erinnerung aus, weil sie sich aus ihrer Quelle neu importieren lassen; ohne neues Lernen seit dem letzten Backup erinnert die App nicht. Die Erinnerung lässt sich für eine Weile zurückstellen, blockiert aber nie das Lernen.
+Gewährt der Browser keinen dauerhaften Speicher, erklärt die App kurz und verständlich, dass Daten bei längerer Nichtnutzung verloren gehen können, und empfiehlt den passenden Schutz – auf iOS/iPadOS insbesondere das Hinzufügen zum Home-Bildschirm, mit einer kurzen Anleitung für diesen Schritt. Gibt es Lernstand, den noch kein Backup enthält, und liegt der letzte Backup-Export länger als 14 Tage zurück oder wurde noch nie ein Backup erstellt, erinnert die App unaufdringlich daran und bietet den Backup-Export direkt an. Damit die Erinnerung nicht schon nach dem ersten Ausprobieren erscheint, kommt sie erst, wenn dieser ungesicherte Lernstand an mindestens drei verschiedenen Tagen entstanden ist oder seine erste Antwort mindestens 7 Tage zurückliegt. Sie erscheint als ruhige Zeile unter den Sets, nicht davor. Sets allein lösen keine Erinnerung aus, weil sie sich aus ihrer Quelle neu importieren lassen; ohne neues Lernen seit dem letzten Backup erinnert die App nicht. Die Erinnerung lässt sich für eine Weile zurückstellen, blockiert aber nie das Lernen. Wozu ein Backup dient, wohin man es speichert und wie man es zurückholt, erklärt die App beim Backup selbst.
+
+**FR-35 – Installation anbieten (SHOULD)**  
+Wo der Browser es erlaubt (z. B. Chrome auf Android und am Computer), bietet die App selbst an, sie als App zu installieren: in den Einstellungen, beim Hinweis auf nicht geschützte Daten und einmal als ruhige Zeile in der Bibliothek, sobald ein Set vorhanden ist. Diese Zeile lässt sich zurückstellen und erscheint nach der Installation nicht mehr; ein aufdringliches Banner gibt es nicht. Hat die installierte App einen eigenen Speicher, führt das Angebot wie auf iOS durch den Umzug: Backup speichern, installieren, in der App das Backup laden. Wo sie die Daten mit dem Browser teilt, sagt das Angebot, dass die Vokabeln mitkommen. Auf iOS/iPadOS, wo die App die Installation nicht selbst auslösen kann, gilt die Anleitung aus FR-31; sie erscheint schon beim ersten Start, bevor Daten angelegt werden.
 
 **FR-33 – Weiterarbeiten nach App-Updates (MUST)**  
 Eine neue App-Version übernimmt den vorhandenen lokalen Bestand automatisch und vollständig – Sets, Sektionen, IDs, Antwortprotokoll, Lernstand und Einstellungen –, ohne dass Nutzende etwas tun müssen. Ist dafür eine Umwandlung der gespeicherten Daten nötig, gilt:
@@ -340,6 +345,17 @@ Eine neue App-Version übernimmt den vorhandenen lokalen Bestand automatisch und
 **FR-24 – Mobilfreundliche Oberfläche (MUST)**  
 Die App ist für kleine Touchscreens zuerst gestaltet. Häufige Aktionen sind leicht erreichbar, Touch-Flächen ausreichend groß, Inhalte lesbar und Dialoge auch auf kleinen Displays bedienbar. Desktoplayout ist ebenfalls möglich.
 
+**FR-34 – Bedienung wie eine App (MUST)**  
+Die App sieht aus und bedient sich wie eine App, nicht wie eine Webseite – auch als installierte App ohne Browserleiste:
+
+- Jede Ansicht außer der Bibliothek hat oben einen sichtbaren Weg zurück; die Navigation hängt nicht an Links am Seitenende.
+- Die Hauptaktion einer Ansicht (z. B. Lernen, Speichern, Importieren) ist eindeutig hervorgehoben und liegt auf dem Smartphone unten in Daumenreichweite. Pro Ansicht gibt es höchstens eine solche Hauptaktion.
+- In der Bibliothek ist Lernen die hervorgehobene Aktion; Hinzufügen, Hilfe, Backup und Einstellungen sind erkennbar und erreichbar, aber zurückhaltender.
+- Nebenfunktionen eines Sets (Bearbeiten, Exportieren, Löschen) sind gesammelt erreichbar; folgenreiche Aktionen wie Löschen sind als solche erkennbar.
+- In der Lernsitzung liegen die Bedienelemente zum Bewerten unten, der Fortschritt ist auf einen Blick sichtbar.
+- Die Gestaltung hat eine eigene, freundliche Identität für Lernende ab etwa 10 Jahren, ohne von den Inhalten abzulenken (3.7).
+- Auf Tablets nutzt die App den Platz, statt eine schmale Smartphone-Spalte zu zeigen.
+
 **FR-25 – Heller und dunkler Modus (SHOULD)**  
 Heller und dunkler Modus werden unterstützt; eine Systemeinstellung kann berücksichtigt werden. Eine manuelle Einstellung hat Vorrang, wenn sie angeboten wird.
 
@@ -350,7 +366,7 @@ Kernfunktionen benötigen keinen Backend-Dienst. Vokabeldaten, Lernhistorie und 
 Die Benutzeroberfläche verwendet klare, für Lernende ab etwa 10 Jahren verständliche deutsche Texte, eindeutige Beschriftungen und verständliche Rückmeldungen. Häufige Aufgaben und ihre Folgen sollen möglichst aus der Oberfläche selbst hervorgehen. Interne technische Konzepte wie Datenbank- oder ID-Verwaltung werden von der normalen Bedienoberfläche ferngehalten.
 
 **FR-28 – Kontextbezogene Hilfe und Erststart-Onboarding (MUST)**  
-Wenn eine Aktion nicht ausreichend selbsterklärend ist oder eine folgenreiche Entscheidung erfordert, zeigt die App eine kurze Erklärung direkt am betreffenden Bereich oder Schritt. Hilfetexte sind konkret, handlungsorientiert und auf das notwendige Maß begrenzt; sie kompensieren keine grundsätzlich unklare Navigation oder Beschriftung. Bei leerer Vokabelbibliothek zeigt die App einen Empty State, der den Zweck der App knapp erklärt, den nächsten Schritt sichtbar macht und eine primäre Aktion zum Import des ersten Vokabelsets anbietet. Sekundär werden „Beispielset ausprobieren“ und „Leeres Set anlegen“ angeboten. Von dort sind Hinweise zum Importformat, ein Beispiel und die kopierbare Prompt-Vorlage für LLMs (FR-20) leicht erreichbar. Das Onboarding blockiert die Nutzung nicht und erscheint nicht als aufdringliche, obligatorische Tour. Der Empty State wird immer dann verwendet, wenn keine Sets vorhanden sind.
+Wenn eine Aktion nicht ausreichend selbsterklärend ist oder eine folgenreiche Entscheidung erfordert, zeigt die App eine kurze Erklärung direkt am betreffenden Bereich oder Schritt. Hilfetexte sind konkret, handlungsorientiert und auf das notwendige Maß begrenzt; sie kompensieren keine grundsätzlich unklare Navigation oder Beschriftung. Bei leerer Vokabelbibliothek zeigt die App einen Empty State, der den Zweck der App knapp erklärt, positiv sagt, dass die Vokabeln nur auf diesem Gerät liegen (kein Konto, keine Cloud), den nächsten Schritt sichtbar macht und eine primäre Aktion zum Import des ersten Vokabelsets anbietet. Sekundär werden „Beispielset ausprobieren“ und „Leeres Set anlegen“ angeboten. Von dort sind Hinweise zum Importformat, ein Beispiel und die kopierbare Prompt-Vorlage für LLMs (FR-20) leicht erreichbar. Das Onboarding blockiert die Nutzung nicht und erscheint nicht als aufdringliche, obligatorische Tour. Der Empty State wird immer dann verwendet, wenn keine Sets vorhanden sind.
 
 ---
 
@@ -434,7 +450,9 @@ Die nächste Version gilt als fachlich erfolgreich, wenn mindestens die folgende
 - **AK-17 – Antwortprotokoll** (FR-11, FR-19): Nach einer Sitzung ist für jede beantwortete Frage ein Protokolleintrag mit Eintrag, Richtung, Abfrageform, Ergebnis, Erstversuch-Kennzeichen und Zeitpunkt gespeichert und im Backup enthalten. Der Lernüberblick zeigt pro Set und Sektion Sitzungszahl, letzte Sitzung und Erstversuchsquote.
 - **AK-18 – Lokale Änderungen** (FR-29): Ein Set wird exportiert, danach wird ein Eintrag in der App geändert und derselbe Eintrag in der Exportdatei extern geändert. Beim Reimport weist die Vorschau den Konflikt aus; ohne Entscheidung der Nutzenden wird die lokale Änderung nicht überschrieben.
 - **AK-19 – Doppelter Import** (FR-30): Wird dieselbe Datei ohne IDs zweimal importiert, weist die App beim zweiten Mal auf das vorhandene, entsprechende Set hin.
-- **AK-20 – Speicherschutz** (FR-22, FR-31): Gewährt der Browser keinen dauerhaften Speicher, erscheint ein verständlicher Hinweis mit Handlungsempfehlung. Liegt kein oder nur ein über 14 Tage altes Backup vor und gibt es seither neuen Lernstand, erinnert die App daran, ohne das Lernen zu blockieren.
+- **AK-20 – Speicherschutz** (FR-22, FR-31): Gewährt der Browser keinen dauerhaften Speicher, erscheint ein verständlicher Hinweis mit Handlungsempfehlung. Liegt kein oder nur ein über 14 Tage altes Backup vor und gibt es seither neuen Lernstand von mindestens drei verschiedenen Tagen oder einer mindestens 7 Tage alten ersten Antwort, erinnert die App daran, ohne das Lernen zu blockieren; nach dem ersten Ausprobieren erinnert sie noch nicht.
+- **AK-27 – Bedienung wie eine App** (FR-24, FR-34): In der installierten App ohne Browserleiste führt aus jeder Ansicht ein sichtbarer Weg oben zurück. Auf einem Smartphone liegen Lernen in der Bibliothek, das Bewerten einer Karte und Speichern bzw. Importieren unten in Daumenreichweite; jede Ansicht hat höchstens eine hervorgehobene Hauptaktion. Die Bibliothek zeigt pro Set, wann zuletzt gelernt wurde, und ein gelerntes Set lässt sich mit der letzten Einrichtung in einem Schritt üben.
+- **AK-28 – Installation anbieten** (FR-31, FR-35): In Chrome auf Android lässt sich die App aus den Einstellungen und einmal aus der Bibliothek heraus installieren; danach sind dieselben Sets und derselbe Lernstand in der installierten App vorhanden. Auf iOS erscheint die Anleitung zum Home-Bildschirm schon im Empty State.
 - **AK-21 – Installation und Offline-Start** (NFR-03, NFR-06): Die App kann auf iOS und Android zum Home-Bildschirm hinzugefügt werden und startet nach dem ersten Laden auch im Flugmodus mit allen Daten.
 - **AK-22 – Multiple Choice** (FR-09): In einer Bibliothek mit Sets in mindestens zwei Lernsprachen stammen alle falschen Antwortmöglichkeiten aus dem Set und von der Sprachseite der jeweiligen Frage; keine falsche Antwort entspricht einer akzeptierten Variante der richtigen.
 - **AK-23 – Beispielset** (FR-05, FR-32, DF-05): Das Beispielset lässt sich aus dem Empty State laden und üben; Einträge mit Varianten und mehreren Bedeutungen sind korrekt abgebildet. Herkunft und Lizenz sind dokumentiert, und Sektionsnamen und -zuschnitt stammen nicht aus dem Prototyp oder einem Lehrwerk.
@@ -530,3 +548,4 @@ Das TDD muss insbesondere sicherstellen, dass die zentrale Produktanforderung er
 | 2.4 | 19. Oktober 2026 | Meilenstein M0 (Walking Skeleton) vor M1 ergänzt; Hinweis, dass Umsetzungsstand nur im Umsetzungsplan des TDD geführt wird; provisorisches Deployment vs. endgültige Adresse | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.5 | 29. Oktober 2026 | Zuschnitt: Ein Set entspricht einer größeren Lerneinheit wie einer Lektion, nicht einem ganzen Lehrwerk; Sektionen folgen den größeren Zwischenüberschriften (4, 4.3). Formatspezifikation eigenständig und ausgeliefert, mit Zweck, Ablauf und Bedeutung der Felder statt Anweisungen; Prompt-Vorlage nur in der App (5.1, FR-20, AK-13). R-09 an den Zuschnitt angepasst; Lernen über mehrere Sets als mögliche Ausbaustufe (11) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.6 | 29. Oktober 2026 | Backup-Erinnerung (FR-31, AK-20): erst bei Lernstand, den noch kein Backup enthält; Sets allein und Zeiten ohne Lernen lösen keine Erinnerung aus | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.7 | 17. November 2026 | Meilenstein M5 nach einer UX/UI-Durchsicht mit klickbarem Entwurf (5.1, 5.3): neu FR-34 (Bedienung wie eine App) und FR-35 (Installation anbieten, auch einmal in der Bibliothek, mit Umzug, wo die installierte App einen eigenen Speicher hat) mit AK-27 und AK-28; Lernstand schon in der Bibliothek (FR-11), Schnellstart mit der letzten Einrichtung (FR-08), Empty State nennt die lokale Datenhaltung positiv (FR-28); Backup-Erinnerung erst ab drei Lerntagen oder einer 7 Tage alten ersten Antwort, als ruhige Zeile unter den Sets, Backup erklärt sich selbst (FR-31, AK-20) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
