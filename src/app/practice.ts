@@ -27,6 +27,7 @@ import { isSetMissing } from "../storage/errors";
 import { finishSession, recordAnswer, startSession } from "../storage/sessions";
 import { getSetting } from "../storage/settings";
 import { reportStorageProblem } from "./components/storageNotice";
+import { forgetOverview } from "./overview";
 import { failureMessage, SET_MISSING } from "./storageMessages";
 
 /** Wie die aktuelle Karte gestellt wird (TDD 12.3). */
@@ -201,6 +202,7 @@ function run(
       let outcome: AnswerOutcome = { ok: true };
       try {
         await recordAnswer(db, event);
+        forgetOverview(set.id);
       } catch (error) {
         if (isSetMissing(error)) {
           // Ohne Set gibt es nichts weiter zu speichern; auch das Ende der Sitzung nicht.

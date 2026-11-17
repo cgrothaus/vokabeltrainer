@@ -23,7 +23,7 @@ import {
 } from "./app/editSet";
 import { deliverExport, prepareExport } from "./app/exportSet";
 import { correctionPrompt, loadSpec, newSetPrompt, shareSpec } from "./app/help";
-import { loadOverview } from "./app/overview";
+import { forgetAllOverviews, loadOverview } from "./app/overview";
 import { previewImport, saveImport, saveKnownImport } from "./app/importText";
 import { loadSampleSet } from "./app/sampleSet";
 import { beginPractice, currentPractice, loadSetup } from "./app/practice";
@@ -43,7 +43,12 @@ import { practiceView } from "./app/views/practice";
 import { setView } from "./app/views/set";
 import { settingsView } from "./app/views/settings";
 import { storageErrorView } from "./app/views/storageError";
-import { announceChange, onChangeElsewhere } from "./platform/broadcast";
+import {
+  announceAnswers,
+  announceChange,
+  onAnswersElsewhere,
+  onChangeElsewhere,
+} from "./platform/broadcast";
 import { canReadClipboard, copyText, readClipboard } from "./platform/clipboard";
 import { isInstalled, isIos } from "./platform/device";
 import { persistenceState, requestPersistence } from "./platform/persistence";
@@ -123,8 +128,10 @@ async function start(): Promise<void> {
     },
     onSaved: (stores) => {
       clearStorageProblem();
-      // Andere Tabs zeichnen ihre Leseansichten neu (TDD 3.4); Antworten allein lösen nichts aus.
+      // Andere Tabs zeichnen ihre Leseansichten neu (TDD 3.4); Antworten allein verwerfen dort nur den
+      // Lernstand im Zwischenspeicher (D-48).
       if (stores.some((store) => CHANGES_ELSEWHERE.has(store))) announceChange();
+      else if (stores.includes("reviewEvents")) announceAnswers();
     },
   });
   // Ohne Meldung: Die Person kann nichts tun, und der nächste Start versucht es wieder (TDD 7.3).
@@ -351,7 +358,9 @@ async function start(): Promise<void> {
     // Reine Leseansichten; Formulare, Sitzung, Import und Backup behalten ihren Stand (D-43).
     ["/", "/set/*", "/edit/*"],
   );
+  onAnswersElsewhere(forgetAllOverviews);
   onChangeElsewhere(() => {
+    forgetAllOverviews();
     loadTheme(db).then(showTheme, (error: unknown) =>
       console.warn("Darstellung nicht neu gelesen", error),
     );

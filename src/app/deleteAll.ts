@@ -4,6 +4,7 @@ import { BACKUP_STORES, type RecordCounts, summarizeRecords } from "../domain/ba
 import type { StoreRecords } from "../domain/validateRecords";
 import { clearAllData, readStores } from "../storage/backup";
 import { deletePreMigrationCopy } from "../storage/preMigrationCopy";
+import { forgetAllOverviews } from "./overview";
 import { failureMessage } from "./storageMessages";
 
 export type DeleteAllOutcome = { ok: true } | { ok: false; error: string };
@@ -21,6 +22,7 @@ export async function removeAllData(db: IDBDatabase): Promise<DeleteAllOutcome> 
   try {
     await deletePreMigrationCopy(db.name);
     await clearAllData(db);
+    forgetAllOverviews();
     return { ok: true };
   } catch (error) {
     console.error("Daten nicht gelöscht", error);

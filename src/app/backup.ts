@@ -13,6 +13,7 @@ import { readBackup, restoreBackup } from "../storage/backup";
 import { getMeta, setMeta } from "../storage/meta";
 import { DB_VERSION } from "../storage/schema";
 import { reportStorageProblem } from "./components/storageNotice";
+import { forgetAllOverviews } from "./overview";
 import { storageMessage } from "./storageMessages";
 
 export interface PreparedBackup {
@@ -72,7 +73,10 @@ export function checkBackup(text: string): CheckOutcome {
 
 export async function restore(db: IDBDatabase, backup: CheckedBackup): Promise<RestoreOutcome> {
   const result = await restoreBackup(db, backup);
-  if (result.ok) return result;
+  if (result.ok) {
+    forgetAllOverviews();
+    return result;
+  }
   const error = storageMessage(
     result.reason,
     "Das Backup wurde nicht wiederhergestellt; deine bisherigen Daten sind unverändert.",

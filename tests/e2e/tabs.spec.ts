@@ -1,9 +1,10 @@
 // Mehrere Tabs (S-33): E2E-26 (TDD 3.4, D-43). Zwei Seiten im selben Kontext teilen Datenbank und
 // `BroadcastChannel` wie zwei Tabs. Leseansichten zeichnen sich nach einer Änderung im anderen Tab neu,
-// Formulare nicht; eine Sitzung zu einem gelöschten Set speichert nichts mehr.
+// Formulare nicht; Antworten verwerfen den Lernstand im Zwischenspeicher des anderen Tabs (S-38); eine
+// Sitzung zu einem gelöschten Set speichert nichts mehr.
 import { expect, type Page, test } from "@playwright/test";
 import type { StoredSet } from "../../src/domain/model";
-import { collectErrors, importSet, readStore } from "./support";
+import { collectErrors, endPractice, importSet, readStore, startLearning } from "./support";
 
 const TITLE = "Englisch – Wetter";
 
@@ -54,6 +55,30 @@ test("E2E-26 Änderung in einem Tab: Set-Ansicht und Bibliothek im anderen zeich
   await other.getByRole("button", { name: "Set löschen" }).click();
   await other.getByRole("button", { name: "Set mit 3 Einträgen löschen" }).click();
   await expect(page.getByRole("heading", { name: "Noch keine Vokabelsets" })).toBeVisible();
+  expect(errors, "Fehler in der Konsole").toEqual([]);
+});
+
+test("E2E-26 Gelernt in einem Tab: Der andere zeigt den neuen Lernstand beim nächsten Öffnen", async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  await importSet(page, TITLE);
+  await page.getByRole("link", { name: TITLE, exact: true }).click();
+  await expect(page.locator(".overview")).toHaveText("Mit diesem Set hast du noch nicht gelernt.");
+
+  const other = await secondTab(page, "#/");
+  await startLearning(other, TITLE);
+  await other.getByRole("button", { name: /Tippen zum Aufdecken/ }).click();
+  await other.getByRole("button", { name: "Gewusst" }).click();
+  await expect(other.getByText("1 von 3 geschafft")).toBeVisible();
+  await endPractice(other);
+
+  // Antworten zeichnen nichts neu (TDD 3.4); der Lernstand kommt nicht aus dem Zwischenspeicher (S-38).
+  await page.goto("./#/");
+  await page.getByRole("link", { name: TITLE, exact: true }).click();
+  await expect(page.locator(".overview").getByRole("paragraph").first()).toHaveText(
+    "1 Lernsitzung · zuletzt heute",
+  );
   expect(errors, "Fehler in der Konsole").toEqual([]);
 });
 

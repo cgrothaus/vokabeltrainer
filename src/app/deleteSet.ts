@@ -3,6 +3,7 @@
 import { setSize } from "../domain/library";
 import type { StoredSet } from "../domain/model";
 import { countSetActivity, deleteSet } from "../storage/sets";
+import { forgetOverview } from "./overview";
 import { storageMessage } from "./storageMessages";
 
 export interface DeletionScope {
@@ -24,7 +25,10 @@ export async function deletionScope(db: IDBDatabase, set: StoredSet): Promise<De
 /** Gelöscht ist das Set erst, wenn die Transaktion abgeschlossen ist (TDD 6.5). */
 export async function removeSet(db: IDBDatabase, set: StoredSet): Promise<DeleteOutcome> {
   const result = await deleteSet(db, set.id);
-  if (result.ok) return result;
+  if (result.ok) {
+    forgetOverview(set.id);
+    return result;
+  }
   const error =
     result.reason === "missing"
       ? MISSING
