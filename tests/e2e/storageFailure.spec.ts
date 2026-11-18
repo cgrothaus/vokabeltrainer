@@ -3,6 +3,7 @@
 import { expect, type Page, test } from "@playwright/test";
 import type { ReviewEvent, Session, StoredSet } from "../../src/domain/model";
 import {
+  checkText,
   breakableStorage,
   collectErrors,
   failWrites,
@@ -34,17 +35,16 @@ test("E2E-19 Voller Speicher beim Import: Meldung, nichts gespeichert, neuer Ver
   page,
 }) => {
   await page.goto("./#/import");
-  await page.getByLabel("Text einfügen").fill(setFile("Englisch – Voll"));
-  await page.getByRole("button", { name: "Prüfen" }).click();
+  await checkText(page, setFile("Englisch – Voll"));
   await failWrites(page, FULL);
-  await page.getByRole("button", { name: "Importieren" }).click();
+  await page.getByRole("button", { name: "Speichern", exact: true }).click();
   await expect(alert(page)).toContainText(
     "Der Speicher auf diesem Gerät ist voll. Das Set wurde nicht gespeichert. Mach auf dem Gerät Platz",
   );
   expect(await readStore<StoredSet>(page, "sets")).toEqual([]);
 
   await failWrites(page, null);
-  await page.getByRole("button", { name: "Importieren" }).click();
+  await page.getByRole("button", { name: "Speichern", exact: true }).click();
   await expect(libraryMessage(page)).toHaveText("„Englisch – Voll“ mit 3 Einträgen gespeichert.");
   expect(await readStore<StoredSet>(page, "sets")).toHaveLength(1);
 });
@@ -71,9 +71,8 @@ test("E2E-19 Echt voller Speicher: Der Browser bricht ab, die App meldet es", as
   const cdp = await page.context().newCDPSession(page);
   const origin = new URL(page.url()).origin;
   await cdp.send("Storage.overrideQuotaForOrigin", { origin, quotaSize: 1000 });
-  await page.getByLabel("Text einfügen").fill(text);
-  await page.getByRole("button", { name: "Prüfen" }).click();
-  await page.getByRole("button", { name: "Importieren" }).click();
+  await checkText(page, text);
+  await page.getByRole("button", { name: "Speichern", exact: true }).click();
   await expect(alert(page)).toContainText(
     "Der Speicher auf diesem Gerät ist voll. Das Set wurde nicht gespeichert.",
   );
@@ -241,19 +240,19 @@ test("E2E-19 Übernahme in ein vorhandenes Set scheitert: Meldung, Set bleibt, n
   );
   const [before] = await readStore<StoredSet>(page, "sets");
   await page.goto("./#/import");
-  await page.getByLabel("Text einfügen").fill(setFile("Englisch – Wetter", "m4x8c2r9tw"));
-  await page.getByRole("button", { name: "Prüfen" }).click();
-  const preview = page.getByRole("region", { name: "Vorschau" });
+  await checkText(page, setFile("Englisch – Wetter", "m4x8c2r9tw"));
+  const preview = page.getByRole("main");
   await expect(preview.getByText("Dieses Set hast du schon.", { exact: false })).toBeVisible();
   await failWrites(page, FULL);
-  await preview.getByRole("button", { name: "Aktualisieren" }).click();
-  await expect(preview.getByRole("alert")).toContainText(
-    "Die Änderungen wurden nicht gespeichert.",
-  );
+  await page.getByRole("button", { name: "Übernehmen" }).click();
+  // Die Meldung steht in der Vorschau; der leere Meldungsplatz der Eingabe ist ebenfalls ein `alert`.
+  await expect(
+    preview.getByRole("alert").filter({ hasText: "Die Änderungen wurden nicht gespeichert." }),
+  ).toBeVisible();
   expect(await readStore<StoredSet>(page, "sets")).toEqual([before]);
 
   await failWrites(page, null);
-  await preview.getByRole("button", { name: "Aktualisieren" }).click();
+  await page.getByRole("button", { name: "Übernehmen" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Englisch – Wetter" })).toBeVisible();
   expect((await readStore<StoredSet>(page, "sets"))[0]!.editCount).toBe(1);
 });

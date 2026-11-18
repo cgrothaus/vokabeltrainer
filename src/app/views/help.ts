@@ -1,11 +1,12 @@
-// Hilfe „Wie bekomme ich ein Vokabelset?“ (TDD 13.1, FR-20, FR-28): Weg über einen KI-Chat, Vorlage zum
-// Kopieren, Formatbeschreibung als Datei für Chats ohne Linkzugriff, ein Beispiel des Formats und der Weg
-// zum Korrigieren eines Sets (D-44).
+// Hilfe „Wie bekomme ich ein Vokabelset?“ (TDD 13.1, FR-20, FR-28): Weg über einen KI-Chat in drei
+// Schritten, Vorlage zum Kopieren; zugeklappt die Formatbeschreibung als Datei für Chats ohne
+// Linkzugriff, ein Beispiel des Formats und der Weg zum Korrigieren eines Sets (D-44, D-53).
 import { FORMAT_EXAMPLE } from "../../content/help";
 import type { Delivery } from "../../platform/deliverFile";
 import { frame } from "../components/frame";
 import { promptBox } from "../components/promptBox";
 import { h } from "../dom";
+import { icon } from "../icons";
 
 export interface HelpContext {
   /** Vorlage mit eingesetztem Link auf die Formatspezifikation. */
@@ -32,24 +33,34 @@ export function helpView(context: HelpContext): Node {
     { class: "help" },
     h(
       "p",
-      null,
+      { class: "lead" },
       "Ein KI-Chat wie ChatGPT, Claude oder Gemini macht aus einem Foto deiner Vokabelliste ein Vokabelset für diese App.",
     ),
     h(
       "ol",
       { class: "steps" },
-      h("li", null, "Fotografiere deine Vokabelliste."),
+      h("li", null, h("span", null, h("b", null, "Fotografiere"), " deine Vokabelliste.")),
       h(
         "li",
         null,
-        "Kopiere die Vorlage unten, füge sie in deinen KI-Chat ein und hänge die Fotos an.",
+        h(
+          "span",
+          null,
+          h("b", null, "Kopiere die Vorlage"),
+          ", füge sie in deinen KI-Chat ein und hänge die Fotos an.",
+        ),
       ),
       h(
         "li",
         null,
-        "Kopiere die Antwort des Chats und füge sie unter ",
-        h("a", { href: "#/import" }, "Vokabelset importieren"),
-        " ein. Du siehst vor dem Speichern, was übernommen wird.",
+        h(
+          "span",
+          null,
+          h("b", null, "Kopiere die Antwort"),
+          " und füge sie unter ",
+          h("a", { href: "#/import" }, "Vokabelset hinzufügen"),
+          " ein. Du siehst vor dem Speichern, was übernommen wird.",
+        ),
       ),
     ),
     promptBox({
@@ -62,32 +73,58 @@ export function helpView(context: HelpContext): Node {
     shareSection(context),
     h(
       "details",
-      { class: "example" },
+      { class: "about", id: "help-example" },
       h("summary", null, "So sieht ein Vokabelset aus"),
       h(
-        "p",
-        null,
-        "Der Chat schreibt die Vokabeln in diesem Format. Du musst es nicht verstehen – die App prüft es beim Import.",
+        "div",
+        { class: "inside" },
+        h(
+          "p",
+          null,
+          "Der Chat schreibt die Vokabeln in diesem Format. Du musst es nicht verstehen – die App prüft es beim Import.",
+        ),
+        h("pre", null, FORMAT_EXAMPLE),
       ),
-      h("pre", null, FORMAT_EXAMPLE),
     ),
-    promptBox(
-      {
-        id: "help-correction",
-        heading: "Ein Set korrigieren",
-        prompt: context.correctionPrompt,
-        label: "Korrekturvorlage kopieren",
-        copyText: context.copyText,
-      },
+    h(
+      "details",
+      { class: "about", id: "help-correction-details" },
+      h("summary", null, "Ein Set korrigieren"),
       h(
-        "p",
-        null,
-        "Ein KI-Chat kann ein Set auch prüfen und korrigieren. Exportiere es dazu in der Set-Ansicht unter „Exportieren“, kopiere diese Vorlage in den Chat und hänge die Datei an. Die Antwort fügst du wie ein neues Set unter „Vokabelset importieren“ ein – die App erkennt das Set und zeigt, was sich ändert.",
+        "div",
+        { class: "inside" },
+        promptBox(
+          {
+            id: "help-correction",
+            heading: "Korrekturvorlage",
+            prompt: context.correctionPrompt,
+            label: "Korrekturvorlage kopieren",
+            copyText: context.copyText,
+          },
+          h(
+            "p",
+            null,
+            "Ein KI-Chat kann ein Set auch prüfen und korrigieren. Exportiere es dazu in der Set-Ansicht unter „Exportieren“, kopiere diese Vorlage in den Chat und hänge die Datei an. Die Antwort fügst du wie ein neues Set unter „Vokabelset hinzufügen“ ein – die App erkennt das Set und zeigt, was sich ändert.",
+          ),
+        ),
       ),
     ),
-    h("p", null, h("a", { href: "#/import", class: "action" }, "Vokabelset importieren")),
   );
-  return frame({ title: "Wie bekomme ich ein Vokabelset?", back: { parent: "#/" } }, main).element;
+  return frame(
+    {
+      title: "Wie bekomme ich ein Vokabelset?",
+      back: { parent: "#/" },
+      dock: [
+        h(
+          "a",
+          { href: "#/import", class: "action" },
+          icon("plus"),
+          h("span", null, "Vokabelset hinzufügen"),
+        ),
+      ],
+    },
+    main,
+  ).element;
 }
 
 function shareSection(context: HelpContext): Node {
@@ -128,15 +165,19 @@ function shareSection(context: HelpContext): Node {
     },
   );
   return h(
-    "section",
-    { "aria-labelledby": "help-share-heading" },
-    h("h2", { id: "help-share-heading" }, "Kann der Chat den Link nicht öffnen?"),
+    "details",
+    { class: "about", id: "help-share" },
+    h("summary", null, "Kann der Chat den Link nicht öffnen?"),
     h(
-      "p",
-      null,
-      "Dann hänge die Formatbeschreibung als Datei an: Teile sie direkt mit der Chat-App oder speichere sie und wähle sie im Chat aus.",
+      "div",
+      { class: "inside" },
+      h(
+        "p",
+        null,
+        "Dann hänge die Formatbeschreibung als Datei an: Teile sie direkt mit der Chat-App oder speichere sie und wähle sie im Chat aus.",
+      ),
+      share,
+      status,
     ),
-    share,
-    status,
   );
 }

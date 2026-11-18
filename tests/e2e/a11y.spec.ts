@@ -5,6 +5,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page, test } from "@playwright/test";
 import {
+  checkText,
   backButton,
   changeDevice,
   collectErrors,
@@ -101,17 +102,16 @@ test("Ohne Sets: Bibliothek, Hilfe, Import, Backup, Einstellungen, unbekannte Ad
   findings.push(...(await audit(page, "Bibliothek leer")));
 
   await page.goto("./#/help");
-  await page.locator("summary").first().click();
   findings.push(...(await audit(page, "Hilfe")));
+  for (const summary of await page.locator("summary").all()) await summary.click();
+  findings.push(...(await audit(page, "Hilfe aufgeklappt")));
 
   await page.goto("./#/import");
   findings.push(...(await audit(page, "Import")));
-  await page.getByLabel("Text einfügen").fill("Das ist keine Vokabelliste.");
-  await page.getByRole("button", { name: "Prüfen" }).click();
+  await checkText(page, "Das ist keine Vokabelliste.");
   await expect(page.getByRole("alert")).toBeVisible();
   findings.push(...(await audit(page, "Import mit Fehler")));
-  await page.getByLabel("Text einfügen").fill(`Hier ist dein Set:\n${setFile("Wetter")}`);
-  await page.getByRole("button", { name: "Prüfen" }).click();
+  await checkText(page, `Hier ist dein Set:\n${setFile("Wetter")}`);
   await expect(page.getByRole("heading", { name: "Vorschau" })).toBeVisible();
   findings.push(...(await audit(page, "Import-Vorschau")));
 
@@ -130,6 +130,16 @@ test("Ohne Sets: Bibliothek, Hilfe, Import, Backup, Einstellungen, unbekannte Ad
 
   await page.goto("./#/gibt-es-nicht");
   findings.push(...(await audit(page, "Seite nicht gefunden")));
+
+  // Zuletzt, weil danach ein Set da ist: dieselbe Datei noch einmal zeigt den Hinweis auf ein Duplikat.
+  await page.goto("./#/import");
+  await checkText(page, setFile("Wetter"));
+  await page.getByRole("button", { name: "Speichern", exact: true }).click();
+  await expect(libraryMessage(page)).toBeVisible();
+  await page.goto("./#/import");
+  await checkText(page, setFile("Wetter"));
+  await expect(page.getByText("das du schon hast", { exact: false })).toBeVisible();
+  findings.push(...(await audit(page, "Import-Vorschau mit Duplikat")));
 
   expect(findings).toEqual([]);
   expect(errors).toEqual([]);
@@ -420,19 +430,20 @@ test("Vorschau für ein vorhandenes Set: Konflikt, nicht mehr vorhanden, Ersetze
       sections: [{ id: "q7h3kd", title: "Wetter", entries }],
     });
   await page.goto("./#/import");
-  await page.getByLabel("Text einfügen").fill(
+  await checkText(
+    page,
     file([
       { id: "a8f2kc", term: "rain", meanings: ["Regen"], notes: "auch: Niederschlag" },
       { id: "b3c4d5", term: "sun", meanings: ["Sonne"] },
     ]),
   );
-  await page.getByRole("button", { name: "Prüfen" }).click();
-  await page.getByRole("button", { name: "Importieren" }).click();
+  await page.getByRole("button", { name: "Speichern", exact: true }).click();
   await expect(libraryMessage(page)).toBeVisible();
 
   // Ohne Prüfwert und anders als in der App: Konflikt; dazu ein unbekannter und ein neuer Eintrag.
   await page.goto("./#/import");
-  await page.getByLabel("Text einfügen").fill(
+  await checkText(
+    page,
     file([
       {
         id: "a8f2kc",
@@ -444,8 +455,7 @@ test("Vorschau für ein vorhandenes Set: Konflikt, nicht mehr vorhanden, Ersetze
       { term: "fog", meanings: ["Nebel"] },
     ]),
   );
-  await page.getByRole("button", { name: "Prüfen" }).click();
-  await expect(page.getByRole("heading", { name: "Konflikte" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "1 Konflikt" })).toBeVisible();
   findings.push(...(await audit(page, "Vorschau Aktualisieren mit Konflikt")));
   await page.getByRole("radio", { name: "Ersetzen" }).check();
   await expect(page.getByRole("button", { name: "Ersetzen und 1 Eintrag löschen" })).toBeVisible();

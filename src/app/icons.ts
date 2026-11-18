@@ -60,6 +60,14 @@ const ICONS = {
   ],
   restore: [["path", { d: "M4 12a8 8 0 1 0 2.5-5.8M4 4v4h4" }]],
   file: [["path", { d: "M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5" }]],
+  clipboard: [
+    [
+      "path",
+      {
+        d: "M8 4h8a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM9 4.5V3h6v1.5M9 11h6M9 15h4",
+      },
+    ],
+  ],
 } satisfies Record<string, Shape[]>;
 
 export type IconName = keyof typeof ICONS;

@@ -228,7 +228,7 @@ function content(set: StoredSet, context: ExportContext): Child[] {
         "p",
         null,
         "Ein KI-Chat kann das Set prüfen und korrigieren. Speichere die Datei, kopiere diese Vorlage in den Chat und hänge die Datei an – oder füge den kopierten Text unter der Vorlage ein. Die Antwort fügst du unter ",
-        h("a", { href: "#/import" }, "Vokabelset importieren"),
+        h("a", { href: "#/import" }, "Vokabelset hinzufügen"),
         " ein; die App zeigt vorher, was sich ändert.",
       ),
     ),

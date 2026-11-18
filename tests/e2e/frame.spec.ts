@@ -6,6 +6,7 @@ import { readFile } from "node:fs/promises";
 import { expect, type Page, test } from "@playwright/test";
 import type { StoredSet } from "../../src/domain/model";
 import {
+  checkText,
   backButton,
   collectErrors,
   importSet,
@@ -85,9 +86,8 @@ test("E2E-27 Nach dem Abgleich eines bekannten Sets führt Zurück zur Bibliothe
 
   await page.goto("./");
   await page.getByRole("link", { name: "Vokabelset hinzufügen" }).click();
-  await page.getByLabel("Text einfügen").fill(JSON.stringify(file, null, 2));
-  await page.getByRole("button", { name: "Prüfen" }).click();
-  await page.getByRole("button", { name: "Aktualisieren" }).click();
+  await checkText(page, JSON.stringify(file, null, 2));
+  await page.getByRole("button", { name: "Übernehmen" }).click();
   await expect(heading(page)).toHaveText(TITLE);
   await expect(page.getByRole("main").getByRole("status")).toHaveText(
     `„${TITLE}“ aktualisiert: 1 geändert.`,

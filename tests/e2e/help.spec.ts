@@ -1,4 +1,4 @@
-// E2E-16 (TDD 15.4): Empty State und Hilfe mit Vorlage und Formatbeschreibung – AK-14, FR-20, FR-28, D-26.
+// E2E-16 (TDD 15.4): Empty State und Hilfe mit Schritten, Vorlage und Formatbeschreibung – AK-14, FR-20, FR-28, D-26.
 import { readFileSync } from "node:fs";
 import { expect, type Page, test } from "@playwright/test";
 import { collectErrors, importSet } from "./support";
@@ -67,13 +67,15 @@ test("E2E-16 Empty State → Hilfe → Vorlage kopieren und Formatbeschreibung t
   await expect(page.getByText("Vorlage kopiert.", { exact: true })).toBeVisible();
   expect((await recorded(page)).copied).toBe(await prompt.textContent());
 
-  // Die Korrekturvorlage steht mit demselben Link darunter (D-44).
+  // Zugeklappt darunter die Korrekturvorlage mit demselben Link (D-44, D-53).
+  await page.getByText("Ein Set korrigieren").click();
   const correction = page.locator("#help-correction-prompt");
   await expect(correction).toContainText(link);
   await page.getByRole("button", { name: "Korrekturvorlage kopieren" }).click();
   await expect(page.getByText("Korrekturvorlage kopiert.", { exact: true })).toBeVisible();
   expect((await recorded(page)).copied).toBe(await correction.textContent());
 
+  await page.getByText("Kann der Chat den Link nicht öffnen?").click();
   await page.getByRole("button", { name: "Formatbeschreibung teilen" }).click();
   await expect(page.getByText("Formatbeschreibung geteilt.", { exact: true })).toBeVisible();
   expect((await recorded(page)).shared).toEqual({
@@ -85,8 +87,11 @@ test("E2E-16 Empty State → Hilfe → Vorlage kopieren und Formatbeschreibung t
   await page.getByText("So sieht ein Vokabelset aus").click();
   await expect(page.getByText('"format": "vokabeltrainer-set"')).toBeVisible();
 
-  await page.getByRole("link", { name: "Vokabelset importieren" }).first().click();
-  await expect(page.getByRole("heading", { name: "Vokabelset importieren" })).toBeVisible();
+  // Die Hauptaktion unten führt zum Hinzufügen.
+  await page.locator(".dock").getByRole("link", { name: "Vokabelset hinzufügen" }).click();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Vokabelset hinzufügen" }),
+  ).toBeVisible();
   expect(errors, "Fehler in der Konsole").toEqual([]);
 });
 
@@ -113,6 +118,7 @@ test("Formatbeschreibung liegt neben der App, auch offline und im Browser mit de
 
   await context.setOffline(true);
   await page.goto("./#/help");
+  await page.getByText("Kann der Chat den Link nicht öffnen?").click();
   await expect(page.getByRole("button", { name: "Formatbeschreibung teilen" })).toBeEnabled();
   await page.goto("./formatspezifikation.md");
   expect(await page.locator("body").textContent()).toBe(spec);
@@ -128,7 +134,7 @@ test("Hilfe ist aus Bibliothek mit Sets und aus dem Import erreichbar", async ({
     page.getByRole("heading", { name: "Wie bekomme ich ein Vokabelset?" }),
   ).toBeVisible();
   await page.goto("./#/import");
-  await page.getByRole("link", { name: "Wie bekomme ich ein Vokabelset?" }).click();
+  await page.getByRole("link", { name: "Anleitung ansehen" }).click();
   await expect(
     page.getByRole("heading", { name: "Wie bekomme ich ein Vokabelset?" }),
   ).toBeVisible();

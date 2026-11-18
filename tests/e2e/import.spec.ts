@@ -1,9 +1,11 @@
-// Import (S-07, S-12, S-13) mit Vorschau, E2E-06 (AK-01), E2E-13 (AK-07) und E2E-15 (AK-19).
-// Import → Lernen → Neuladen prüft E2E-01 in practice.spec.ts. Die Zwischenablage wird per Init-Skript
-// ersetzt: Ob Chromium und WebKit sie lesen lassen, hängt sonst von Berechtigungen ab.
+// „Vokabelset hinzufügen“ (S-07, S-12, S-13, S-44) mit Vorschau, E2E-06 (AK-01), E2E-13 (AK-07) und
+// E2E-15 (AK-19). Import → Lernen → Neuladen prüft E2E-01 in practice.spec.ts. Die Zwischenablage wird
+// per Init-Skript ersetzt: Ob Chromium und WebKit sie lesen lassen, hängt sonst von Berechtigungen ab.
 import { expect, type Page, test } from "@playwright/test";
 import type { StoredSet } from "../../src/domain/model";
 import {
+  backButton,
+  checkText,
   collectErrors,
   librarySets as library,
   libraryMessage as message,
@@ -28,6 +30,11 @@ const withClipboard = (page: Page, content: string | null | "missing") =>
     });
   }, content);
 
+const heading = (page: Page) => page.getByRole("heading", { level: 1 });
+/** Die Kachel mit dieser Beschriftung, z. B. „Einträge“. */
+const tile = (page: Page, label: string) =>
+  page.locator(".tiles > div").filter({ has: page.getByText(label, { exact: true }) });
+
 test("Import (Text) mit Begleittext → Vorschau → Bibliothek → Neuladen → Set ist noch da", async ({
   page,
 }) => {
@@ -37,24 +44,26 @@ test("Import (Text) mit Begleittext → Vorschau → Bibliothek → Neuladen →
     page.getByRole("heading", { name: "Lerne Vokabeln mit Karteikarten" }),
   ).toBeVisible();
   await page.getByRole("link", { name: "Erstes Vokabelset hinzufügen" }).click();
+  await expect(heading(page)).toHaveText("Vokabelset hinzufügen");
 
   const answer = `Hier ist dein Set:\n\n\`\`\`json\n${setFile("Englisch – Wetter")}\n\`\`\`\n\nViel Spaß!`;
-  await page.getByLabel("Text einfügen").fill(answer);
-  await page.getByRole("button", { name: "Prüfen" }).click();
+  await checkText(page, answer);
 
-  const preview = page.getByRole("region", { name: "Vorschau" });
-  await expect(preview.getByRole("heading", { name: "Vorschau" })).toBeFocused();
-  await expect(preview).toContainText("Englisch – Wetter");
-  await expect(preview).toContainText("Englisch → Deutsch");
-  await expect(preview).toContainText("1 Sektion mit 3 Einträgen");
-  await expect(preview.getByRole("listitem")).toHaveText(["Wetter 3 Einträge"]);
-  await expect(
-    preview.getByText("Text vor und nach dem Vokabelset wurde weggelassen."),
-  ).toBeVisible();
+  await expect(heading(page)).toHaveText("Vorschau");
+  await expect(heading(page)).toBeFocused();
+  const main = page.getByRole("main");
+  await expect(main.getByRole("heading", { name: "Englisch – Wetter" })).toBeVisible();
+  await expect(main).toContainText("Englisch → Deutsch");
+  await expect(tile(page, "Sektion")).toContainText("1");
+  await expect(tile(page, "Einträge")).toContainText("3");
+  await expect(main.getByRole("list", { name: "Sektionen" }).getByRole("listitem")).toHaveText([
+    "Wetter · 3",
+  ]);
+  await expect(main.getByText("Text vor und nach dem Vokabelset wurde weggelassen.")).toBeVisible();
   await expect(page.getByLabel("Text einfügen")).toBeHidden();
   expect(await readStore(page, "sets")).toEqual([]);
 
-  await preview.getByRole("button", { name: "Importieren" }).click();
+  await page.getByRole("button", { name: "Speichern", exact: true }).click();
   await expect(message(page)).toHaveText("„Englisch – Wetter“ mit 3 Einträgen gespeichert.");
   await expect(message(page)).toBeFocused();
   await expect(library(page)).toHaveText(["Englisch – Wetter 3 Einträge"]);
@@ -64,55 +73,93 @@ test("Import (Text) mit Begleittext → Vorschau → Bibliothek → Neuladen →
   expect(errors, "Fehler in der Konsole").toEqual([]);
 });
 
-test("Abbrechen in der Vorschau speichert nichts, der Text bleibt stehen", async ({ page }) => {
+test("Abbrechen und Zurück in der Vorschau speichern nichts, der Text bleibt stehen", async ({
+  page,
+}) => {
+  await page.goto("./");
   await page.goto("./#/import");
+  await checkText(page, setFile("Englisch – Abgebrochen"));
   const text = page.getByLabel("Text einfügen");
-  await text.fill(setFile("Englisch – Abgebrochen"));
-  await page.getByRole("button", { name: "Prüfen" }).click();
   await page.getByRole("button", { name: "Abbrechen" }).click();
-  await expect(page.getByRole("region", { name: "Vorschau" })).toHaveCount(0);
-  await expect(text).toBeFocused();
+  await expect(heading(page)).toHaveText("Vokabelset hinzufügen");
+  await expect(heading(page)).toBeFocused();
   await expect(text).toHaveValue(setFile("Englisch – Abgebrochen"));
+
+  // Die Zurück-Taste wirkt wie „Abbrechen“, Vorwärts zeigt die Vorschau wieder (D-53).
+  await page.getByRole("button", { name: "Prüfen" }).click();
+  await expect(heading(page)).toHaveText("Vorschau");
+  await page.goBack();
+  await expect(heading(page)).toHaveText("Vokabelset hinzufügen");
+  await expect(text).toHaveValue(setFile("Englisch – Abgebrochen"));
+  await page.goForward();
+  await expect(heading(page)).toHaveText("Vorschau");
+  await backButton(page).click();
+  await expect(heading(page)).toHaveText("Vokabelset hinzufügen");
+  await backButton(page).click();
+  await expect(heading(page)).toHaveText("Vokabeltrainer");
   expect(await readStore(page, "sets")).toEqual([]);
+});
+
+test("Nach dem Speichern führt Zurück nicht in die Eingabe", async ({ page }) => {
+  await page.goto("./");
+  await page.getByRole("link", { name: "Erstes Vokabelset hinzufügen" }).click();
+  await checkText(page, setFile("Englisch – Gespeichert"));
+  await page.getByRole("button", { name: "Speichern", exact: true }).click();
+  await expect(message(page)).toBeVisible();
+  // Die Bibliothek ersetzt Eingabe und Vorschau; davor liegt nur noch die leere Bibliothek.
+  await page.goBack();
+  await expect(heading(page)).toHaveText("Vokabeltrainer");
+  await expect(page.getByLabel("Text einfügen")).toHaveCount(0);
 });
 
 test("Import (Datei) zeigt die Vorschau und speichert das Set", async ({ page }) => {
   await page.goto("./#/import");
-  await page.getByLabel("Oder eine Datei auswählen").setInputFiles({
+  await page.getByLabel("Datei auswählen").setInputFiles({
     name: "wetter.json",
     mimeType: "application/json",
     buffer: Buffer.from(setFile("Englisch – aus Datei")),
   });
-  await page.getByRole("button", { name: "Importieren" }).click();
+  await page.getByRole("button", { name: "Speichern", exact: true }).click();
   await expect(message(page)).toHaveText("„Englisch – aus Datei“ mit 3 Einträgen gespeichert.");
   await expect(library(page)).toHaveText(["Englisch – aus Datei 3 Einträge"]);
 });
 
-test("Aus Zwischenablage einfügen prüft sofort", async ({ page }) => {
+test("Antwort einfügen prüft sofort", async ({ page }) => {
   await withClipboard(page, setFile("Englisch – Zwischenablage"));
   await page.goto("./#/import");
-  await page.getByRole("button", { name: "Aus Zwischenablage einfügen" }).click();
-  const preview = page.getByRole("region", { name: "Vorschau" });
-  await expect(preview).toContainText("Englisch – Zwischenablage");
-  await preview.getByRole("button", { name: "Abbrechen" }).click();
+  await page.getByRole("button", { name: "Antwort einfügen" }).click();
+  await expect(page.getByRole("main")).toContainText("Englisch – Zwischenablage");
+  await page.getByRole("button", { name: "Abbrechen" }).click();
   await expect(page.getByLabel("Text einfügen")).toHaveValue(setFile("Englisch – Zwischenablage"));
 });
 
-test("Abgelehnte oder leere Zwischenablage zeigt einen Hinweis", async ({ page }) => {
+test("Abgelehnte oder leere Zwischenablage öffnet das Textfeld mit Hinweis", async ({ page }) => {
   await withClipboard(page, null);
   await page.goto("./#/import");
-  await page.getByRole("button", { name: "Aus Zwischenablage einfügen" }).click();
-  await expect(page.getByRole("alert")).toHaveText(
+  await expect(page.getByLabel("Text einfügen")).toBeHidden();
+  await page.getByRole("button", { name: "Antwort einfügen" }).click();
+  await expect(page.getByLabel("Text einfügen")).toBeVisible();
+  await expect(page.getByLabel("Text einfügen")).toBeFocused();
+  await expect(page.locator("#import-own .problem")).toHaveText(
     "Die Zwischenablage konnte nicht gelesen werden. Füge den Text stattdessen in das Feld ein.",
   );
   await expect(page.getByRole("button", { name: "Prüfen" })).toBeEnabled();
 });
 
-test("Ohne lesbare Zwischenablage gibt es keine Schaltfläche dafür", async ({ page }) => {
+test("Ohne lesbare Zwischenablage ist das Textfeld gleich offen", async ({ page }) => {
   await withClipboard(page, "missing");
   await page.goto("./#/import");
-  await expect(page.getByRole("button", { name: "Prüfen" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Aus Zwischenablage einfügen" })).toHaveCount(0);
+  await expect(page.getByLabel("Text einfügen")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Antwort einfügen" })).toHaveCount(0);
+});
+
+test("Wege ohne Antwort: Anleitung und leeres Set", async ({ page }) => {
+  await page.goto("./#/import");
+  await page.getByRole("link", { name: "Leeres Set anlegen und selbst tippen" }).click();
+  await expect(heading(page)).toHaveText("Leeres Set anlegen");
+  await page.goBack();
+  await page.getByRole("link", { name: "Anleitung ansehen" }).click();
+  await expect(heading(page)).toHaveText("Wie bekomme ich ein Vokabelset?");
 });
 
 test("E2E-06 Import (Datei) mit Begleittext und Zusatzfeld zeigt die Warnung", async ({ page }) => {
@@ -132,7 +179,7 @@ test("E2E-06 Import (Datei) mit Begleittext und Zusatzfeld zeigt die Warnung", a
     ],
   };
   await page.goto("./#/import");
-  await page.getByLabel("Oder eine Datei auswählen").setInputFiles({
+  await page.getByLabel("Datei auswählen").setInputFiles({
     name: "wetter.txt",
     mimeType: "text/plain",
     buffer: Buffer.from(`Hier ist dein Set:\n\n${JSON.stringify(file, null, 2)}\n\nViel Erfolg!`),
@@ -143,7 +190,8 @@ test("E2E-06 Import (Datei) mit Begleittext und Zusatzfeld zeigt die Warnung", a
       { exact: true },
     ),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Importieren" }).click();
+  await expect(tile(page, "Hinweis")).toHaveText("Hinweis1");
+  await page.getByRole("button", { name: "Speichern", exact: true }).click();
   await expect(message(page)).toHaveText("„Englisch – Zusatzfeld“ mit 2 Einträgen gespeichert.");
 
   // Optionale Felder sind übernommen, leere und unbekannte nicht.
@@ -162,12 +210,11 @@ test("E2E-13 Ungültiger Import und bekanntes Set ändern nichts", async ({ page
   await page.goto("./#/import");
   const text = page.getByLabel("Text einfügen");
   const check = page.getByRole("button", { name: "Prüfen" });
-  const alert = page.getByRole("alert");
+  const alert = page.getByRole("main").getByRole("alert").first();
 
   // Kein gültiges JSON: Meldung mit Fundstelle, der Text bleibt zum Korrigieren stehen.
   const broken = '{\n  "set": { "title": "Kaputt" }\n  "sections": []\n}';
-  await text.fill(broken);
-  await check.click();
+  await checkText(page, broken);
   await expect(alert).toContainText(
     "Fehler im JSON in Zeile 2, Spalte 31: Hier fehlt ein Komma oder eine schließende Klammer.",
   );
@@ -185,15 +232,14 @@ test("E2E-13 Ungültiger Import und bekanntes Set ändern nichts", async ({ page
   // „Abbrechen“ ändert nichts.
   await text.fill(setFile("Englisch – Bekannt", "m4x8c2r9tw"));
   await check.click();
-  await page.getByRole("button", { name: "Importieren" }).click();
+  await page.getByRole("button", { name: "Speichern", exact: true }).click();
   await expect(message(page)).toHaveText("„Englisch – Bekannt“ mit 3 Einträgen gespeichert.");
   await page.goto("./#/import");
-  await text.fill(setFile("Englisch – Überschrieben?", "m4x8c2r9tw"));
-  await check.click();
-  const preview = page.getByRole("region", { name: "Vorschau" });
-  await expect(preview.getByText("Dieses Set hast du schon.", { exact: false })).toBeVisible();
-  await preview.getByRole("button", { name: "Abbrechen" }).click();
-  await expect(preview).toHaveCount(0);
+  await checkText(page, setFile("Englisch – Überschrieben?", "m4x8c2r9tw"));
+  await expect(page.getByText("Bekanntes Set erkannt")).toBeVisible();
+  await expect(page.getByText("Dieses Set hast du schon.", { exact: false })).toBeVisible();
+  await page.getByRole("button", { name: "Abbrechen" }).click();
+  await expect(heading(page)).toHaveText("Vokabelset hinzufügen");
 
   await page.goto("./");
   await expect(library(page)).toHaveText(["Englisch – Bekannt 3 Einträge"]);
@@ -204,8 +250,7 @@ test("E2E-15 Dieselbe Datei ohne IDs zweimal: Hinweis auf das vorhandene Set", a
   const errors = collectErrors(page);
   const importOnce = async () => {
     await page.goto("./#/import");
-    await page.getByLabel("Text einfügen").fill(setFile("Englisch – Doppelt"));
-    await page.getByRole("button", { name: "Prüfen" }).click();
+    await checkText(page, setFile("Englisch – Doppelt"));
   };
   const duplicateNotice = page.getByText(
     "Dieses Set sieht aus wie „Englisch – Doppelt“, das du schon hast.",
@@ -214,19 +259,19 @@ test("E2E-15 Dieselbe Datei ohne IDs zweimal: Hinweis auf das vorhandene Set", a
 
   await importOnce();
   await expect(duplicateNotice).toHaveCount(0);
-  await page.getByRole("button", { name: "Importieren" }).click();
+  await page.getByRole("button", { name: "Speichern", exact: true }).click();
   await expect(library(page)).toHaveText(["Englisch – Doppelt 3 Einträge"]);
 
   // Zweites Mal: Hinweis, Abbrechen lässt den Bestand unverändert.
   await importOnce();
   await expect(duplicateNotice).toBeVisible();
-  await expect(page.getByRole("button", { name: "Importieren", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Speichern", exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Abbrechen" }).click();
   expect(await readStore(page, "sets")).toHaveLength(1);
 
   // Drittes Mal: bewusst trotzdem als weiteres Set.
   await importOnce();
-  await page.getByRole("button", { name: "Trotzdem als neues Set importieren" }).click();
+  await page.getByRole("button", { name: "Trotzdem als neues Set speichern" }).click();
   await expect(message(page)).toHaveText("„Englisch – Doppelt“ mit 3 Einträgen gespeichert.");
   await expect(library(page)).toHaveText([
     "Englisch – Doppelt 3 Einträge",

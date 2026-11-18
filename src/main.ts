@@ -225,22 +225,26 @@ async function start(): Promise<void> {
       },
       signal,
     );
-  const importPage = () =>
-    importView({
-      previewImport: (text) => previewImport(db, text),
-      saveImport: (set) => saveImport(db, set),
-      saveKnownImport: (preview, mode, decisions) => saveKnownImport(db, preview, mode, decisions),
-      readClipboard: canReadClipboard() ? readClipboard : null,
-      onSaved: (saved) => {
-        void askOnceAfterSave();
-        message = saved;
-        replaceRoute("#/");
+  const importPage = (signal: AbortSignal) =>
+    importView(
+      {
+        previewImport: (text) => previewImport(db, text),
+        saveImport: (set) => saveImport(db, set),
+        saveKnownImport: (preview, mode, decisions) =>
+          saveKnownImport(db, preview, mode, decisions),
+        readClipboard: canReadClipboard() ? readClipboard : null,
+        onSaved: (saved) => {
+          void askOnceAfterSave();
+          message = saved;
+          replaceRoute("#/");
+        },
+        onUpdated: (setId, saved) => {
+          message = saved;
+          replaceRoute(`#/set/${encodeURIComponent(setId)}`);
+        },
       },
-      onUpdated: (setId, saved) => {
-        message = saved;
-        replaceRoute(`#/set/${encodeURIComponent(setId)}`);
-      },
-    });
+      signal,
+    );
   const setPage = (_signal: AbortSignal, id: string) =>
     setView({
       loadSet: () => getSet(db, id),

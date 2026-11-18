@@ -3,7 +3,7 @@
 import { readFile } from "node:fs/promises";
 import { type Browser, expect, type Page, test, type TestInfo } from "@playwright/test";
 import type { StoredSet } from "../../src/domain/model";
-import { collectErrors, importText, readStore, setAction } from "./support";
+import { checkText, collectErrors, importText, readStore, setAction } from "./support";
 
 const TITLE = "Englisch – Stadt";
 
@@ -114,8 +114,7 @@ test("E2E-25 Ganzes Set exportieren → Datei mit Kennungen; ein anderes Gerät 
 
   // Auf demselben Gerät erkennt die App das Set wieder; unverändert gibt es nichts zu übernehmen.
   await page.goto("./#/import");
-  await page.getByLabel("Text einfügen").fill(shared!.text);
-  await page.getByRole("button", { name: "Prüfen" }).click();
+  await checkText(page, shared!.text);
   await expect(page.getByText("Die Datei enthält keine Änderungen.")).toBeVisible();
   expect(await readStore(page, "sets")).toHaveLength(1);
   expect(errors, "Fehler in der Konsole").toEqual([]);

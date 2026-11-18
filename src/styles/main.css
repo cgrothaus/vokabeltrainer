@@ -67,7 +67,7 @@ button.danger {
   color: var(--surface);
 }
 
-/* Link, der wie eine Schaltfläche aussieht, z. B. „Vokabelset importieren“. */
+/* Link, der wie eine Schaltfläche aussieht, z. B. „Vokabelset hinzufügen“. */
 a.action {
   display: inline-flex;
   align-items: center;
@@ -1728,80 +1728,216 @@ button.icon {
   gap: 0.75rem;
 }
 
-/* Importvorschau (TDD 9.2): Titel und Sektionsnamen stammen aus der Datei und können sehr lang sein. */
-.confirm h2 {
-  margin-top: 0.75rem;
-  font-size: 1.25rem;
-}
-
-.confirm .preview-title {
-  font-size: 1.125rem;
-  font-weight: 600;
-}
-
-.confirm p,
-.confirm li {
+/* „Vokabelset hinzufügen“ und Vorschau (TDD 9.2, 9.7, 13.1, D-53): Titel und Sektionsnamen stammen aus
+   der Datei und können sehr lang sein. */
+.import {
+  display: grid;
+  gap: 1.25rem;
+  align-content: start;
   overflow-wrap: anywhere;
 }
 
-/* Ohne `display: flex`, sonst verschwindet das Dreieck zum Aufklappen; Höhe über den Innenabstand. */
-.confirm summary {
-  padding: 0.6rem 0;
-  cursor: pointer;
+.import > *,
+.import .add > *,
+.preview-content > * {
+  min-width: 0;
+  margin: 0;
 }
 
-.confirm details li .count {
-  opacity: 0.75;
+.import .add,
+.preview-content,
+.changes-body {
+  display: grid;
+  gap: 1.25rem;
 }
 
-/* Hinweis auf ein vorhandenes Set, Hinweis in der Vorschau: Rahmen statt nur Farbe (TDD 13.4). */
-.confirm .duplicate,
-.confirm .warning {
-  margin: 1rem 0;
+/* Eingabe und Vorschau wechseln über `hidden`; `display: grid` höbe es sonst auf (S-41). */
+.import [hidden] {
+  display: none;
+}
+
+.import [role="alert"]:not(:empty) {
+  margin: 0;
+}
+
+/* Kleine Überschrift in Versalien, wie „Lernstand“ in der Set-Ansicht (TDD 13.7). */
+.label {
+  margin: 0;
+  padding: 0;
+  color: var(--muted);
+  font-size: var(--text-xs);
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Hauptkarte: Antwort einfügen als großer Knopf, Datei als zweiter Weg. */
+.paste {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-l);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.paste > * {
+  min-width: 0;
+  margin: 0;
+}
+
+.paste .or {
+  margin: 0;
+}
+
+button.big,
+.paste .file-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  width: 100%;
+  min-height: 54px;
+  font-size: var(--text-m);
+  font-weight: 700;
+}
+
+.paste .file-pick {
+  justify-self: stretch;
+}
+
+.paste .file-button {
+  box-shadow: none;
+}
+
+details.about .inside,
+details.own form {
+  display: grid;
+  gap: 0.625rem;
+  padding: 0 1rem 1rem;
+}
+
+details.about .inside > *,
+details.own form > * {
+  min-width: 0;
+  margin: 0;
+}
+
+details.own form button {
+  justify-self: start;
+}
+
+a.action.secondary {
+  justify-self: start;
+  gap: 0.5rem;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+a.action > span {
+  min-width: 0;
+}
+
+/* Vorschau: Karte mit dem Set, Kacheln mit den Zahlen. */
+.preview-content .display {
+  font-size: var(--text-xl);
+}
+
+.preview-content .panel ul:not(.pills) {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.preview-content .pills {
+  margin: 0;
+}
+
+.preview-content .empty {
+  font-size: var(--text-l);
+  font-weight: 600;
+}
+
+/* Außerhalb einer Karte stehen die Kacheln auf dem Papier und brauchen eine eigene Fläche. */
+.changes-body > .tiles div {
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.tiles div.removed {
+  background: var(--wrong-soft);
+}
+
+.tiles .removed dd {
+  color: var(--wrong);
+}
+
+/* Hinweis auf ein vorhandenes Set, Hinweis auf eine neu berechnete Vorschau: Rahmen statt nur Farbe
+   (TDD 13.4). */
+.preview-content .duplicate,
+.preview-content .warning {
   padding: 0 1rem;
   border-left: 4px solid var(--accent);
-  background: var(--paper);
+  background: var(--surface);
 }
 
-/* Vorschau für ein vorhandenes Set (TDD 9.7): Wahl der Art, Konflikte mit beiden Fassungen. */
+.preview-content .summary {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
 .changes fieldset {
   min-width: 0;
-  margin: 1rem 0 0;
+  margin: 0;
   padding: 0;
   border: none;
 }
 
-.changes legend {
+.changes .mode {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.changes .mode legend {
   margin-bottom: 0.5rem;
-  padding: 0;
-  font-size: 1.125rem;
-  font-weight: 600;
-  overflow-wrap: anywhere;
 }
 
-.changes input {
-  width: 1.25rem;
-  height: 1.25rem;
+.changes .mode p {
   margin: 0;
-  flex: none;
-  accent-color: var(--accent);
 }
 
-.changes h3 {
-  margin-top: 1.5rem;
-  font-size: 1.125rem;
+/* Konflikte (TDD 9.5): je Eintrag eine Karte mit beiden Fassungen und der Wahl darunter. */
+.conflicts {
+  display: grid;
+  gap: 0.75rem;
 }
 
-/* „Aktualisieren“ passt bei 200 % Schrift nicht in eine Kachel von 320 px. */
-.changes .choices label {
-  overflow-wrap: anywhere;
-  hyphens: auto;
+.conflicts > * {
+  min-width: 0;
+  margin: 0;
+}
+
+.conflicts > button {
+  justify-self: start;
 }
 
 .changes .conflict {
-  margin: 1rem 0;
-  padding-top: 0.5rem;
-  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 0.625rem;
+  padding: 0.875rem;
+  border: 1.5px solid var(--marker);
+  border-radius: var(--radius-m);
+  background: var(--surface);
+}
+
+.changes .conflict legend {
+  float: left;
+  width: 100%;
+  padding: 0;
+  font-size: var(--text-l);
+  font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 /* Nebeneinander, solange Platz ist; `min()` hält die Spalte bei großer Schrift in der Breite. */
@@ -1809,19 +1945,47 @@ button.icon {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr));
   gap: 0.5rem;
-  margin-bottom: 0.75rem;
 }
 
 .changes .version {
   padding: 0 0.75rem;
   border: 1px solid var(--line);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-s);
   background: var(--paper);
   overflow-wrap: anywhere;
 }
 
 .changes .version-label {
-  font-weight: 600;
+  color: var(--muted);
+  font-size: var(--text-xs);
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.changes details.about > :not(summary) {
+  margin: 0;
+  padding: 0 1rem 0.875rem;
+}
+
+.diff-list {
+  display: grid;
+  gap: 0.5rem;
+  list-style: none;
+}
+
+.diff-list .count,
+.changes .section-choice .count {
+  color: var(--muted);
+}
+
+.changes .section-choice label {
+  border-bottom: 0;
+}
+
+/* Ohne die Abschwächung der Sektionswahl: Gedämpft und durchscheinend reichte der Kontrast nicht. */
+.changes .section-choice .count {
+  opacity: 1;
 }
 
 /* Ruhige Zeilen für Hinweise (TDD 13.1, 13.7): Speicherschutz, Installation, Backup-Erinnerung. */
@@ -2064,16 +2228,84 @@ a.textbtn {
   font-weight: 700;
 }
 
-/* Hilfe (TDD 13.1): Vorlage und Beispiel brechen um statt die Seite seitlich scrollen zu lassen. Die
-   Korrekturvorlage steht auch in „Exportieren“. */
-.help h2,
+/* Hilfe (TDD 13.1, D-53): drei nummerierte Schritte, die Vorlage als Karte, der Rest zugeklappt. Vorlage
+   und Beispiel brechen um statt die Seite seitlich scrollen zu lassen. Die Korrekturvorlage steht auch
+   in „Exportieren“. */
+.help {
+  display: grid;
+  gap: 1.25rem;
+  align-content: start;
+}
+
+.help > * {
+  min-width: 0;
+  margin: 0;
+}
+
 .export h2 {
   margin-top: 2rem;
   font-size: 1.25rem;
 }
 
-.help .steps li + li {
-  margin-top: 0.25rem;
+.steps {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.steps li {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: start;
+  counter-increment: step;
+}
+
+.steps li::before {
+  content: counter(step) / "";
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 750;
+}
+
+.steps li > span {
+  padding-top: 0.25rem;
+}
+
+/* Die Vorlage als Karte wie im Entwurf; die Überschrift klein in Versalien. */
+.help > section {
+  display: grid;
+  gap: 0.625rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  background: var(--surface);
+}
+
+.help section > * {
+  min-width: 0;
+  margin: 0;
+}
+
+.help section h2 {
+  color: var(--muted);
+  font-size: var(--text-xs);
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.help section button,
+.help .inside button {
+  justify-self: start;
 }
 
 .help pre,
@@ -2081,8 +2313,8 @@ pre.prompt {
   margin: 0.5rem 0 0.75rem;
   padding: 0.75rem;
   border: 1px solid var(--line);
-  border-radius: 0.5rem;
-  background: var(--surface);
+  border-radius: var(--radius-s);
+  background: var(--paper);
   font:
     0.875rem / 1.4 ui-monospace,
     SFMono-Regular,
@@ -2096,12 +2328,9 @@ pre.prompt {
   font-size: 1rem;
 }
 
-/* Ohne `display: flex`, sonst verschwindet das Dreieck zum Aufklappen; Höhe über den Innenabstand. */
-.help summary {
-  margin-top: 1.5rem;
-  padding: 0.6rem 0;
-  font-weight: 600;
-  cursor: pointer;
+.help .inside pre,
+.help section pre.prompt {
+  margin: 0;
 }
 
 /* Hinweisleisten am unteren Rand: Speicherproblem (TDD 6.5) über „Neue Version verfügbar“ (TDD 5.3);

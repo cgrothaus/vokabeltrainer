@@ -1,14 +1,17 @@
-// Import per eingefügtem Text, Zwischenablage oder Datei (TDD 8.1, FR-13). Zuerst zeigt eine Vorschau
-// das neue Set mit Warnungen und möglichen Duplikaten (TDD 9.2, FR-16, FR-30) bzw. bei einem vorhandenen
-// Set, was sich ändert (TDD 9.7, `importChanges`); gespeichert wird erst nach Bestätigung.
+// „Vokabelset hinzufügen“ (TDD 8.1, 13.1, FR-13): Antwort aus der Zwischenablage, Datei oder selbst
+// eingefügter Text. Danach zeigt eine Vorschau das neue Set mit Warnungen und möglichen Duplikaten
+// (TDD 9.2, FR-16, FR-30) bzw. bei einem vorhandenen Set, was sich ändert (TDD 9.7, `importChanges`);
+// gespeichert wird erst nach Bestätigung. Die Vorschau liegt auf einem zusätzlichen Verlaufseintrag
+// mit derselben Adresse wie die Lernsitzung (D-29, D-53): Zurück führt zur Eingabe, der Text bleibt.
 import type { ImportMode } from "../../domain/diff";
 import { MAX_IMPORT_SIZE } from "../../domain/importSet";
 import type { ImportDecisions } from "../../domain/merge";
 import type { StoredSet } from "../../domain/model";
 import type { ClipboardResult } from "../../platform/clipboard";
 import { frame } from "../components/frame";
-import { importChanges } from "../components/importChanges";
-import { focusSoon, h } from "../dom";
+import { importChanges, type ShownChanges } from "../components/importChanges";
+import { type Child, focusSoon, h } from "../dom";
+import { icon, type IconName } from "../icons";
 import type {
   ImportPreview,
   KnownPreview,
@@ -17,6 +20,7 @@ import type {
   SaveOutcome,
 } from "../importText";
 import { languageName } from "../languages";
+import { hasMark, pushMark } from "../router";
 
 export interface ImportContext {
   previewImport: (text: string) => Promise<PreviewOutcome>;
@@ -34,11 +38,11 @@ export interface ImportContext {
   onUpdated: (setId: string, message: string) => void;
 }
 
+const TITLE = "Vokabelset hinzufügen";
+const PREVIEW = "import-preview";
+
 /** So viele Fehler werden einzeln gezeigt; bei LLM-Ausgaben wiederholt sich derselbe Fehler oft. */
 const SHOWN_ERRORS = 10;
-
-/** Bis zu so vielen Sektionen ist die Liste in der Vorschau aufgeklappt. */
-const OPEN_SECTIONS = 10;
 
 const TOO_LARGE = "Die Datei ist zu groß. Ein Vokabelset darf höchstens 10 MB haben.";
 const UNREADABLE = "Die Datei konnte nicht gelesen werden. Wähle sie noch einmal aus.";
@@ -50,11 +54,13 @@ const CLIPBOARD = {
   empty: "In der Zwischenablage ist kein Text. Kopiere zuerst die Antwort aus deinem KI-Chat.",
 } as const;
 
-const entries = (count: number) => (count === 1 ? "1 Eintrag" : `${count} Einträge`);
 const entriesDative = (count: number) => (count === 1 ? "1 Eintrag" : `${count} Einträgen`);
-const sections = (count: number) => (count === 1 ? "1 Sektion" : `${count} Sektionen`);
 
-export function importView(context: ImportContext): Node {
+export function importView(context: ImportContext, signal: AbortSignal): Node {
+  const hash = location.hash;
+  const main = h("main", { class: "import" });
+  const page = frame({ title: TITLE, back: { parent: "#/" } }, main);
+
   const text = h("textarea", {
     id: "import-text",
     rows: 8,
@@ -67,17 +73,19 @@ export function importView(context: ImportContext): Node {
     context.readClipboard &&
     h(
       "button",
-      { type: "button", class: "secondary", onclick: () => void pasteAndCheck() },
-      "Aus Zwischenablage einfügen",
+      { type: "button", class: "big", onclick: () => void pasteAndCheck() },
+      icon("clipboard"),
+      h("span", null, "Antwort einfügen"),
     );
   const file = h("input", {
     id: "import-file",
     type: "file",
-    // Ob iOS damit .json-Dateien auswählbar lässt, wird in S-11 auf dem Gerät geprüft.
+    class: "file-input",
+    // iOS und iPadOS lassen .json-Dateien damit auswählbar (S-11, O-08).
     accept: ".json,application/json,text/plain",
   });
   const errors = h("div", { role: "alert" });
-  const preview = h("div");
+  const preview = h("div", { class: "preview", hidden: true });
 
   const setBusy = (busy: boolean) => {
     submit.disabled = busy;
@@ -102,38 +110,76 @@ export function importView(context: ImportContext): Node {
     );
   };
 
-  const closePreview = () => {
-    preview.replaceChildren();
-    input.hidden = false;
-  };
+  // Die zuletzt gezeigte Vorschau: Vorwärts nach Zurück zeigt sie wieder.
+  let current: ShownChanges | null = null;
+  let leaving = false;
 
-  const showKnown = (result: KnownPreview) => {
-    preview.replaceChildren(
-      importChanges(result, {
-        save: context.saveKnownImport,
-        onSaved: (setId, message) => {
-          text.value = "";
-          context.onUpdated(setId, message);
-        },
-        onCancel: () => {
-          closePreview();
-          text.focus();
-        },
-      }),
-    );
+  const openPreview = (shown: ShownChanges) => {
+    current = shown;
+    errors.replaceChildren();
     input.hidden = true;
+    preview.replaceChildren(shown.element);
+    preview.hidden = false;
+    const heading = page.setTitle("Vorschau");
+    shown.showDock(page.setDock);
+    if (!hasMark(PREVIEW)) pushMark(PREVIEW);
+    focusSoon(shown.focus ?? heading);
   };
 
-  const showPreview = (result: ImportPreview) => {
+  const closePreview = () => {
+    preview.hidden = true;
+    preview.replaceChildren();
+    errors.replaceChildren();
+    input.hidden = false;
+    page.setDock();
+    focusSoon(page.setTitle(TITLE));
+  };
+
+  /** „Abbrechen“ und „Zurück“ in der Vorschau: wie die Zurück-Taste. */
+  const cancel = () => (hasMark(PREVIEW) ? history.back() : closePreview());
+
+  /** Nach dem Speichern: erst vom zusätzlichen Eintrag zurück, dann ersetzt `then` die Ansicht. */
+  const leave = (then: () => void) => {
+    leaving = true;
+    if (!hasMark(PREVIEW)) return then();
+    window.addEventListener("popstate", then, { once: true, signal });
+    history.back();
+  };
+
+  window.addEventListener(
+    "popstate",
+    () => {
+      // Auf eine andere Seite: Der Router verlässt die Ansicht.
+      if (leaving || location.hash !== hash) return;
+      if (hasMark(PREVIEW)) {
+        if (current && preview.hidden) openPreview(current);
+      } else if (!preview.hidden) closePreview();
+    },
+    { signal },
+  );
+
+  const known = (result: KnownPreview) =>
+    importChanges(result, {
+      save: context.saveKnownImport,
+      onSaved: (setId, message) => {
+        text.value = "";
+        leave(() => context.onUpdated(setId, message));
+      },
+      onCancel: cancel,
+      // Eine neu berechnete Vorschau ersetzt die alte, auch für Vorwärts.
+      onReplaced: openPreview,
+    });
+
+  const added = (result: ImportPreview): ShownChanges => {
     const { set } = result;
     const duplicate = result.duplicates.length > 0;
-    const confirm = h(
+    const save = h(
       "button",
       {
         type: "button",
         onclick: async () => {
-          confirm.disabled = true;
-          cancel.disabled = true;
+          save.disabled = true;
+          back.disabled = true;
           errors.replaceChildren();
           let outcome: SaveOutcome;
           try {
@@ -143,88 +189,74 @@ export function importView(context: ImportContext): Node {
             outcome = { ok: false, error: UNEXPECTED };
           }
           if (!outcome.ok) {
-            confirm.disabled = false;
-            cancel.disabled = false;
+            save.disabled = false;
+            back.disabled = false;
             showErrors([outcome.error]);
             return;
           }
           text.value = "";
-          context.onSaved(
-            `„${outcome.title}“ mit ${entriesDative(outcome.entryCount)} gespeichert.`,
-          );
+          const message = `„${outcome.title}“ mit ${entriesDative(outcome.entryCount)} gespeichert.`;
+          leave(() => context.onSaved(message));
         },
       },
-      duplicate ? "Trotzdem als neues Set importieren" : "Importieren",
+      duplicate ? "Trotzdem als neues Set speichern" : "Speichern",
     );
-    const cancel = h(
-      "button",
-      {
-        type: "button",
-        class: "secondary",
-        onclick: () => {
-          closePreview();
-          errors.replaceChildren();
-          text.focus();
-        },
-      },
-      "Abbrechen",
-    );
-    const heading = h("h2", { id: "import-preview" }, "Vorschau");
-    const sectionList = h(
-      "ul",
-      null,
-      result.sections.map((section) =>
+    const back = h("button", { type: "button", class: "secondary", onclick: cancel }, "Abbrechen");
+    const tile = (label: string, value: number) =>
+      h("div", null, h("dt", null, label), h("dd", null, String(value)));
+    const details = [
+      `${languageName(set.termLanguage)} → ${languageName(set.meaningLanguage)}`,
+      set.level,
+    ].filter((part) => part);
+    const element = h(
+      "div",
+      { class: "preview-content" },
+      duplicate &&
         h(
-          "li",
-          null,
-          h("span", { class: "title" }, section.title),
-          " ",
-          h("span", { class: "count" }, entries(section.entryCount)),
+          "div",
+          { class: "duplicate" },
+          result.duplicates.map((message) => h("p", null, message)),
         ),
-      ),
-    );
-    preview.replaceChildren(
       h(
         "section",
-        { class: "confirm", "aria-labelledby": "import-preview" },
-        heading,
-        duplicate &&
-          h(
-            "div",
-            { class: "duplicate" },
-            result.duplicates.map((message) => h("p", null, message)),
+        { class: "panel raised", "aria-labelledby": "preview-set" },
+        h("p", { class: "label" }, "Neues Vokabelset"),
+        h("h2", { class: "display", id: "preview-set" }, set.title),
+        h("p", { class: "muted" }, details.join(" · ")),
+        h(
+          "dl",
+          { class: "tiles" },
+          tile(result.sections.length === 1 ? "Sektion" : "Sektionen", result.sections.length),
+          tile(result.entryCount === 1 ? "Eintrag" : "Einträge", result.entryCount),
+          tile(result.warnings.length === 1 ? "Hinweis" : "Hinweise", result.warnings.length),
+        ),
+        h(
+          "ul",
+          { class: "pills", "aria-label": "Sektionen" },
+          result.sections.map((section) =>
+            h("li", null, `${section.title} · ${section.entryCount}`),
           ),
-        h("p", { class: "preview-title" }, set.title),
-        h(
-          "p",
-          null,
-          `${languageName(set.termLanguage)} → ${languageName(set.meaningLanguage)}`,
-          h("br"),
-          `${sections(result.sections.length)} mit ${entriesDative(result.entryCount)}`,
         ),
+      ),
+      result.trimmed && h("p", null, "Text vor und nach dem Vokabelset wurde weggelassen."),
+      result.warnings.length > 0 &&
         h(
-          "details",
-          { open: result.sections.length <= OPEN_SECTIONS },
-          h("summary", null, "Sektionen"),
-          sectionList,
-        ),
-        result.trimmed && h("p", null, "Text vor und nach dem Vokabelset wurde weggelassen."),
-        result.warnings.length > 0 &&
+          "section",
+          { class: "panel", "aria-labelledby": "preview-hints" },
+          h("h2", { class: "label", id: "preview-hints" }, "Hinweise"),
           h(
-            "div",
+            "ul",
             null,
-            h("p", null, "Hinweise:"),
-            h(
-              "ul",
-              null,
-              result.warnings.map((warning) => h("li", null, warning)),
-            ),
+            result.warnings.map((warning) => h("li", null, warning)),
           ),
-        h("div", { class: "actions" }, confirm, cancel),
+        ),
+      h(
+        "p",
+        { class: "muted" },
+        `Gespeichert wird erst, wenn du auf „${save.textContent}“ tippst.`,
       ),
     );
-    input.hidden = true;
-    focusSoon(heading);
+    return { element, showDock: (setDock) => setDock(back, save) };
   };
 
   const check = async (read: () => Promise<string>) => {
@@ -240,8 +272,7 @@ export function importView(context: ImportContext): Node {
       }
       const outcome = await context.previewImport(value);
       if (!outcome.ok) return showErrors(outcome.errors);
-      if (outcome.kind === "known") showKnown(outcome);
-      else showPreview(outcome);
+      openPreview(outcome.kind === "known" ? known(outcome) : added(outcome));
     } catch (error) {
       console.error("Import fehlgeschlagen", error);
       showErrors([UNEXPECTED]);
@@ -265,25 +296,15 @@ export function importView(context: ImportContext): Node {
     }
     if (!result.ok) {
       setBusy(false);
-      errors.replaceChildren(h("p", null, CLIPBOARD[result.reason]));
+      // Der Weg über das Textfeld geht immer (TDD 8.1): aufklappen, Hinweis dort.
+      own.open = true;
+      ownProblem.replaceChildren(h("p", null, CLIPBOARD[result.reason]));
+      focusSoon(text);
       return;
     }
     text.value = result.text;
     await check(async () => result.text);
   };
-
-  const form = h(
-    "form",
-    {
-      onsubmit: (event: Event) => {
-        event.preventDefault();
-        void check(async () => text.value);
-      },
-    },
-    h("label", { for: "import-text" }, "Text einfügen"),
-    text,
-    h("div", { class: "actions" }, submit, paste),
-  );
 
   file.addEventListener("change", () => {
     const chosen = file.files?.[0];
@@ -294,22 +315,74 @@ export function importView(context: ImportContext): Node {
     void check(() => chosen.text());
   });
 
-  const input = h(
-    "div",
-    null,
+  // Live-Bereich statt zweitem `role="alert"`: Der Fokus springt ohnehin ins Feld darunter.
+  const ownProblem = h("div", { class: "problem", "aria-live": "assertive" });
+  const own = h(
+    "details",
+    { class: "about own", id: "import-own", open: !paste },
+    h("summary", null, "Text lieber selbst einfügen"),
     h(
-      "p",
-      null,
-      "Füge die Antwort deines KI-Chats mit dem Vokabelset ein oder wähle eine Datei aus. Du siehst vor dem Speichern, was übernommen wird.",
+      "form",
+      {
+        onsubmit: (event: Event) => {
+          event.preventDefault();
+          ownProblem.replaceChildren();
+          void check(async () => text.value);
+        },
+      },
+      ownProblem,
+      h("label", { for: "import-text" }, "Text einfügen"),
+      text,
+      submit,
     ),
-    h("p", null, h("a", { href: "#/help" }, "Wie bekomme ich ein Vokabelset?")),
-    form,
-    h("p", null, h("label", { for: "import-file" }, "Oder eine Datei auswählen")),
-    file,
   );
 
-  return frame(
-    { title: "Vokabelset importieren", back: { parent: "#/" } },
-    h("main", { class: "import" }, input, preview, errors),
-  ).element;
+  const row = (href: string, symbol: IconName, label: string): Child =>
+    h("li", null, h("a", { href }, icon(symbol), h("span", null, label), icon("chevron")));
+
+  const input = h(
+    "div",
+    { class: "add" },
+    h(
+      "section",
+      { class: "paste", "aria-label": "Antwort oder Datei" },
+      h(
+        "p",
+        null,
+        "Kopiere die Antwort deines KI-Chats und füge sie hier ein. Du siehst vor dem Speichern, was übernommen wird.",
+      ),
+      paste,
+      paste && h("p", { class: "or" }, "oder"),
+      // Die Beschriftung sieht aus wie eine Schaltfläche, das Feld liegt unsichtbar darüber (TDD 13.4).
+      h(
+        "div",
+        { class: "file-pick" },
+        file,
+        h(
+          "label",
+          { for: "import-file", class: "file-button" },
+          icon("file"),
+          h("span", null, "Datei auswählen"),
+        ),
+      ),
+    ),
+    own,
+    h(
+      "section",
+      { class: "panel", "aria-labelledby": "import-none" },
+      h("h2", { class: "label", id: "import-none" }, "Noch kein Vokabelset?"),
+      h("p", null, "So machst du eins aus einem Foto deiner Vokabelliste."),
+      h(
+        "a",
+        { href: "#/help", class: "action secondary" },
+        icon("help"),
+        h("span", null, "Anleitung ansehen"),
+      ),
+    ),
+    h("ul", { class: "rows" }, row("#/new-set", "edit", "Leeres Set anlegen und selbst tippen")),
+  );
+
+  // Meldungen oben, damit sie bei Eingabe und Vorschau sichtbar sind.
+  main.append(errors, input, preview);
+  return page.element;
 }

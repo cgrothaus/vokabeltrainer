@@ -4,7 +4,7 @@
 import { readFile } from "node:fs/promises";
 import { expect, type Page, test } from "@playwright/test";
 import type { StoredSet } from "../../src/domain/model";
-import { collectErrors, importText, readStore, setAction } from "./support";
+import { checkText, collectErrors, importText, readStore, setAction } from "./support";
 
 const TITLE = "Englisch – Stadt";
 const SAVED = `„${TITLE}“ mit 4 Einträgen gespeichert.`;
@@ -56,12 +56,15 @@ async function exportFile(page: Page, section?: string): Promise<Json> {
 
 async function checkImport(page: Page, file: Json): Promise<void> {
   await page.goto("./#/import");
-  await page.getByLabel("Text einfügen").fill(JSON.stringify(file, null, 2));
-  await page.getByRole("button", { name: "Prüfen" }).click();
+  await checkText(page, JSON.stringify(file, null, 2));
   await expect(page.getByText("Dieses Set hast du schon.", { exact: false })).toBeVisible();
 }
 
-const preview = (page: Page) => page.getByRole("region", { name: "Vorschau" });
+// Inhalt der Vorschau; ihre Schaltflächen stehen in der Aktionsleiste darunter (D-53).
+const preview = (page: Page) => page.getByRole("main");
+/** Die Kachel mit dieser Beschriftung, z. B. „neu“. */
+const tile = (page: Page, label: string) =>
+  page.locator(".tiles > div").filter({ has: page.getByText(label, { exact: true }) });
 const setMessage = (page: Page) => page.getByRole("main").getByRole("status");
 
 const entryOf = (file: Json, term: string): Json =>
@@ -85,12 +88,12 @@ test("E2E-08 Teil-Export ändern → Aktualisieren und Ersetzen; andere Sektione
   entryOf(part, "apple").meanings = ["Apfel", "Apfelbaum"];
   part.sections[0].entries.push({ term: "bread", meanings: ["Brot"] });
   await checkImport(page, part);
-  await expect(preview(page).getByText("1 Eintrag neu", { exact: true })).toBeVisible();
-  await expect(preview(page).getByText("1 Eintrag geändert", { exact: true })).toBeVisible();
+  await expect(tile(page, "neu")).toHaveText("neu1");
+  await expect(tile(page, "geändert")).toHaveText("geändert1");
   await expect(
     preview(page).getByText("Die Datei enthält 1 Sektion: „Einkaufen“.", { exact: false }),
   ).toBeVisible();
-  await preview(page).getByRole("button", { name: "Aktualisieren" }).click();
+  await page.getByRole("button", { name: "Übernehmen" }).click();
 
   await expect(page.getByRole("heading", { level: 1, name: TITLE })).toBeVisible();
   await expect(setMessage(page)).toHaveText(`„${TITLE}“ aktualisiert: 1 geändert, 1 neu.`);
@@ -110,13 +113,13 @@ test("E2E-08 Teil-Export ändern → Aktualisieren und Ersetzen; andere Sektione
   );
   await checkImport(page, again);
   await expect(preview(page).getByText("Die Datei enthält keine Änderungen.")).toBeVisible();
-  await expect(preview(page).getByRole("button", { name: "Aktualisieren" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Übernehmen" })).toHaveCount(0);
   await preview(page).getByRole("radio", { name: "Ersetzen" }).check();
   await expect(preview(page).getByText("Wird gelöscht (1)")).toBeVisible();
   await expect(preview(page).locator("details").filter({ hasText: "Wird gelöscht" })).toContainText(
     "bread – Brot",
   );
-  await preview(page).getByRole("button", { name: "Ersetzen und 1 Eintrag löschen" }).click();
+  await page.getByRole("button", { name: "Ersetzen und 1 Eintrag löschen" }).click();
   await expect(setMessage(page)).toHaveText(`„${TITLE}“ ersetzt: 1 gelöscht.`);
   const [replaced] = await readStore<StoredSet>(page, "sets");
   expect(replaced!.sections[0]).toEqual(before!.sections[0]);
@@ -147,7 +150,7 @@ test("E2E-09 Konflikt: in App und Datei geändert → beide Fassungen, ohne Wahl
   // … und in der Datei.
   entryOf(file, "train").meanings = ["Bahn"];
   await checkImport(page, file);
-  await expect(preview(page).getByRole("heading", { name: "Konflikte" })).toBeVisible();
+  await expect(preview(page).getByRole("heading", { name: "1 Konflikt" })).toBeVisible();
   const conflict = preview(page).getByRole("group", { name: "train" });
   await expect(conflict).toContainText("In der App");
   await expect(conflict).toContainText("train – Eisenbahn");
@@ -156,7 +159,7 @@ test("E2E-09 Konflikt: in App und Datei geändert → beide Fassungen, ohne Wahl
   await expect(conflict.getByRole("radio", { name: "In der App behalten" })).toBeChecked();
 
   // Ohne Wahl bleibt die Fassung der App (AK-18).
-  await preview(page).getByRole("button", { name: "Aktualisieren" }).click();
+  await page.getByRole("button", { name: "Übernehmen" }).click();
   await expect(setMessage(page)).toHaveText(`„${TITLE}“ aktualisiert.`);
   let [stored] = await readStore<StoredSet>(page, "sets");
   expect(stored!.sections[0]!.entries[1]!.meanings).toEqual([{ text: "Eisenbahn" }]);
@@ -167,7 +170,7 @@ test("E2E-09 Konflikt: in App und Datei geändert → beide Fassungen, ohne Wahl
     .getByRole("group", { name: "train" })
     .getByRole("radio", { name: "Datei übernehmen" })
     .check();
-  await preview(page).getByRole("button", { name: "Aktualisieren" }).click();
+  await page.getByRole("button", { name: "Übernehmen" }).click();
   await expect(setMessage(page)).toHaveText(`„${TITLE}“ aktualisiert: 1 geändert.`);
   [stored] = await readStore<StoredSet>(page, "sets");
   expect(stored!.sections[0]!.entries[1]!.meanings).toEqual([{ text: "Bahn" }]);
@@ -193,13 +196,13 @@ test("Veraltete Vorschau: in einem anderen Tab geändert → nichts gespeichert,
   await other.getByRole("button", { name: "Speichern", exact: true }).click();
   await expect(other.getByRole("heading", { level: 1 })).toHaveText(`${TITLE} bearbeiten`);
 
-  await preview(page).getByRole("button", { name: "Aktualisieren" }).click();
+  await page.getByRole("button", { name: "Übernehmen" }).click();
   await expect(
     preview(page).getByText("Das Set wurde inzwischen geändert. Prüfe die Vorschau noch einmal."),
   ).toBeVisible();
   let [stored] = await readStore<StoredSet>(page, "sets");
   expect(stored!.sections[1]!.entries[0]!.meanings).toEqual([{ text: "Geld" }]);
-  await preview(page).getByRole("button", { name: "Aktualisieren" }).click();
+  await page.getByRole("button", { name: "Übernehmen" }).click();
   await expect(setMessage(page)).toHaveText(`„${TITLE}“ aktualisiert: 1 geändert.`);
   [stored] = await readStore<StoredSet>(page, "sets");
   expect(stored!.sections[1]!.entries[0]!.meanings).toEqual([

@@ -49,10 +49,21 @@ export async function importSet(page: Page, title: string, base = "./"): Promise
 /** Wie `importSet` mit beliebigem Text; `saved` ist die erwartete Meldung in der Bibliothek. */
 export async function importText(page: Page, text: string, saved: string, base = "./") {
   await page.goto(`${base}#/import`);
-  await page.getByLabel("Text einfügen").fill(text);
-  await page.getByRole("button", { name: "Prüfen" }).click();
-  await page.getByRole("button", { name: "Importieren" }).click();
+  await checkText(page, text);
+  await page.getByRole("button", { name: "Speichern", exact: true }).click();
   await expect(libraryMessage(page)).toHaveText(saved);
+}
+
+/**
+ * In „Vokabelset hinzufügen“ über „Text lieber selbst einfügen“ (aufgeklappt, falls nötig) prüfen;
+ * danach steht die Vorschau oder eine Meldung da.
+ */
+export async function checkText(page: Page, text: string): Promise<void> {
+  await expect(page.locator("h1")).toHaveText(/Vokabelset hinzufügen|Vorschau/);
+  const field = page.getByLabel("Text einfügen");
+  if (!(await field.isVisible())) await page.getByText("Text lieber selbst einfügen").click();
+  await field.fill(text);
+  await page.getByRole("button", { name: "Prüfen" }).click();
 }
 
 /** „<Titel> lernen“ in Bibliothek oder Set-Ansicht, dann Start mit der vorbelegten Einrichtung. */

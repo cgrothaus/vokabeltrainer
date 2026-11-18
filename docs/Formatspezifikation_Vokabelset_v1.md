@@ -2,7 +2,7 @@
 
 **Formatkennung:** `vokabeltrainer-set`  
 **Formatversion:** 1  
-**Dokumentstand:** 29. Oktober 2026
+**Dokumentstand:** 18. November 2026
 
 ## Wozu diese Beschreibung dient
 
@@ -13,7 +13,7 @@ Vokabeln kommen als **Vokabelset** in die App, als JSON im Format, das dieses Do
 1. Lernende fotografieren die Vokabelseiten.
 2. Sie geben die Fotos zusammen mit dieser Beschreibung in einen KI-Chat, z. B. ChatGPT, Claude oder Gemini.
 3. Der Chat überträgt die Vokabeln von den Fotos in ein Vokabelset und gibt es als JSON-Codeblock aus.
-4. Lernende kopieren die Antwort und fügen sie in der App unter „Vokabelset importieren“ ein. Die App zeigt eine Vorschau mit Titel, Sprachen und Sektionen und speichert das Set nach Bestätigung.
+4. Lernende kopieren die Antwort und fügen sie in der App unter „Vokabelset hinzufügen“ ein. Die App zeigt eine Vorschau mit Titel, Sprachen und Sektionen und speichert das Set nach Bestätigung.
 
 Ein zweiter Weg: Ein Set wird aus der App exportiert, von Hand oder in einem KI-Chat geprüft und korrigiert und wieder importiert. Der Lernstand bleibt dabei erhalten (Kapitel 6 bis 9). Kapitel 11 beschreibt beide Wege genauer.
 
@@ -423,3 +423,4 @@ Die App veröffentlicht dieses Dokument als `formatspezifikation.md` neben sich 
 | 22. Oktober 2026 | Hinweis auf das Beispielset der App mit Herkunft und Lizenz (1). Formatversion bleibt 1. Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer. |
 | 29. Oktober 2026 | Eigenständig und mit Kontext, Formatversion bleibt 1: Einleitung zu Zweck und Ablauf; Zuschnitt von Set (3.1) und Sektionen (4); Bedeutung der Felder in der App (2, 3.2, 5.1) und Zuordnung typischer Angaben (5.6); Beispiele als Lektion (1, 9); Hinweise für erzeugte Dateien beschreibend statt als Anweisungen (10); Kapitel 11 beschreibt den Ablauf, die Vorlagen stehen nur noch in der App; keine Verweise auf interne Projektdokumente. Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer. |
 | 29. Oktober 2026 | Erste Auslieferung: Formatversion 1 ist verbindlich und ändert sich nur noch so, wie Kapitel 12 es beschreibt; feste Adresse der App (11), das JSON Schema trägt sie als `$id`. Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer. |
+| 18. November 2026 | Name der Ansicht in der App: „Vokabelset hinzufügen“ statt „Vokabelset importieren“ (Einleitung). Formatversion bleibt 1. Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer. |

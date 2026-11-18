@@ -81,8 +81,7 @@ export function libraryView(context: LibraryContext, signal: AbortSignal): Node 
     h(
       "ul",
       { class: "rows" },
-      // „Leeres Set anlegen“ zieht mit S-44 in die Ansicht „Hinzufügen“ um (D-50).
-      row("#/new-set", "edit", "Leeres Set anlegen"),
+      // „Leeres Set anlegen“ steht in „Vokabelset hinzufügen“ (D-50, D-53).
       row("#/help", "help", "Wie bekomme ich ein Vokabelset?"),
       row("#/backup", "shield", "Backup und Wiederherstellung"),
     ),
