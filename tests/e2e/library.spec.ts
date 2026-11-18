@@ -10,6 +10,7 @@ import {
   importText,
   libraryMessage,
   readStore,
+  setAction,
   startLearning,
 } from "./support";
 
@@ -66,6 +67,67 @@ test("Bibliothek gruppiert nach Lernsprache und zeigt die Lernstufe", async ({ p
   expect(errors, "Fehler in der Konsole").toEqual([]);
 });
 
+test("E2E-28 Karten mit Lernstand, Lernen-Knopf als Schnellstart, Weiterlernen, Menü in der Set-Ansicht", async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  const WEATHER = "Englisch – Wetter";
+  const ANIMALS = "Französisch – Tiere und Farben";
+  await importFrench(page);
+  await importSet(page, WEATHER);
+  const status = (title: string) =>
+    sets(page)
+      .getByRole("listitem")
+      .filter({ has: page.getByRole("link", { name: title, exact: true }) })
+      .locator(".status");
+  const dock = page.locator(".dock");
+  await expect(status(WEATHER)).toHaveText("Neu · noch nicht gelernt");
+  await expect(status(ANIMALS)).toHaveText("Neu · noch nicht gelernt");
+  await expect(dock).toBeHidden();
+
+  // Ohne gemerkte Einrichtung führt der Knopf zur Einrichtung (TDD 12.1).
+  await page.getByRole("button", { name: `${WEATHER} lernen` }).click();
+  await expect(page).toHaveURL(/#\/learn\//);
+  await page.getByRole("button", { name: "3 Vokabeln lernen" }).click();
+  await page.getByRole("button", { name: /Tippen zum Aufdecken/ }).click();
+  await page.getByRole("button", { name: "Gewusst" }).click();
+  await expect(page.getByText("1 von 3 geschafft")).toBeVisible();
+  await endPractice(page);
+
+  await expect(status(WEATHER)).toHaveText("zuletzt heute 100 % beim ersten Mal gewusst");
+  await expect(status(ANIMALS)).toHaveText("Neu · noch nicht gelernt");
+  await expect(dock.getByRole("button")).toHaveText(`Weiterlernen ${WEATHER} · 3 Vokabeln`);
+
+  // Eine angefangene Sitzung ohne Antwort ändert „Weiterlernen“ nicht (D-50).
+  await page.getByRole("button", { name: `${ANIMALS} lernen` }).click();
+  await page.getByRole("button", { name: "3 Vokabeln lernen" }).click();
+  await expect(page.getByText("0 von 3 geschafft")).toBeVisible();
+  await page.goto("./#/");
+  await expect(dock.getByRole("button")).toHaveText(`Weiterlernen ${WEATHER} · 3 Vokabeln`);
+
+  // Mit gemerkter Einrichtung startet der Knopf sofort, ebenso „Weiterlernen“.
+  await page.getByRole("button", { name: `${ANIMALS} lernen` }).click();
+  await expect(page).toHaveURL(/#\/practice$/);
+  await expect(page.getByText("0 von 3 geschafft")).toBeVisible();
+  await page.goto("./#/");
+  await dock.getByRole("button", { name: /^Weiterlernen/ }).click();
+  await expect(page).toHaveURL(/#\/practice$/);
+  await expect(page.getByText("0 von 3 geschafft")).toBeVisible();
+  await page.goto("./#/");
+
+  // Das Menü „···“ der Set-Ansicht schließt mit Escape, der Fokus kehrt zurück (TDD 13.7).
+  await page.getByRole("link", { name: WEATHER, exact: true }).click();
+  const menuButton = page.getByRole("banner").getByRole("button", { name: "Weitere Aktionen" });
+  await menuButton.click();
+  const menu = page.getByRole("dialog", { name: WEATHER });
+  await expect(menu.getByRole("link")).toHaveText(["Bearbeiten", "Exportieren"]);
+  await expect(menu.getByRole("button", { name: "Set löschen" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
+  await expect(menuButton).toBeFocused();
+  expect(errors, "Fehler in der Konsole").toEqual([]);
+});
+
 test("Set-Ansicht zeigt Angaben, Sektionen und Einträge", async ({ page }) => {
   const errors = collectErrors(page);
   await importFrench(page);
@@ -75,9 +137,11 @@ test("Set-Ansicht zeigt Angaben, Sektionen und Einträge", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     "Französisch – Tiere und Farben",
   );
-  await expect(page.getByText("Französisch → Deutsch · 3 Einträge")).toBeVisible();
+  await expect(page.getByText("Französisch → Deutsch · 3 Einträge · Klasse 7")).toBeVisible();
+  // Die übrigen Angaben stehen zugeklappt am Ende (TDD 13.1).
+  await expect(page.locator(".details")).toBeHidden();
+  await page.getByText("Über dieses Set").click();
   await expect(page.locator(".details dt")).toHaveText([
-    "Lernstufe",
     "Lehrwerk",
     "Herkunft",
     "Lizenz",
@@ -85,14 +149,13 @@ test("Set-Ansicht zeigt Angaben, Sektionen und Einträge", async ({ page }) => {
     "Prüfstatus",
   ]);
   await expect(page.locator(".details dd")).toHaveText([
-    "Klasse 7",
     "Eigenes Heft, 2. Auflage",
     "Eigene Zusammenstellung",
     "CC0",
     "Für die Probe",
     "geprüft",
   ]);
-  await expect(page.locator("summary")).toHaveText([
+  await expect(page.locator(".section summary")).toHaveText([
     "Tiere 2 Einträge noch nicht gelernt",
     "Farben 1 Eintrag noch nicht gelernt",
   ]);
@@ -134,8 +197,9 @@ test("Set löschen kündigt den Umfang an und löscht den Lernstand mit", async 
     .toBe(1);
 
   await page.getByRole("link", { name: "Englisch – Wetter", exact: true }).click();
-  const start = page.getByRole("button", { name: "Set löschen" });
-  await start.click();
+  // Gelöscht wird über das Menü „···“; dorthin kehrt der Fokus zurück (TDD 13.7).
+  const start = page.getByRole("banner").getByRole("button", { name: "Weitere Aktionen" });
+  await setAction(page, "Set löschen");
   await expect(
     page.getByText(
       "Gelöscht werden 1 Sektion mit 3 Einträgen und dein Lernstand dazu: 1 Antwort aus 1 Lernsitzung.",
@@ -146,7 +210,7 @@ test("Set löschen kündigt den Umfang an und löscht den Lernstand mit", async 
   await expect(page.getByRole("button", { name: "Set mit 3 Einträgen löschen" })).toHaveCount(0);
   expect(await readStore<StoredSet>(page, "sets")).toHaveLength(2);
 
-  await start.click();
+  await setAction(page, "Set löschen");
   await page.getByRole("button", { name: "Set mit 3 Einträgen löschen" }).click();
   await expect(libraryMessage(page)).toHaveText("„Englisch – Wetter“ gelöscht.");
   await expect(page).toHaveURL(/#\/$/);
@@ -158,7 +222,7 @@ test("Set löschen kündigt den Umfang an und löscht den Lernstand mit", async 
 
   // Ohne Lernstand nennt die Ankündigung nur den Inhalt; danach ist die Bibliothek leer.
   await page.getByRole("link", { name: "Französisch – Tiere und Farben", exact: true }).click();
-  await start.click();
+  await setAction(page, "Set löschen");
   await expect(
     page.getByText(
       "Gelöscht werden 2 Sektionen mit 3 Einträgen. Mit diesem Set hast du noch nicht gelernt.",
@@ -206,7 +270,7 @@ test("E2E-10 Markup in Daten erscheint als Text", async ({ page }) => {
   await expect(page.getByRole("link", { name: markup, exact: true })).toBeVisible();
   await page.getByRole("link", { name: markup, exact: true }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(markup);
-  await page.locator("summary").click();
+  await page.locator(".section summary").click();
   await expect(page.locator(".pair")).toHaveText(`${markup} – ${markup}`);
   await expect(page.getByText(`Notiz: ${markup}`)).toBeVisible();
 

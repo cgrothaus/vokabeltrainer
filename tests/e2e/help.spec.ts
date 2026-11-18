@@ -48,9 +48,7 @@ test("E2E-16 Empty State → Hilfe → Vorlage kopieren und Formatbeschreibung t
   await expect(page.getByRole("heading", { name: "Noch keine Vokabelsets" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Erstes Vokabelset importieren" })).toBeVisible();
   // Die Wege unter der Liste stecken bei leerer Bibliothek im Empty State.
-  await expect(page.getByRole("link", { name: "Vokabelset importieren", exact: true })).toHaveCount(
-    0,
-  );
+  await expect(page.getByRole("link", { name: "Vokabelset hinzufügen" })).toHaveCount(0);
 
   await page.getByRole("link", { name: "Wie bekomme ich ein Vokabelset?" }).click();
   await expect(

@@ -133,6 +133,13 @@ const LONG_DATE = new Intl.DateTimeFormat("de-DE", {
 
 const dayStart = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
+/** Erstversuchsquote in ganzen Prozent; ohne Erstversuch (nur aus fremden Daten denkbar) keine. */
+export function firstAttemptRate(overview: Overview): number | null {
+  const recent = overview.recent;
+  if (!recent || recent.firstAttempts === 0) return null;
+  return Math.round((100 * recent.firstCorrect) / recent.firstAttempts);
+}
+
 /** „heute“, „gestern“ oder „am 18. Okt.“ (mit Jahr außerhalb des laufenden), in Ortszeit. */
 export function describeDay(iso: string, now: Date): string {
   const date = new Date(iso);

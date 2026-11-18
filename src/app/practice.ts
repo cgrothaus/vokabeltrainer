@@ -90,6 +90,26 @@ export async function loadSetup(db: IDBDatabase, set: StoredSet): Promise<Practi
   return restoreSetup(set, stored);
 }
 
+/** Die gemerkte Einrichtung, tolerant gelesen; `null`, wenn das Set noch keine hat (TDD 12.1). */
+export async function rememberedSetup(
+  db: IDBDatabase,
+  set: StoredSet,
+): Promise<PracticeSetup | null> {
+  const stored = await getSetting(db, settingKey(set.id));
+  return stored === undefined ? null : restoreSetup(set, stored);
+}
+
+/**
+ * Lernen-Knopf der Bibliothek und „Weiterlernen“ (TDD 12.1, D-50): mit gemerkter Einrichtung sofort
+ * starten, sonst zur Einrichtung. Scheitert Lesen oder Speichern, lehnt das Versprechen ab.
+ */
+export async function quickStart(db: IDBDatabase, set: StoredSet): Promise<"started" | "setup"> {
+  const setup = await rememberedSetup(db, set);
+  if (!setup) return "setup";
+  await beginPractice(db, set, setup);
+  return "started";
+}
+
 /**
  * Legt die Sitzung an und merkt die Einrichtung in derselben Transaktion; scheitert das Speichern,
  * gibt es keine Sitzung.

@@ -26,7 +26,8 @@ import { correctionPrompt, loadSpec, newSetPrompt, shareSpec } from "./app/help"
 import { forgetAllOverviews, loadOverview } from "./app/overview";
 import { previewImport, saveImport, saveKnownImport } from "./app/importText";
 import { loadSampleSet } from "./app/sampleSet";
-import { beginPractice, currentPractice, loadSetup } from "./app/practice";
+import { loadLibraryStart } from "./app/library";
+import { beginPractice, currentPractice, loadSetup, quickStart } from "./app/practice";
 import { replaceRoute, type Router, startRouter } from "./app/router";
 import { applyTheme, loadTheme, saveTheme } from "./app/theme";
 import { backupView } from "./app/views/backup";
@@ -182,26 +183,38 @@ async function start(): Promise<void> {
     message = null;
     return taken;
   };
-  const library = () =>
-    libraryView({
-      protection: (hasSets) =>
-        protectionNotice({ persistence, ios: isIos(), installed: isInstalled(), hasSets }),
-      loadReminder: () => loadReminder(db),
-      prepareBackup: () => prepareBackup(db, __APP_VERSION__),
-      saveBackup: (prepared) => saveBackup(db, prepared),
-      snoozeReminder: () => snoozeReminder(db),
-      loadSets: () => listSets(db),
-      loadSampleSet: async () => {
-        const outcome = await loadSampleSet(db);
-        if (outcome.ok) {
-          void askOnceAfterSave();
-          // Die Set-Ansicht zeigt den Inhalt und „Lernen“; die Bibliothek zeichnete `#/` nicht neu.
-          location.hash = `#/set/${encodeURIComponent(outcome.id)}`;
-        }
-        return outcome;
+  const library = (signal: AbortSignal) =>
+    libraryView(
+      {
+        protection: (hasSets) =>
+          protectionNotice({ persistence, ios: isIos(), installed: isInstalled(), hasSets }),
+        loadReminder: () => loadReminder(db),
+        prepareBackup: () => prepareBackup(db, __APP_VERSION__),
+        saveBackup: (prepared) => saveBackup(db, prepared),
+        snoozeReminder: () => snoozeReminder(db),
+        loadSets: () => listSets(db),
+        loadStart: (sets) => loadLibraryStart(db, sets),
+        loadOverview: (set) => loadOverview(db, set),
+        startLearning: async (set) => {
+          // Wie aus der Einrichtung ein neuer Verlaufseintrag, damit Zurück zur Bibliothek führt (D-49).
+          location.hash =
+            (await quickStart(db, set)) === "started"
+              ? "#/practice"
+              : `#/learn/${encodeURIComponent(set.id)}`;
+        },
+        loadSampleSet: async () => {
+          const outcome = await loadSampleSet(db);
+          if (outcome.ok) {
+            void askOnceAfterSave();
+            // Die Set-Ansicht zeigt den Inhalt und „Lernen“; die Bibliothek zeichnete `#/` nicht neu.
+            location.hash = `#/set/${encodeURIComponent(outcome.id)}`;
+          }
+          return outcome;
+        },
+        takeMessage,
       },
-      takeMessage,
-    });
+      signal,
+    );
   const importPage = () =>
     importView({
       previewImport: (text) => previewImport(db, text),

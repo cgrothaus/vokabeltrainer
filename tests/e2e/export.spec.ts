@@ -3,7 +3,7 @@
 import { readFile } from "node:fs/promises";
 import { type Browser, expect, type Page, test, type TestInfo } from "@playwright/test";
 import type { StoredSet } from "../../src/domain/model";
-import { collectErrors, importText, readStore } from "./support";
+import { collectErrors, importText, readStore, setAction } from "./support";
 
 const TITLE = "Englisch – Stadt";
 
@@ -74,7 +74,7 @@ const SAVED = `„${TITLE}“ mit 4 Einträgen gespeichert.`;
 
 async function openExport(page: Page): Promise<void> {
   await page.getByRole("link", { name: TITLE, exact: true }).click();
-  await page.getByRole("link", { name: "Exportieren" }).click();
+  await setAction(page, "Exportieren");
   await expect(page.getByRole("heading", { level: 1, name: TITLE })).toBeVisible();
 }
 

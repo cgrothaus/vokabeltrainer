@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ReviewEvent, StoredSet } from "./model";
-import { computeStats, describeDay } from "./stats";
+import { computeStats, describeDay, firstAttemptRate } from "./stats";
 
 /** Zwei Sektionen: `wetter` mit `rain`, `sun`; `tiere` mit `cat`. */
 function set(sections: Record<string, string[]> = { wetter: ["rain", "sun"], tiere: ["cat"] }) {
@@ -171,5 +171,18 @@ describe("describeDay", () => {
   it("nennt sonst das Datum, mit Jahr nur außerhalb des laufenden Jahres", () => {
     expect(describeDay(local(2026, 9, 20, 23), now)).toBe("am 20. Okt.");
     expect(describeDay(local(2025, 11, 31, 12), now)).toBe("am 31. Dez. 2025");
+  });
+});
+
+describe("firstAttemptRate", () => {
+  it("rundet die Erstversuchsquote der letzten Sitzungen auf ganze Prozent", () => {
+    const recent = { sessions: 3, firstAttempts: 3, firstCorrect: 2 };
+    expect(firstAttemptRate({ sessions: 3, lastAt: "2026-10-20T18:00:00.000Z", recent })).toBe(67);
+  });
+
+  it("hat ohne Sitzung oder ohne Erstversuch keine Quote", () => {
+    expect(firstAttemptRate({ sessions: 0 })).toBeNull();
+    const recent = { sessions: 1, firstAttempts: 0, firstCorrect: 0 };
+    expect(firstAttemptRate({ sessions: 1, recent })).toBeNull();
   });
 });

@@ -2,7 +2,7 @@
 // bleibt nach dem Neuladen. Zurück mit Änderungen fragt nach (TDD 10, FR-04, FR-05, AK-03, D-41).
 import { expect, type Page, test } from "@playwright/test";
 import type { StoredSet } from "../../src/domain/model";
-import { collectErrors, importSet, importText, readStore } from "./support";
+import { collectErrors, importSet, importText, readStore, setAction } from "./support";
 
 const TITLE = "Englisch – Wetter";
 
@@ -20,7 +20,7 @@ const TWO_SECTIONS = JSON.stringify({
 /** Öffnet „Set bearbeiten“ aus der Bibliothek über die Set-Ansicht. */
 async function openEditing(page: Page, title: string): Promise<void> {
   await page.getByRole("link", { name: title, exact: true }).click();
-  await page.getByRole("link", { name: "Bearbeiten" }).click();
+  await setAction(page, "Bearbeiten");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(`${title} bearbeiten`);
 }
 
@@ -133,7 +133,7 @@ test("E2E-07: Zurück mit Änderungen fragt nach; Verwerfen ändert nichts", asy
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(TITLE);
 
   // Speichern aus der Frage heraus.
-  await page.getByRole("link", { name: "Bearbeiten" }).click();
+  await setAction(page, "Bearbeiten");
   await entryLinks(page).filter({ hasText: "sun" }).click();
   await field(page, "Bedeutung 1").fill("die Sonne");
   await page.goBack();

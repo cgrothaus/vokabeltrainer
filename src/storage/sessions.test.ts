@@ -8,6 +8,7 @@ import {
   finishSession,
   interruptActiveSessions,
   listSetEvents,
+  readLearningOrder,
   recordAnswer,
   startSession,
 } from "./sessions";
@@ -197,6 +198,46 @@ describe("Set gibt es nicht mehr, z. B. in einem anderen Tab gelöscht (TDD 3.4)
     await startSession(db, session("s2345678abcd"));
     await recordAnswer(db, event("e23456789abc"));
     await expect(recordAnswer(db, event("e23456789abc"))).rejects.not.toSatisfy(isSetMissing);
+  });
+});
+
+describe("readLearningOrder", () => {
+  async function startAt(id: string, setId: string, startedAt: string): Promise<void> {
+    await startSession(db, { ...session(id), setId, startedAt });
+  }
+
+  it("liefert ohne Sitzungen eine leere Reihenfolge und kein zuletzt gelerntes Set", async () => {
+    expect(await readLearningOrder(db)).toEqual({ order: [] });
+  });
+
+  it("ordnet die Sets nach ihrer jüngsten Sitzung, Sets ohne Sitzung fehlen", async () => {
+    await startAt("s1aaaaaaaaaa", "m4x8c2r9tw", "2026-10-18T18:00:00.000Z");
+    await startAt("s2aaaaaaaaaa", "k2n7w4b8qp", "2026-10-19T18:00:00.000Z");
+    await startAt("s3aaaaaaaaaa", "m4x8c2r9tw", "2026-10-20T18:00:00.000Z");
+    for (const sessionId of ["s1aaaaaaaaaa", "s2aaaaaaaaaa", "s3aaaaaaaaaa"])
+      await recordAnswer(db, event(`e${sessionId}`, { sessionId }));
+    expect(await readLearningOrder(db)).toEqual({
+      order: ["m4x8c2r9tw", "k2n7w4b8qp"],
+      lastLearned: "m4x8c2r9tw",
+    });
+  });
+
+  it("zählt eine jüngere Sitzung ohne Antwort nicht als zuletzt gelernt", async () => {
+    await startAt("s1aaaaaaaaaa", "k2n7w4b8qp", "2026-10-19T18:00:00.000Z");
+    await recordAnswer(
+      db,
+      event("e1aaaaaaaaaa", { sessionId: "s1aaaaaaaaaa", setId: "k2n7w4b8qp" }),
+    );
+    await startAt("s2aaaaaaaaaa", "m4x8c2r9tw", "2026-10-20T18:00:00.000Z");
+    expect(await readLearningOrder(db)).toEqual({
+      order: ["m4x8c2r9tw", "k2n7w4b8qp"],
+      lastLearned: "k2n7w4b8qp",
+    });
+  });
+
+  it("hat ohne jede Antwort kein zuletzt gelerntes Set", async () => {
+    await startAt("s1aaaaaaaaaa", "k2n7w4b8qp", "2026-10-19T18:00:00.000Z");
+    expect(await readLearningOrder(db)).toEqual({ order: ["k2n7w4b8qp"] });
   });
 });
 

@@ -4,10 +4,12 @@ import { expect, type Page, test } from "@playwright/test";
 import type { Answer, ReviewEvent, Session, StoredEntry, StoredSet } from "../../src/domain/model";
 import {
   collectErrors,
+  goToSetup,
   importSet,
   importText,
   libraryMessage,
   readStore,
+  setAction,
   startLearning,
 } from "./support";
 
@@ -21,9 +23,10 @@ test("Empty State → Beispielset ausprobieren → Set-Ansicht → Lernen", asyn
   await expect(page).toHaveURL(/#\/set\/[2-9a-hjkmnp-z]{10}$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(TITLE);
   // Die Notiz des Sets nennt die Herkunft auch; deshalb genau.
+  await page.getByText("Über dieses Set").click();
   await expect(page.getByText("Eigene Zusammenstellung", { exact: true })).toBeVisible();
   await expect(page.getByText("CC0", { exact: true })).toBeVisible();
-  await expect(page.locator("summary")).toHaveText([
+  await expect(page.locator(".section summary")).toHaveText([
     "In der Schule 15 Einträge noch nicht gelernt",
     "Freizeit und Sport 14 Einträge noch nicht gelernt",
     "Essen und Trinken 14 Einträge noch nicht gelernt",
@@ -46,7 +49,7 @@ test("Beispielset gibt es nur bei leerer Bibliothek, nach dem Löschen wieder", 
   await expect(page.getByRole("button", { name: "Beispielset ausprobieren" })).toHaveCount(0);
 
   await page.getByRole("link", { name: "Englisch – Wetter", exact: true }).click();
-  await page.getByRole("button", { name: "Set löschen" }).click();
+  await setAction(page, "Set löschen");
   await page.getByRole("button", { name: "Set mit 3 Einträgen löschen" }).click();
   await expect(libraryMessage(page)).toHaveText("„Englisch – Wetter“ gelöscht.");
   await expect(page.getByRole("button", { name: "Beispielset ausprobieren" })).toBeVisible();
@@ -90,7 +93,7 @@ test("E2E-05 Empty State → Beispielset → Sitzung mit Multiple Choice", async
   const byTerm = new Map(entries.map((entry) => [entry.term.text, entry]));
   const meaningsOfSet = new Set(entries.map(shown));
 
-  await page.getByRole("link", { name: `${TITLE} lernen` }).click();
+  await goToSetup(page, TITLE);
   await page.getByRole("slider", { name: "Multiple Choice" }).fill("100");
   await page.getByRole("radio", { name: "10", exact: true }).check();
   await page.getByRole("button", { name: "10 Vokabeln lernen" }).click();

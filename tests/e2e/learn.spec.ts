@@ -2,7 +2,7 @@
 // Sitzung; die Einrichtung wird pro Set gemerkt und mit dem Set gelöscht (TDD 12.1, FR-07, FR-08, FR-21, D-27).
 import { expect, type Page, test } from "@playwright/test";
 import type { Session, StoredSet } from "../../src/domain/model";
-import { backButton, collectErrors, importText, readStore } from "./support";
+import { backButton, collectErrors, goToSetup, importText, readStore, setAction } from "./support";
 
 const TITLE = "Englisch – Farben und Zahlen";
 
@@ -50,7 +50,7 @@ async function importTwoSections(page: Page): Promise<StoredSet> {
 }
 
 const openSetup = async (page: Page) => {
-  await page.getByRole("link", { name: `${TITLE} lernen` }).click();
+  await goToSetup(page, TITLE);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(TITLE);
 };
 
@@ -151,7 +151,7 @@ test("Die gemerkte Einrichtung wird mit dem Set gelöscht", async ({ page }) => 
   await expect.poll(async () => (await readStore(page, "settings")).length).toBe(1);
 
   await page.getByRole("link", { name: TITLE, exact: true }).click();
-  await page.getByRole("button", { name: "Set löschen" }).click();
+  await setAction(page, "Set löschen");
   await page.getByRole("button", { name: "Set mit 20 Einträgen löschen" }).click();
   await expect(page.getByText(`„${TITLE}“ gelöscht.`)).toBeVisible();
   expect(await readStore(page, "settings")).toEqual([]);

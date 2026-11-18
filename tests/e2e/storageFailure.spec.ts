@@ -11,6 +11,7 @@ import {
   libraryMessage,
   loseConnection,
   readStore,
+  setAction,
   setFile,
   startLearning,
 } from "./support";
@@ -201,7 +202,7 @@ test("E2E-19 Wiederherstellen bei vollem Speicher lässt den Bestand unveränder
 test("E2E-19 Set löschen scheitert: Meldung, Set bleibt", async ({ page }) => {
   await importSet(page, "Englisch – Wetter");
   await page.getByRole("link", { name: "Englisch – Wetter", exact: true }).click();
-  await page.getByRole("button", { name: "Set löschen" }).click();
+  await setAction(page, "Set löschen");
   await failWrites(page, FULL);
   await page.getByRole("button", { name: "Set mit 3 Einträgen löschen" }).click();
   // Wirft die Anfrage erst im Erfolgsrückruf des Lesens, bricht der Browser mit eigenem Fehler ab.
@@ -214,7 +215,7 @@ test("E2E-19 Eintrag speichern scheitert: Meldung, Eingabe bleibt, neuer Versuch
 }) => {
   await importSet(page, "Englisch – Wetter");
   await page.getByRole("link", { name: "Englisch – Wetter", exact: true }).click();
-  await page.getByRole("link", { name: "Bearbeiten" }).click();
+  await setAction(page, "Bearbeiten");
   await page.locator(".edit-entries a").filter({ hasText: "rain" }).click();
   const term = page.getByRole("group", { name: "Wort", exact: true }).getByLabel("Text");
   await term.fill("drizzle");

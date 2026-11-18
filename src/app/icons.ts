@@ -18,6 +18,21 @@ const ICONS = {
     ],
   ],
   play: [["path", { d: "M7 4.5v15l12-7.5z", class: "fill" }]],
+  more: [
+    ["circle", { cx: "5", cy: "12", r: "1.3" }],
+    ["circle", { cx: "12", cy: "12", r: "1.3" }],
+    ["circle", { cx: "19", cy: "12", r: "1.3" }],
+  ],
+  plus: [["path", { d: "M12 5v14M5 12h14" }]],
+  chevron: [["path", { d: "M9 6l6 6-6 6" }]],
+  help: [
+    ["circle", { cx: "12", cy: "12", r: "9" }],
+    ["path", { d: "M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.5V14M12 17h.01" }],
+  ],
+  shield: [["path", { d: "M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6zM9 12l2 2 4-4" }]],
+  edit: [["path", { d: "M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4" }]],
+  download: [["path", { d: "M12 4v11M8 11l4 4 4-4M5 19h14" }]],
+  trash: [["path", { d: "M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" }]],
 } satisfies Record<string, Shape[]>;
 
 export type IconName = keyof typeof ICONS;

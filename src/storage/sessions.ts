@@ -85,6 +85,43 @@ export async function listSetEvents(db: IDBDatabase, setId: string): Promise<Rev
   return events;
 }
 
+export interface LearningOrder {
+  /** Set-IDs nach ihrer jüngsten Sitzung, die jüngste zuerst; Sets ohne Sitzung fehlen. */
+  order: string[];
+  /** Set der jüngsten Sitzung mit mindestens einer Antwort (TDD 12.6). */
+  lastLearned?: string;
+}
+
+/**
+ * Was die Bibliothek vor dem Lernstand braucht (TDD 12.6, D-50): Reihenfolge des Nachladens und das
+ * Set für „Weiterlernen“. Wie bei der Backup-Erinnerung werden Antworten nur gezählt, und nur, bis
+ * eine Sitzung mit Antwort gefunden ist.
+ */
+export async function readLearningOrder(db: IDBDatabase): Promise<LearningOrder> {
+  const result: LearningOrder = { order: [] };
+  await runTransaction(db, ["sessions", "reviewEvents"], "readonly", (transaction) => {
+    const request = transaction.objectStore("sessions").getAll();
+    request.onsuccess = () => {
+      const sessions = (request.result as Session[]).sort(
+        (a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt),
+      );
+      result.order = [...new Set(sessions.map((session) => session.setId))];
+      const answers = transaction.objectStore("reviewEvents").index("sessionId");
+      function check(index: number): void {
+        const session = sessions[index];
+        if (!session) return;
+        const count = answers.count(session.id);
+        count.onsuccess = () => {
+          if (count.result > 0) result.lastLearned = session.setId;
+          else check(index + 1);
+        };
+      }
+      check(0);
+    };
+  });
+  return result;
+}
+
 /**
  * Lesen und Schreiben in einer Transaktion. Eine unbekannte Sitzung wurde mit ihrem Set gelöscht:
  * `SetMissingError`, nichts wird angelegt.

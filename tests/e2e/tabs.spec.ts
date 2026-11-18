@@ -4,7 +4,15 @@
 // Sitzung zu einem gelöschten Set speichert nichts mehr.
 import { expect, type Page, test } from "@playwright/test";
 import type { StoredSet } from "../../src/domain/model";
-import { collectErrors, endPractice, importSet, readStore, startLearning } from "./support";
+import {
+  collectErrors,
+  endPractice,
+  goToSetup,
+  importSet,
+  readStore,
+  setAction,
+  startLearning,
+} from "./support";
 
 const TITLE = "Englisch – Wetter";
 
@@ -21,7 +29,7 @@ async function secondTab(page: Page, hash: string): Promise<Page> {
 /** Ändert die Bedeutung von „rain“ über Set-Ansicht, „Bearbeiten“ und das Eintragsformular. */
 async function renameRain(page: Page, meaning: string): Promise<void> {
   await page.getByRole("link", { name: TITLE, exact: true }).click();
-  await page.getByRole("link", { name: "Bearbeiten" }).click();
+  await setAction(page, "Bearbeiten");
   await page.locator(".edit-entries a").filter({ hasText: "rain" }).click();
   await field(page, "Bedeutung 1").fill(meaning);
   await page.getByRole("button", { name: "Speichern", exact: true }).click();
@@ -52,7 +60,7 @@ test("E2E-26 Änderung in einem Tab: Set-Ansicht und Bibliothek im anderen zeich
   await page.goto("./#/");
   await other.goto("./#/");
   await other.getByRole("link", { name: TITLE, exact: true }).click();
-  await other.getByRole("button", { name: "Set löschen" }).click();
+  await setAction(other, "Set löschen");
   await other.getByRole("button", { name: "Set mit 3 Einträgen löschen" }).click();
   await expect(page.getByRole("heading", { name: "Noch keine Vokabelsets" })).toBeVisible();
   expect(errors, "Fehler in der Konsole").toEqual([]);
@@ -76,9 +84,7 @@ test("E2E-26 Gelernt in einem Tab: Der andere zeigt den neuen Lernstand beim nä
   // Antworten zeichnen nichts neu (TDD 3.4); der Lernstand kommt nicht aus dem Zwischenspeicher (S-38).
   await page.goto("./#/");
   await page.getByRole("link", { name: TITLE, exact: true }).click();
-  await expect(page.locator(".overview").getByRole("paragraph").first()).toHaveText(
-    "1 Lernsitzung · zuletzt heute",
-  );
+  await expect(page.locator(".overview dd")).toHaveText(["1", "100 %", "heute"]);
   expect(errors, "Fehler in der Konsole").toEqual([]);
 });
 
@@ -87,7 +93,7 @@ test("E2E-26 Darstellung folgt dem anderen Tab, ein offenes Formular behält sei
 }) => {
   await importSet(page, TITLE);
   await page.getByRole("link", { name: TITLE, exact: true }).click();
-  await page.getByRole("link", { name: "Bearbeiten" }).click();
+  await setAction(page, "Bearbeiten");
   await page.locator(".edit-entries a").filter({ hasText: "sun" }).click();
   await field(page, "Bedeutung 1").fill("Sonnenschein");
 
@@ -105,7 +111,7 @@ test("E2E-26 Set in einem anderen Tab gelöscht: Die Sitzung endet, ohne etwas z
   page,
 }) => {
   await importSet(page, TITLE);
-  await page.getByRole("link", { name: `${TITLE} lernen` }).click();
+  await goToSetup(page, TITLE);
   await page.getByRole("slider", { name: "Multiple Choice" }).fill("0");
   await page.getByRole("button", { name: /^\d+ Vokabeln? lernen$/ }).click();
   await page.getByRole("button", { name: /Tippen zum Aufdecken/ }).click();
@@ -114,7 +120,7 @@ test("E2E-26 Set in einem anderen Tab gelöscht: Die Sitzung endet, ohne etwas z
 
   const other = await secondTab(page, "#/");
   await other.getByRole("link", { name: TITLE, exact: true }).click();
-  await other.getByRole("button", { name: "Set löschen" }).click();
+  await setAction(other, "Set löschen");
   await other.getByRole("button", { name: "Set mit 3 Einträgen löschen" }).click();
   await expect(other.getByRole("heading", { name: "Noch keine Vokabelsets" })).toBeVisible();
 

@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { expect, type Page, type TestInfo, test } from "@playwright/test";
 import { preview } from "vite";
 import { precache } from "../../scripts/precache";
-import { importSet, startLearning } from "./support";
+import { importSet, setAction, startLearning } from "./support";
 
 const dist = fileURLToPath(new URL("../../dist/", import.meta.url));
 
@@ -130,7 +130,7 @@ test("E2E-14 Während der Bearbeitung eines Eintrags erscheint der Hinweis erst 
     await serviceWorkerReady(page);
     await page.goto(url);
     await page.getByRole("link", { name: "Englisch – Update", exact: true }).click();
-    await page.getByRole("link", { name: "Bearbeiten" }).click();
+    await setAction(page, "Bearbeiten");
     await page.locator(".edit-entries a").filter({ hasText: "rain" }).click();
     await expect(page.getByRole("heading", { name: "Eintrag bearbeiten" })).toBeVisible();
 

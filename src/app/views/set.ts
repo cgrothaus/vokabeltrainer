@@ -1,15 +1,17 @@
-// Set-Ansicht (TDD 13.1, FR-02, FR-03): Angaben des Sets, Lernstand (12.6), Sektionen zum Aufklappen
-// mit allen Angaben der Einträge, Lernen, Bearbeiten (eigene Ansicht, D-41), Exportieren (D-42) und
-// Löschen.
+// Set-Ansicht (TDD 13.1, FR-02, FR-03): Titel und Sprachpaar, Lernstand als Kacheln (12.6, D-50),
+// Sektionen als Karten zum Aufklappen mit allen Angaben der Einträge, „Über dieses Set“ am Ende.
+// „Lernen“ unten; Bearbeiten (D-41), Exportieren (D-42) und Löschen im Menü „···“ (13.7).
 import { setSize } from "../../domain/library";
 import type { Answer, StoredEntry, StoredSection, StoredSet } from "../../domain/model";
-import { describeDay, type Overview, type SetStats } from "../../domain/stats";
+import { describeDay, firstAttemptRate, type Overview, type SetStats } from "../../domain/stats";
 import { entryDetails } from "../components/entryDetails";
-import { type Frame, frame } from "../components/frame";
+import { frame } from "../components/frame";
 import { learnButton } from "../components/learnButton";
+import { track } from "../components/learningStatus";
 import { openSheet } from "../components/sheet";
 import type { DeleteOutcome, DeletionScope } from "../deleteSet";
 import { type Child, focusSoon, h } from "../dom";
+import { icon } from "../icons";
 import { languageName } from "../languages";
 
 export interface SetContext {
@@ -35,7 +37,13 @@ const REVIEW_STATUS = { unchecked: "ungeprüft", checked: "geprüft" } as const;
 
 export function setView(context: SetContext): Node {
   const main = h("main", { class: "set" });
-  const page = frame({ back: { parent: "#/" } }, main);
+  // Erst mit dem Set sichtbar: Bearbeiten, Exportieren und Löschen brauchen es (TDD 13.1).
+  const menuButton = h(
+    "button",
+    { type: "button", class: "iconbtn", "aria-label": "Weitere Aktionen", hidden: true },
+    icon("more"),
+  );
+  const page = frame({ back: { parent: "#/" }, actions: [menuButton] }, main);
   // Gleich nehmen: Beim Neuzeichnen (anderer Tab) erschiene sie sonst nicht noch einmal.
   const text = context.takeMessage();
   const message = text && h("p", { role: "status", class: "message" }, text);
@@ -44,7 +52,11 @@ export function setView(context: SetContext): Node {
     (set) => {
       if (set) {
         page.setTitle(set.title);
-        main.replaceChildren(...h("div", null, content(set, context, message, page)).childNodes);
+        const errors = h("p", { role: "alert", class: "problem" });
+        main.replaceChildren(...h("div", null, content(set, context, message, errors)).childNodes);
+        const remove = deletion(set, context, page.element, menuButton, errors);
+        menuButton.onclick = () => openMenu(set, page.element, menuButton, remove);
+        menuButton.hidden = false;
         if (setSize(set).entries > 0) page.setDock(learnButton(set));
         // Fokus auf die Meldung, damit Screenreader sie vorlesen (D-34).
         if (message) focusSoon(message);
@@ -62,7 +74,50 @@ export function setView(context: SetContext): Node {
   return page.element;
 }
 
-function content(set: StoredSet, context: SetContext, message: Child, page: Frame): Child[] {
+/** Menü „···“ als Blatt von unten (TDD 13.7): Bearbeiten, Exportieren, Löschen (rot). */
+/** `opener` ausdrücklich: WebKit fokussiert einen angetippten Knopf nicht. */
+function openMenu(set: StoredSet, within: Element, opener: HTMLElement, remove: () => void): void {
+  const id = encodeURIComponent(set.id);
+  const sheet = openSheet(within, {
+    title: set.title,
+    returnTo: opener,
+    content: [
+      h(
+        "ul",
+        { class: "rows" },
+        h(
+          "li",
+          null,
+          h("a", { href: `#/edit/${id}` }, icon("edit"), h("span", null, "Bearbeiten")),
+        ),
+        h(
+          "li",
+          null,
+          h("a", { href: `#/export/${id}` }, icon("download"), h("span", null, "Exportieren")),
+        ),
+        h(
+          "li",
+          null,
+          h(
+            "button",
+            {
+              type: "button",
+              class: "destructive",
+              onclick: () => {
+                sheet.close();
+                remove();
+              },
+            },
+            icon("trash"),
+            h("span", null, "Set löschen"),
+          ),
+        ),
+      ),
+    ],
+  });
+}
+
+function content(set: StoredSet, context: SetContext, message: Child, errors: Node): Child[] {
   const { entries } = setSize(set);
   const overview = h("div", { class: "overview" });
   // Je Sektion eine Zeile im Titel, auch zugeklappt sichtbar; gefüllt, sobald der Lernstand da ist.
@@ -72,10 +127,11 @@ function content(set: StoredSet, context: SetContext, message: Child, page: Fram
   void context.loadOverview(set).then(
     (stats) => {
       const now = new Date();
-      overview.replaceChildren(...describeSet(stats.set, now));
+      overview.replaceChildren(...h("div", null, describeSet(stats.set, now)).childNodes);
       for (const [id, line] of sectionLines) {
         const section = stats.sections.get(id);
-        if (section) line.textContent = describeSection(section, now);
+        if (section)
+          line.replaceChildren(...h("span", null, describeSection(section, now)).childNodes);
       }
     },
     (error: unknown) => {
@@ -83,46 +139,40 @@ function content(set: StoredSet, context: SetContext, message: Child, page: Fram
       overview.replaceChildren(h("p", { role: "alert" }, NO_OVERVIEW));
     },
   );
+  const facts = [
+    `${languageName(set.termLanguage)} → ${languageName(set.meaningLanguage)}`,
+    count(entries, "Eintrag", "Einträge"),
+    ...(set.level ? [set.level] : []),
+  ];
   return [
-    // Der Titel in der App-Leiste ist einzeilig; aus Dateien kann er lang sein (TDD 13.7).
-    h("p", { class: "display" }, set.title),
-    message,
-    h(
-      "p",
-      { class: "languages" },
-      `${languageName(set.termLanguage)} → ${languageName(set.meaningLanguage)} · ${count(entries, "Eintrag", "Einträge")}`,
-    ),
-    setDetails(set),
     h(
       "div",
-      { class: "actions" },
-      h(
-        "a",
-        { href: `#/edit/${encodeURIComponent(set.id)}`, class: "action secondary" },
-        "Bearbeiten",
-      ),
-      h(
-        "a",
-        { href: `#/export/${encodeURIComponent(set.id)}`, class: "action secondary" },
-        "Exportieren",
-      ),
+      { class: "head" },
+      // Der Titel in der App-Leiste ist einzeilig; aus Dateien kann er lang sein (TDD 13.7).
+      h("p", { class: "display" }, set.title),
+      h("p", { class: "languages" }, facts.join(" · ")),
+      message,
+      errors,
     ),
-    h("h2", null, "Lernstand"),
-    overview,
-    h("h2", null, "Sektionen"),
-    set.sections.length === 0
-      ? h("p", null, "Dieses Set hat noch keine Sektionen.")
-      : set.sections.map((section) => sectionView(section, set, sectionLines.get(section.id)!)),
-    deletion(set, context, page.element),
+    h("section", { class: "learning", "aria-labelledby": "learning" }, [
+      h("h2", { id: "learning" }, "Lernstand"),
+      overview,
+    ]),
+    h("section", { class: "contents", "aria-labelledby": "contents" }, [
+      h("h2", { id: "contents" }, "Sektionen"),
+      set.sections.length === 0
+        ? h("p", null, "Dieses Set hat noch keine Sektionen.")
+        : set.sections.map((section) => sectionView(section, set, sectionLines.get(section.id)!)),
+    ]),
+    about(set),
   ];
 }
 
-/** Nur vorhandene Angaben; ohne Angaben entfällt die Liste. */
-function setDetails(set: StoredSet): Node | null {
+/** Optionale Angaben außer der Lernstufe, zugeklappt am Ende; ohne Angaben entfällt der Abschnitt. */
+function about(set: StoredSet): Node | null {
   const textbook =
     set.textbook && set.edition ? `${set.textbook}, ${set.edition}` : (set.textbook ?? set.edition);
   const rows: [string, string | undefined][] = [
-    ["Lernstufe", set.level],
     [set.textbook ? "Lehrwerk" : "Ausgabe", textbook],
     ["Herkunft", set.source],
     ["Lizenz", set.license],
@@ -132,44 +182,57 @@ function setDetails(set: StoredSet): Node | null {
   const shown = rows.filter((row): row is [string, string] => row[1] !== undefined);
   if (shown.length === 0) return null;
   return h(
-    "dl",
-    { class: "details" },
-    shown.map(([label, value]) => h("div", null, h("dt", null, label), h("dd", null, value))),
+    "details",
+    { class: "about", id: "about" },
+    h("summary", null, "Über dieses Set"),
+    h(
+      "dl",
+      { class: "details" },
+      shown.map(([label, value]) => h("div", null, h("dt", null, label), h("dd", null, value))),
+    ),
   );
 }
 
-/** Erstversuchsquote in ganzen Prozent; ohne Erstversuch (nur aus fremden Daten denkbar) entfällt sie. */
-function rate(overview: Overview): string | null {
-  const recent = overview.recent;
-  if (!recent || recent.firstAttempts === 0) return null;
-  return `${Math.round((100 * recent.firstCorrect) / recent.firstAttempts)} %`;
-}
-
-/** Lernstand des ganzen Sets (TDD 12.6, AK-17). */
-function describeSet(overview: Overview, now: Date): Node[] {
+/** Lernstand des ganzen Sets als drei Kacheln (TDD 12.6, AK-17, D-50). */
+function describeSet(overview: Overview, now: Date): Child[] {
   if (overview.sessions === 0 || !overview.lastAt) {
     return [h("p", null, "Mit diesem Set hast du noch nicht gelernt.")];
   }
-  const sessions = `${count(overview.sessions, "Lernsitzung", "Lernsitzungen")} · zuletzt ${describeDay(overview.lastAt, now)}`;
-  const lines = [h("p", null, sessions)];
-  const percent = rate(overview);
-  if (percent) {
-    const recent = overview.recent!.sessions;
-    const which = recent === 1 ? "letzte Sitzung" : `letzte ${recent} Sitzungen`;
-    lines.push(h("p", null, `${percent} beim ersten Mal gewusst (${which})`));
-  }
-  return lines;
+  const percent = firstAttemptRate(overview);
+  const recent = overview.recent?.sessions ?? 0;
+  // `dt` vor `dd`, wie HTML es verlangt; das CSS stellt die Zahl darüber.
+  const tile = (label: string, value: string) =>
+    h("div", null, h("dt", null, label), h("dd", null, value));
+  return [
+    h(
+      "dl",
+      { class: "tiles" },
+      tile(overview.sessions === 1 ? "Sitzung" : "Sitzungen", String(overview.sessions)),
+      percent !== null && tile("beim 1. Mal", `${percent} %`),
+      tile("zuletzt", describeDay(overview.lastAt, now).replace(/^am /, "")),
+    ),
+    percent !== null &&
+      h(
+        "p",
+        { class: "note" },
+        // Erklärt die kurze Beschriftung der Kachel, wie bisher als ganzer Satz (TDD 12.6).
+        recent === 1
+          ? "Beim ersten Mal gewusst, in der letzten Sitzung"
+          : `Beim ersten Mal gewusst, in den letzten ${recent} Sitzungen`,
+      ),
+  ];
 }
 
-/** Kurzform für die Zeile im Sektionstitel. */
-function describeSection(overview: Overview, now: Date): string {
-  if (overview.sessions === 0 || !overview.lastAt) return "noch nicht gelernt";
-  const percent = rate(overview);
-  return [
+/** Kurzform für die Zeile im Sektionstitel, mit Balken für die Quote. */
+function describeSection(overview: Overview, now: Date): Child[] {
+  if (overview.sessions === 0 || !overview.lastAt) return ["noch nicht gelernt"];
+  const percent = firstAttemptRate(overview);
+  const text = [
     count(overview.sessions, "Sitzung", "Sitzungen"),
     `zuletzt ${describeDay(overview.lastAt, now)}`,
-    ...(percent ? [percent] : []),
+    ...(percent !== null ? [`${percent} %`] : []),
   ].join(" · ");
+  return [text, percent !== null && track(percent)];
 }
 
 function sectionView(section: StoredSection, set: StoredSet, stats: HTMLElement): Node {
@@ -235,32 +298,31 @@ function describeScope(scope: DeletionScope): string {
   return `${content} und dein Lernstand dazu: ${count(scope.events, "Antwort", "Antworten")} aus ${count(scope.sessions, "Lernsitzung", "Lernsitzungen")}.`;
 }
 
-/** Löschen mit Ankündigung des Umfangs (FR-02); die Schaltfläche nennt die Folge (TDD 13.3). */
-/** Löschen mit Rückfrage im Blatt (TDD 10, 13.7): nennt vorher, was mitgelöscht wird. */
-function deletion(set: StoredSet, context: SetContext, within: Element): Node {
-  const errors = h("div", { role: "alert" });
-  const start = h(
-    "button",
-    {
-      type: "button",
-      class: "secondary",
-      onclick: async () => {
-        start.disabled = true;
-        errors.replaceChildren();
-        let scope: DeletionScope;
-        try {
-          scope = await context.deletionScope(set);
-        } catch (error) {
-          console.error("Umfang nicht ermittelt", error);
-          errors.textContent = NO_SCOPE;
-          start.disabled = false;
-          return;
-        }
-        confirm(scope);
-      },
-    },
-    "Set löschen",
-  );
+/**
+ * Löschen aus dem Menü mit Rückfrage im Blatt (FR-02, TDD 10, 13.7): nennt vorher, was mitgelöscht
+ * wird, die Schaltfläche nennt die Folge (13.3). Danach geht der Fokus zurück an „···“ (`start`).
+ */
+function deletion(
+  set: StoredSet,
+  context: SetContext,
+  within: Element,
+  start: HTMLButtonElement,
+  errors: HTMLElement,
+): () => void {
+  const begin = async () => {
+    start.disabled = true;
+    errors.replaceChildren();
+    let scope: DeletionScope;
+    try {
+      scope = await context.deletionScope(set);
+    } catch (error) {
+      console.error("Umfang nicht ermittelt", error);
+      errors.textContent = NO_SCOPE;
+      start.disabled = false;
+      return;
+    }
+    confirm(scope);
+  };
 
   const confirm = (scope: DeletionScope) => {
     const remove = h(
@@ -311,5 +373,5 @@ function deletion(set: StoredSet, context: SetContext, within: Element): Node {
     });
   };
 
-  return h("div", { class: "delete" }, start, errors);
+  return () => void begin();
 }

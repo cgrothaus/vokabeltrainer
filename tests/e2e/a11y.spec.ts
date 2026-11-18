@@ -11,6 +11,7 @@ import {
   fakeDevice,
   importSet,
   libraryMessage,
+  setAction,
   setFile,
 } from "./support";
 
@@ -142,7 +143,7 @@ test("Mit Set: Bibliothek, Set-Ansicht, Löschen, Einrichtung, Karteikarten, Zwi
   findings.push(...(await audit(page, "Set-Ansicht")));
   await page.locator("summary").first().click();
   findings.push(...(await audit(page, "Set-Ansicht aufgeklappt")));
-  await page.getByRole("button", { name: "Set löschen" }).click();
+  await setAction(page, "Set löschen");
   await expect(page.getByRole("dialog")).toBeVisible();
   findings.push(...(await audit(page, "Set löschen, Ankündigung")));
   await page.getByRole("button", { name: "Abbrechen" }).click();
@@ -179,7 +180,14 @@ test("Mit Set: Bibliothek, Set-Ansicht, Löschen, Einrichtung, Karteikarten, Zwi
   // Mit Antworten und ohne Backup erinnert die Bibliothek daran (TDD 6.6).
   await page.goto("./");
   await expect(page.getByRole("button", { name: "Backup speichern" })).toBeEnabled();
-  findings.push(...(await audit(page, "Bibliothek mit Backup-Erinnerung")));
+  await expect(page.locator(".setcard .status")).toContainText("zuletzt heute");
+  await expect(page.getByRole("button", { name: /^Weiterlernen/ })).toBeVisible();
+  findings.push(
+    ...(await audit(page, "Bibliothek mit Lernstand, Weiterlernen, Backup-Erinnerung")),
+  );
+  await page.getByRole("link", { name: "Wetter", exact: true }).click();
+  await expect(page.locator(".tiles")).toBeVisible();
+  findings.push(...(await audit(page, "Set-Ansicht mit Lernstand")));
 
   await page.goto("./#/backup");
   await page.getByLabel("Backup-Datei auswählen").setInputFiles({
@@ -226,8 +234,14 @@ test("Beispielset: Set-Ansicht mit Lernstand, Multiple Choice mit Rückmeldung",
   await page.getByRole("button", { name: "Beispielset ausprobieren" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Beispielset");
   findings.push(...(await audit(page, "Set-Ansicht Beispielset")));
+  await page.getByText("Über dieses Set").click();
+  findings.push(...(await audit(page, "Set-Ansicht, Über dieses Set")));
+  await page.getByRole("banner").getByRole("button", { name: "Weitere Aktionen" }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  findings.push(...(await audit(page, "Menü der Set-Ansicht")));
+  await page.keyboard.press("Escape");
 
-  await page.getByRole("link", { name: "Exportieren" }).click();
+  await setAction(page, "Exportieren");
   await expect(page.getByText(/^Ganzes Set: /)).toBeVisible();
   findings.push(...(await audit(page, "Export")));
   await page.getByRole("radio", { name: "Einzelne Sektionen" }).check();
@@ -277,7 +291,7 @@ test("Bearbeiten: Set bearbeiten, Eintragsformular, Fehler, Frage beim Verlassen
   const findings: string[] = [];
   await page.goto("./");
   await page.getByRole("button", { name: "Beispielset ausprobieren" }).click();
-  await page.getByRole("link", { name: "Bearbeiten" }).click();
+  await setAction(page, "Bearbeiten");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("bearbeiten");
   findings.push(...(await audit(page, "Set bearbeiten")));
 
@@ -428,7 +442,8 @@ test("Nach einem Seitenwechsel: Fokus auf der Überschrift, Seitentitel nennt di
 
   // Die Sitzung fokussiert die Karte selbst.
   await page.goto("./");
-  await page.getByRole("link", { name: "Wetter lernen" }).click();
+  // Ohne gemerkte Einrichtung führt der Knopf der Bibliothek zur Einrichtung (D-50).
+  await page.getByRole("button", { name: "Wetter lernen" }).click();
   await page.getByRole("button", { name: "3 Vokabeln lernen" }).click();
   await expect(page.getByRole("button", { name: /Tippen zum Aufdecken/ })).toBeFocused();
 

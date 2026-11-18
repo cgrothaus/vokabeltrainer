@@ -8,6 +8,8 @@ import type { Direction, ReviewEvent, Session, StoredSet } from "../domain/model
 export const PERF_ENTRIES = 3_000;
 export const PERF_SECTIONS = 20;
 export const PERF_EVENTS = 50_000;
+/** Bibliothek (TDD 15.6): zehn Sets, zusammen so viele Antworten wie der Prüffall eines Sets. */
+export const PERF_LIBRARY_SETS = 10;
 
 /** mulberry32: kleine, reproduzierbare Zufallsfolge in [0, 1). */
 export function seededRandom(seed: number): () => number {
@@ -132,6 +134,7 @@ interface PlannedSession {
 export function perfHistory(
   set: StoredSet,
   seed = 2,
+  eventCount = PERF_EVENTS,
 ): { sessions: Session[]; events: ReviewEvent[] } {
   const random = seededRandom(seed);
   const bytes = seededBytes(random);
@@ -162,7 +165,7 @@ export function perfHistory(
 
   const planned: PlannedSession[] = [];
   let total = 0;
-  while (total < PERF_EVENTS) {
+  while (total < eventCount) {
     const first = between(random, 0, set.sections.length - 1);
     const sections = set.sections.slice(first, first + between(random, 1, 3));
     const pool = sections.flatMap((section) => section.entries.map((entry) => entry.id));
@@ -208,7 +211,7 @@ export function perfHistory(
   }
 
   // Überzählige Antworten fallen am Ende weg; die letzte Sitzung gilt dann als vorzeitig beendet.
-  let excess = total - PERF_EVENTS;
+  let excess = total - eventCount;
   while (excess > 0) {
     const last = planned.at(-1)!;
     const cut = Math.min(excess, last.answers.length);

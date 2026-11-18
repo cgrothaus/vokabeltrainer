@@ -5,7 +5,14 @@
 import { readFile } from "node:fs/promises";
 import { expect, type Page, test } from "@playwright/test";
 import type { StoredSet } from "../../src/domain/model";
-import { backButton, collectErrors, importSet, libraryMessage, readStore } from "./support";
+import {
+  backButton,
+  collectErrors,
+  importSet,
+  libraryMessage,
+  readStore,
+  setAction,
+} from "./support";
 
 const TITLE = "Englisch – Rahmen";
 
@@ -20,7 +27,7 @@ test("E2E-27 Zurück geht im Verlauf zurück, Vorwärts wieder hin", async ({ pa
   const errors = collectErrors(page);
   await importSet(page, TITLE);
   await openSet(page);
-  await page.getByRole("link", { name: "Exportieren" }).click();
+  await setAction(page, "Exportieren");
   await expect(page.getByText("Exportieren", { exact: true })).toBeVisible();
 
   await backButton(page).click();
@@ -68,7 +75,7 @@ test("E2E-27 Nach dem Abgleich eines bekannten Sets führt Zurück zur Bibliothe
   const errors = collectErrors(page);
   await importSet(page, TITLE);
   await openSet(page);
-  await page.getByRole("link", { name: "Exportieren" }).click();
+  await setAction(page, "Exportieren");
   const [download] = await Promise.all([
     page.waitForEvent("download"),
     page.getByRole("button", { name: "Datei speichern" }).click(),
@@ -77,7 +84,7 @@ test("E2E-27 Nach dem Abgleich eines bekannten Sets führt Zurück zur Bibliothe
   file.sections[0].entries[0].meanings = ["Nieselregen"];
 
   await page.goto("./");
-  await page.getByRole("link", { name: "Vokabelset importieren" }).click();
+  await page.getByRole("link", { name: "Vokabelset hinzufügen" }).click();
   await page.getByLabel("Text einfügen").fill(JSON.stringify(file, null, 2));
   await page.getByRole("button", { name: "Prüfen" }).click();
   await page.getByRole("button", { name: "Aktualisieren" }).click();
@@ -97,31 +104,32 @@ test("E2E-27 Blatt: Escape, Tippen daneben und Abbrechen schließen, der Fokus k
   const errors = collectErrors(page);
   await importSet(page, TITLE);
   await openSet(page);
-  const start = page.getByRole("button", { name: "Set löschen" });
+  // Gelöscht wird über das Menü „···“; dorthin kehrt der Fokus zurück (TDD 13.7).
+  const start = page.getByRole("banner").getByRole("button", { name: "Weitere Aktionen" });
   const sheet = page.getByRole("dialog", { name: "Set löschen?" });
 
-  await start.click();
+  await setAction(page, "Set löschen");
   await expect(sheet).toBeVisible();
   await expect(sheet.getByText(/^Gelöscht werden 1 Sektion mit 3 Einträgen/)).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(sheet).toHaveCount(0);
   await expect(start).toBeFocused();
 
-  await start.click();
+  await setAction(page, "Set löschen");
   await expect(sheet).toBeVisible();
   // Oben links liegt nur der abgedunkelte Rand.
   await page.mouse.click(5, 5);
   await expect(sheet).toHaveCount(0);
   await expect(start).toBeFocused();
 
-  await start.click();
+  await setAction(page, "Set löschen");
   await sheet.getByRole("button", { name: "Abbrechen" }).click();
   await expect(sheet).toHaveCount(0);
   await expect(start).toBeEnabled();
   await expect(start).toBeFocused();
   expect(await readStore(page, "sets")).toHaveLength(1);
 
-  await start.click();
+  await setAction(page, "Set löschen");
   await sheet.getByRole("button", { name: "Set mit 3 Einträgen löschen" }).click();
   await expect(libraryMessage(page)).toHaveText(`„${TITLE}“ gelöscht.`);
   expect(errors, "Fehler in der Konsole").toEqual([]);

@@ -1,18 +1,31 @@
 // Performance-Messung (TDD 15.6, TAK-15) für den Dev-Schalter `?perf` (nur `npm run dev`, nicht im
 // Build). Läuft auf einer eigenen Datenbank über die echten Wege der App: Import über Vorschau und
 // Speichern, Abgleich mit dem vorhandenen Set über einen Export mit Änderungen, Lernüberblick wie in der
-// Set-Ansicht (`loadOverview`: Lesen und Berechnen).
+// Set-Ansicht (Lesen und Berechnen) und der Lernstand der Bibliothek über zehn Sets (`loadLibraryStart`,
+// `loadOverview` mit Zwischenspeicher).
 import { h } from "../app/dom";
 import { previewImport, saveImport, saveKnownImport } from "../app/importText";
+import { loadLibraryStart } from "../app/library";
+import { forgetAllOverviews, loadOverview } from "../app/overview";
 import { exportSetFile } from "../domain/exportSet";
+import { createId, ID_LENGTH } from "../domain/ids";
 import { NO_DECISIONS } from "../domain/merge";
 import type { StoredSet } from "../domain/model";
 import { computeStats } from "../domain/stats";
 import { copyText } from "../platform/clipboard";
 import { openDatabase } from "../storage/database";
 import { listSetEvents } from "../storage/sessions";
+import { addSet, listSets } from "../storage/sets";
 import { runTransaction } from "../storage/transaction";
-import { PERF_ENTRIES, PERF_EVENTS, perfHistory, perfSetText } from "./perfData";
+import {
+  PERF_ENTRIES,
+  PERF_EVENTS,
+  PERF_LIBRARY_SETS,
+  perfHistory,
+  perfSetText,
+  seededBytes,
+  seededRandom,
+} from "./perfData";
 
 export const PERF_DB_NAME = "vokabeltrainer-perf";
 
@@ -20,7 +33,7 @@ export const PERF_DB_NAME = "vokabeltrainer-perf";
  * Grenzen aus TDD 15.6 in Millisekunden. Der Lernstand wird nachgeladen: Lesen und Berechnen zusammen
  * bis er erscheint, das Berechnen allein, weil es die Seite blockiert.
  */
-const LIMIT = { import: 1000, overview: 1000, compute: 200 } as const;
+const LIMIT = { import: 1000, overview: 1000, compute: 200, library: 2000 } as const;
 const OVERVIEW_RUNS = 5;
 
 const ms = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 0 });
@@ -47,14 +60,90 @@ async function timed<T>(work: () => Promise<T> | T): Promise<[T, number]> {
 /** Dem Browser Zeit zum Zeichnen geben, damit der Fortschritt sichtbar wird. */
 const breathe = () => new Promise((resolve) => setTimeout(resolve, 50));
 
+async function open(): Promise<IDBDatabase> {
+  const opened = await openDatabase({ appVersion: "perf", name: PERF_DB_NAME });
+  if (!opened.ok) throw new Error(`Messdatenbank nicht nutzbar: ${opened.reason}`);
+  return opened.db;
+}
+
+/**
+ * Lernstand der Bibliothek (TDD 15.6, seit S-41): „Weiterlernen“ ohne Lesen der Antworten, dann der
+ * Lernstand aller Sets nacheinander wie in `views/library.ts`, je Lauf mit leerem Zwischenspeicher wie
+ * nach dem Start; zuletzt ein Lauf aus dem Zwischenspeicher.
+ */
+async function measureLibrary(
+  db: IDBDatabase,
+  template: StoredSet,
+  report: (line: string) => void,
+): Promise<void> {
+  const bytes = seededBytes(seededRandom(3));
+  const share = PERF_EVENTS / PERF_LIBRARY_SETS;
+  const copies = Array.from({ length: PERF_LIBRARY_SETS }, (_, index) => ({
+    ...template,
+    id: createId(ID_LENGTH.set, bytes),
+    title: `Messset ${index + 1}`,
+  }));
+  for (const copy of copies) await addSet(db, copy);
+  const [, writeTime] = await timed(() =>
+    runTransaction(db, ["sessions", "reviewEvents"], "readwrite", (transaction) => {
+      copies.forEach((copy, index) => {
+        const { sessions, events } = perfHistory(copy, 10 + index, share);
+        for (const session of sessions) transaction.objectStore("sessions").add(session);
+        for (const event of events) transaction.objectStore("reviewEvents").add(event);
+      });
+    }),
+  );
+  report(
+    `Bibliothek vorbereitet: ${PERF_LIBRARY_SETS} Sets mit je ${count.format(share)} Antworten (${ms.format(writeTime)} ms, nicht bewertet)`,
+  );
+  report(`Lernstand in der Bibliothek, ${OVERVIEW_RUNS} Läufe:`);
+  let slowestStart = 0;
+  let slowest = 0;
+  let order: StoredSet[] = [];
+  for (let run = 1; run <= OVERVIEW_RUNS; run++) {
+    await breathe();
+    forgetAllOverviews();
+    const [sets, listTime] = await timed(() => listSets(db));
+    const [start, startTime] = await timed(() => loadLibraryStart(db, sets));
+    if (!start.continueWith) throw new Error("Weiterlernen fehlt");
+    order = start.order.map((id) => sets.find((set) => set.id === id)!);
+    const [, statsTime] = await timed(async () => {
+      for (const set of order) await loadOverview(db, set);
+    });
+    const ready = listTime + startTime;
+    slowestStart = Math.max(slowestStart, ready);
+    slowest = Math.max(slowest, ready + statsTime);
+    report(
+      `  Lauf ${run}: Sets ${ms.format(listTime)} ms + Weiterlernen ${ms.format(startTime)} ms, Lernstand aller Sets ${ms.format(statsTime)} ms`,
+    );
+  }
+  report(
+    `  „Weiterlernen“ erscheint nach höchstens ${ms.format(slowestStart)} ms (ohne Antworten)`,
+  );
+  report(
+    `  Lernstand aller Sets höchstens nach: ${ms.format(slowest)} ms → ${verdict(slowest, LIMIT.library)}`,
+  );
+  let slowestCompute = 0;
+  for (const set of order) {
+    const events = await listSetEvents(db, set.id);
+    const [, computeTime] = await timed(() => computeStats(set, events));
+    slowestCompute = Math.max(slowestCompute, computeTime);
+  }
+  report(
+    `  längstes Berechnen eines Sets: ${ms.format(slowestCompute)} ms → ${verdict(slowestCompute, LIMIT.compute)}`,
+  );
+  const [, cachedTime] = await timed(async () => {
+    for (const set of order) await loadOverview(db, set);
+  });
+  report(`  erneutes Öffnen aus dem Zwischenspeicher: ${ms.format(cachedTime)} ms`);
+}
+
 async function measure(report: (line: string) => void): Promise<void> {
   report(`Gerät: ${navigator.userAgent}`);
   report(`Zeitpunkt: ${new Date().toLocaleString("de-DE")}`);
   report("");
   await deleteDatabase();
-  const opened = await openDatabase({ appVersion: "perf", name: PERF_DB_NAME });
-  if (!opened.ok) throw new Error(`Messdatenbank nicht nutzbar: ${opened.reason}`);
-  const { db } = opened;
+  let db = await open();
   try {
     const text = perfSetText();
     report(`Import ${count.format(PERF_ENTRIES)} Einträge, ${ms.format(text.length / 1024)} KB`);
@@ -131,6 +220,13 @@ async function measure(report: (line: string) => void): Promise<void> {
     report(
       `  davon Berechnen (blockiert die Seite), höchstens: ${ms.format(slowestCompute)} ms → ${verdict(slowestCompute, LIMIT.compute)}`,
     );
+    report("");
+
+    // Bibliothek: frische Datenbank mit zehn Kopien des Messsets und zusammen 50.000 Antworten.
+    db.close();
+    await deleteDatabase();
+    db = await open();
+    await measureLibrary(db, set, report);
   } finally {
     db.close();
     await deleteDatabase();

@@ -4,7 +4,7 @@
 import { readFile } from "node:fs/promises";
 import { expect, type Page, test } from "@playwright/test";
 import type { StoredSet } from "../../src/domain/model";
-import { collectErrors, importText, readStore } from "./support";
+import { collectErrors, importText, readStore, setAction } from "./support";
 
 const TITLE = "Englisch – Stadt";
 const SAVED = `„${TITLE}“ mit 4 Einträgen gespeichert.`;
@@ -42,7 +42,7 @@ const withoutShare = (page: Page) =>
 async function exportFile(page: Page, section?: string): Promise<Json> {
   await page.goto("./");
   await page.getByRole("link", { name: TITLE, exact: true }).click();
-  await page.getByRole("link", { name: "Exportieren" }).click();
+  await setAction(page, "Exportieren");
   if (section) {
     await page.getByRole("radio", { name: "Einzelne Sektionen" }).check();
     await page.getByRole("checkbox", { name: new RegExp(section) }).check();
@@ -135,7 +135,7 @@ test("E2E-09 Konflikt: in App und Datei geändert → beide Fassungen, ohne Wahl
   // In der App geändert …
   await page.goto("./");
   await page.getByRole("link", { name: TITLE, exact: true }).click();
-  await page.getByRole("link", { name: "Bearbeiten" }).click();
+  await setAction(page, "Bearbeiten");
   await page.locator(".edit-entries a").filter({ hasText: "train" }).click();
   await page
     .getByRole("group", { name: "Bedeutung 1", exact: true })
@@ -186,7 +186,7 @@ test("Veraltete Vorschau: in einem anderen Tab geändert → nichts gespeichert,
   const other = await page.context().newPage();
   await other.goto("./");
   await other.getByRole("link", { name: TITLE, exact: true }).click();
-  await other.getByRole("link", { name: "Bearbeiten" }).click();
+  await setAction(other, "Bearbeiten");
   await other.locator(".edit-entries a").filter({ hasText: "apple" }).click();
   await other.getByText("Weitere Angaben").click();
   await other.getByLabel("Notiz").fill("aus dem anderen Tab");

@@ -7,6 +7,7 @@ import { validateRecords } from "../domain/validateRecords";
 import {
   PERF_ENTRIES,
   PERF_EVENTS,
+  PERF_LIBRARY_SETS,
   PERF_SECTIONS,
   perfHistory,
   perfSetText,
@@ -74,6 +75,18 @@ describe("perfSetText", () => {
   test("ist bei gleichem Startwert gleich und bei anderem verschieden", () => {
     expect(perfSetText(1)).toBe(perfSetText(1));
     expect(perfSetText(2)).not.toBe(perfSetText(1));
+  });
+});
+
+describe("perfHistory für die Bibliothek", () => {
+  test("verteilt die Antworten auf zehn Sets mit eigener Folge", () => {
+    const set = importPerfSet();
+    const share = PERF_EVENTS / PERF_LIBRARY_SETS;
+    const first = perfHistory({ ...set, id: "erstes0001" }, 10, share);
+    const second = perfHistory({ ...set, id: "zweites001" }, 11, share);
+    expect(first.events).toHaveLength(5_000);
+    expect(new Set(first.events.map((event) => event.setId))).toEqual(new Set(["erstes0001"]));
+    expect(second.events[0]!.entryId).not.toBe(first.events[0]!.entryId);
   });
 });
 

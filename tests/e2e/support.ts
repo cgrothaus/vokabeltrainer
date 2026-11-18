@@ -56,9 +56,30 @@ export async function importText(page: Page, text: string, saved: string, base =
 }
 
 /** „<Titel> lernen“ in Bibliothek oder Set-Ansicht, dann Start mit der vorbelegten Einrichtung. */
-export async function startLearning(page: Page, title: string): Promise<void> {
+/**
+ * Öffnet die Einrichtung über „Lernen“ in der Set-Ansicht, aus der Bibliothek erst zum Set: Der runde
+ * Knopf der Bibliothek startet mit gemerkter Einrichtung sofort (D-50).
+ */
+export async function goToSetup(page: Page, title: string): Promise<void> {
+  if (!new URL(page.url()).hash.startsWith("#/set/"))
+    await page.getByRole("link", { name: title, exact: true }).click();
   await page.getByRole("link", { name: `${title} lernen` }).click();
+}
+
+export async function startLearning(page: Page, title: string): Promise<void> {
+  await goToSetup(page, title);
   await page.getByRole("button", { name: /^\d+ Vokabeln? lernen$/ }).click();
+}
+
+/** Bearbeiten, Exportieren oder Löschen über das Menü „···“ der Set-Ansicht (TDD 13.1). */
+export async function setAction(
+  page: Page,
+  action: "Bearbeiten" | "Exportieren" | "Set löschen",
+): Promise<void> {
+  await page.getByRole("banner").getByRole("button", { name: "Weitere Aktionen" }).click();
+  const menu = page.getByRole("dialog");
+  const role = action === "Set löschen" ? "button" : "link";
+  await menu.getByRole(role, { name: action, exact: true }).click();
 }
 
 /** Beendet eine Sitzung mit mindestens einer Antwort über den Zwischenstand; endet in der Bibliothek. */

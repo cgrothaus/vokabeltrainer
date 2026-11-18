@@ -107,6 +107,11 @@ button.iconbtn {
   background: var(--accent-soft);
 }
 
+/* Erscheint erst mit dem Inhalt, z. B. „···“ in der Set-Ansicht; `display` hebt `hidden` sonst auf. */
+.iconbtn[hidden] {
+  display: none;
+}
+
 /* Der Zurück-Pfeil steht optisch am Rand, die Fläche bleibt 44 × 44. */
 .appbar .back .iconbtn {
   margin-left: -10px;

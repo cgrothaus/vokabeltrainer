@@ -55,6 +55,16 @@ async function learnSection(page: Page, only: string, ratings: ("Nochmal" | "Gew
 }
 
 const overview = (page: Page) => page.locator(".overview");
+/** Kacheln (D-50): Beschriftung und Wert je Kachel, dazu die erklärende Zeile. */
+async function expectTiles(page: Page, values: string[], note: string): Promise<void> {
+  await expect(overview(page).locator("dt")).toHaveText(
+    ["Sitzungen", "beim 1. Mal", "zuletzt"].map((label, index) =>
+      index === 0 && values[0] === "1" ? "Sitzung" : label,
+    ),
+  );
+  await expect(overview(page).locator("dd")).toHaveText(values);
+  await expect(overview(page).locator(".note")).toHaveText(note);
+}
 const sectionLine = (page: Page, title: string) =>
   page.locator(".section summary", { hasText: title }).locator(".stats");
 
@@ -73,20 +83,22 @@ test("Set-Ansicht zeigt den Lernstand für Set und Sektionen, auch nach dem Neul
   // Die erste Karte kommt als letzte wieder: zwei von drei beim ersten Mal gewusst.
   await learnSection(page, "Wetter", ["Nochmal", "Gewusst", "Gewusst", "Gewusst"]);
   await openSet();
-  await expect(overview(page).getByRole("paragraph")).toHaveText([
-    "1 Lernsitzung · zuletzt heute",
-    "67 % beim ersten Mal gewusst (letzte Sitzung)",
-  ]);
+  await expectTiles(
+    page,
+    ["1", "67 %", "heute"],
+    "Beim ersten Mal gewusst, in der letzten Sitzung",
+  );
   await expect(sectionLine(page, "Wetter")).toHaveText("1 Sitzung · zuletzt heute · 67 %");
   await expect(sectionLine(page, "Tiere")).toHaveText("noch nicht gelernt");
 
   await learnSection(page, "Tiere", ["Gewusst", "Gewusst"]);
   await openSet();
   await page.reload();
-  await expect(overview(page).getByRole("paragraph")).toHaveText([
-    "2 Lernsitzungen · zuletzt heute",
-    "80 % beim ersten Mal gewusst (letzte 2 Sitzungen)",
-  ]);
+  await expectTiles(
+    page,
+    ["2", "80 %", "heute"],
+    "Beim ersten Mal gewusst, in den letzten 2 Sitzungen",
+  );
   await expect(sectionLine(page, "Wetter")).toHaveText("1 Sitzung · zuletzt heute · 67 %");
   await expect(sectionLine(page, "Tiere")).toHaveText("1 Sitzung · zuletzt heute · 100 %");
   expect(errors).toEqual([]);

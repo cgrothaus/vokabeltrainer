@@ -4,10 +4,11 @@ import { expect, type Page, test } from "@playwright/test";
 import type { ReviewEvent, Session } from "../../src/domain/model";
 import {
   collectErrors,
+  goToSetup,
   importSet,
+  importText,
   librarySets,
   MEANINGS,
-  importText,
   readStore,
   startLearning,
   swipe,
@@ -325,7 +326,7 @@ test("Zu wenige Einträge für Multiple Choice: Die Karten kommen als Karteikart
   const errors = collectErrors(page);
   const title = "Englisch – Rückfall";
   await importSet(page, title);
-  await page.getByRole("link", { name: `${title} lernen` }).click();
+  await goToSetup(page, title);
   await page.getByRole("slider", { name: "Multiple Choice" }).fill("100");
   await page.getByRole("button", { name: "3 Vokabeln lernen" }).click();
 
