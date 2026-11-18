@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Projektstand
 
-Mobiler, offlinefähiger Vokabeltrainer als installierbare Web-App (PWA), ohne Backend. M0 bis M4 sind umgesetzt, bis auf die Gerätechecks S-37 (M2 seit S-29 an Nutzende ausgeliefert) (Datenmodell eingefroren, TDD 7.4); M5 (Oberfläche als App) läuft, S-38 und S-40 sind umgesetzt. Aktueller Stand siehe TDD Kap. 21.
+Mobiler, offlinefähiger Vokabeltrainer als installierbare Web-App (PWA), ohne Backend. M0 bis M4 sind umgesetzt, bis auf die Gerätechecks S-37 (M2 seit S-29 an Nutzende ausgeliefert) (Datenmodell eingefroren, TDD 7.4); M5 (Oberfläche als App) läuft, S-38 und S-40 bis S-43 sind umgesetzt. Aktueller Stand siehe TDD Kap. 21.
 
 Maßgebliche Dokumente in `docs/`:
 
