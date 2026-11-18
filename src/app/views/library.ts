@@ -5,11 +5,12 @@ import type { Reminder } from "../../domain/backupReminder";
 import type { StoredSet } from "../../domain/model";
 import { groupSets, setSize } from "../../domain/library";
 import type { SetStats } from "../../domain/stats";
-import type { ProtectionNotice } from "../../domain/storageProtection";
+import { installOffer, type ProtectionNotice } from "../../domain/storageProtection";
 import { backupReminder, type ReminderActions } from "../components/backupReminder";
 import { type Frame, frame, iconLink } from "../components/frame";
+import type { IosDevice } from "../components/homeScreen";
 import { libraryStatus } from "../components/learningStatus";
-import { protectionHint } from "../components/protectionHint";
+import { protectionHint, quietRow } from "../components/protectionHint";
 import { focusSoon, h } from "../dom";
 import { icon, type IconName } from "../icons";
 import { languageName } from "../languages";
@@ -18,9 +19,23 @@ import type { SampleOutcome } from "../sampleSet";
 import { failureMessage } from "../storageMessages";
 import { emptyLibrary } from "./emptyLibrary";
 
-export interface LibraryContext extends ReminderActions {
+export interface InstallActions {
+  /** Ob der Browser die Installation gerade anbietet (TDD 5.1). */
+  canInstall: () => boolean;
+  /** Zeigt die Rückfrage des Browsers; direkt im Klick aufrufen. */
+  install: () => void;
+  /** Meldet, wenn das Angebot kommt oder entfällt. */
+  onInstallChange: (listener: () => void, signal: AbortSignal) => void;
+}
+
+export interface LibraryContext extends ReminderActions, InstallActions {
   /** Welcher Speicherschutz-Hinweis passt (TDD 6.6); hängt davon ab, ob Sets vorhanden sind. */
   protection: (hasSets: boolean) => ProtectionNotice;
+  /** iPhone oder iPad, für die Hinweise auf iOS. */
+  device: IosDevice;
+  /** Ob „Später“ beim Installationsangebot schon gewählt wurde (TDD 5.1). */
+  installOfferDismissed: () => Promise<boolean>;
+  dismissInstallOffer: () => Promise<void>;
   /** Ob die Backup-Erinnerung fällig ist (TDD 6.6). */
   loadReminder: () => Promise<Reminder>;
   loadSets: () => Promise<StoredSet[]>;
@@ -41,8 +56,10 @@ const NO_STATUS = "Lernstand nicht verfügbar";
 const vocabulary = (n: number) => (n === 1 ? "1 Vokabel" : `${n} Vokabeln`);
 
 export function libraryView(context: LibraryContext, signal: AbortSignal): Node {
-  // Hinweise über der Liste (TDD 13.1); sie hängen vom Bestand ab und erscheinen nach dem Laden.
+  // Hinweise über der Liste (TDD 13.1); sie hängen vom Bestand ab und erscheinen nach dem Laden. Die
+  // Backup-Erinnerung steht unter der Liste (D-46); bis beides geprüft ist, gilt der Bereich als beschäftigt.
   const hints = h("div", { class: "hints", "aria-busy": "true" });
+  const reminderSlot = h("div", { class: "reminder-slot" });
   const sets = h("section", { "aria-label": "Vokabelsets" });
   // Begrüßung und Wege unter der Liste erst nach dem Laden: Der Empty State hat eigene (TDD 13.1).
   const greeting = h(
@@ -60,6 +77,7 @@ export function libraryView(context: LibraryContext, signal: AbortSignal): Node 
       icon("plus"),
       h("span", null, "Vokabelset hinzufügen"),
     ),
+    reminderSlot,
     h(
       "ul",
       { class: "rows" },
@@ -68,12 +86,6 @@ export function libraryView(context: LibraryContext, signal: AbortSignal): Node 
       row("#/help", "help", "Wie bekomme ich ein Vokabelset?"),
       row("#/backup", "shield", "Backup und Wiederherstellung"),
     ),
-  );
-  // Im Empty State bleibt der Weg zum Backup ein Link wie bisher; S-43 gestaltet ihn neu.
-  const backup = h(
-    "p",
-    { hidden: true },
-    h("a", { href: "#/backup" }, "Backup und Wiederherstellung"),
   );
   // Scheitert der Schnellstart, steht die Meldung oben und bekommt den Fokus.
   const problem = h("p", { role: "alert", class: "problem" });
@@ -87,7 +99,7 @@ export function libraryView(context: LibraryContext, signal: AbortSignal): Node 
       title: "Vokabeltrainer",
       actions: [iconLink("#/settings", "Einstellungen", "gear")],
     },
-    h("main", { class: "library" }, message, problem, greeting, hints, sets, more, backup),
+    h("main", { class: "library" }, message, problem, greeting, hints, sets, more),
   );
 
   const learn = async (set: StoredSet, button: HTMLButtonElement) => {
@@ -108,9 +120,19 @@ export function libraryView(context: LibraryContext, signal: AbortSignal): Node 
   void showSets(sets, context, learn, lines).then(async (loaded) => {
     const empty = loaded?.length === 0;
     greeting.hidden = more.hidden = !loaded || empty;
-    backup.hidden = !more.hidden;
     if (loaded && !empty) void showProgress(loaded, context, lines, page, learn, signal);
-    hints.replaceChildren(...(await showHints(context, empty)));
+    const reminder = await loadReminder(context, empty);
+    const state = {
+      empty,
+      reminderDue: reminder.due,
+      dismissed: await context.installOfferDismissed(),
+      within: page.element,
+    };
+    const showAbove = () => hints.replaceChildren(...aboveHints(context, state));
+    showAbove();
+    // Das Angebot des Browsers kann nach dem ersten Aufbau kommen und entfällt nach der Installation.
+    context.onInstallChange(showAbove, signal);
+    if (reminder.due) reminderSlot.replaceChildren(backupReminder(reminder, context));
     hints.removeAttribute("aria-busy");
   });
   return page.element;
@@ -121,22 +143,59 @@ function row(href: string, symbol: IconName, label: string): Node {
   return h("li", null, h("a", { href }, icon(symbol), h("span", null, label), icon("chevron")));
 }
 
+/** Ohne Sets gibt es keine Antworten (D-25), also keine Erinnerung. */
+async function loadReminder(context: LibraryContext, empty: boolean): Promise<Reminder> {
+  if (empty) return { due: false };
+  return context.loadReminder().catch((error: unknown) => {
+    console.warn("Backup-Erinnerung nicht geprüft", error);
+    return { due: false } as const;
+  });
+}
+
 /**
- * Backup-Erinnerung und Speicherschutz-Hinweis (TDD 6.6). Ohne Sets gibt es keine Antworten (D-25),
- * also keine Erinnerung; neben ihr wäre der Hinweis auf Backups doppelt.
+ * Speicherschutz-Hinweis und einmal das Installationsangebot über der Liste (TDD 5.1, 6.6). Neben der
+ * Backup-Erinnerung wäre der Hinweis auf Backups doppelt (D-39).
  */
-async function showHints(context: LibraryContext, empty: boolean): Promise<Node[]> {
-  let reminder: Reminder = { due: false };
-  if (!empty)
-    reminder = await context.loadReminder().catch((error: unknown) => {
-      console.warn("Backup-Erinnerung nicht geprüft", error);
-      return { due: false } as const;
-    });
-  const notice = context.protection(!empty);
-  const protection = reminder.due && notice === "backup" ? null : protectionHint(notice, !empty);
-  return [reminder.due ? backupReminder(reminder, context) : null, protection].filter(
-    (node): node is Node => node !== null,
+function aboveHints(
+  context: LibraryContext,
+  state: { empty: boolean; reminderDue: boolean; dismissed: boolean; within: Element },
+): Node[] {
+  const hasSets = !state.empty;
+  const notice = context.protection(hasSets);
+  const install = context.canInstall() ? context.install : undefined;
+  const protection =
+    state.reminderDue && notice === "backup" && !install
+      ? null
+      : protectionHint(notice, { hasSets, device: context.device, within: state.within, install });
+  const offer =
+    installOffer({ canInstall: !!install, hasSets, dismissed: state.dismissed, notice }) &&
+    installRow(context, state);
+  return [protection, offer].filter((node): node is Node => !!node);
+}
+
+/** Einmal die ruhige Zeile „Als App installieren?“ mit „Später“ (TDD 5.1, FR-35). */
+function installRow(context: LibraryContext, state: { dismissed: boolean }): Node {
+  const later = h(
+    "button",
+    {
+      type: "button",
+      class: "textbtn",
+      onclick: () => {
+        // Auch beim Neuzeichnen nach einer Meldung des Browsers bleibt sie weg.
+        state.dismissed = true;
+        row.remove();
+        void context.dismissInstallOffer();
+      },
+    },
+    "Später",
   );
+  const row = quietRow(
+    "phone",
+    "Als App installieren? Deine Vokabeln kommen mit.",
+    h("button", { type: "button", class: "textbtn", onclick: context.install }, "Installieren"),
+    later,
+  );
+  return row;
 }
 
 type Learn = (set: StoredSet, button: HTMLButtonElement) => Promise<void>;

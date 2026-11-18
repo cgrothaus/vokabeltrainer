@@ -15,3 +15,9 @@ export function isIos(): boolean {
     (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
   );
 }
+
+/** Für Hinweise wie „Im Browser kann dein iPad die Vokabeln löschen.“; iPadOS meldet sich als Mac. */
+export function iosDeviceName(): "iPhone" | "iPad" {
+  if (/iPhone|iPod/.test(navigator.userAgent)) return "iPhone";
+  return /iPad/.test(navigator.userAgent) || navigator.platform === "MacIntel" ? "iPad" : "iPhone";
+}

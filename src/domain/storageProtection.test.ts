@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  type InstallSituation,
+  installOffer,
   type ProtectionNotice,
   protectionNotice,
   type ProtectionSituation,
@@ -31,5 +33,28 @@ describe("protectionNotice", () => {
     ["ohne Sets: nichts", { hasSets: false }, null],
   ])("%s", (_name, situation, expected) => {
     expect(protectionNotice({ ...base, ...situation })).toBe(expected);
+  });
+});
+
+describe("installOffer", () => {
+  const offer: InstallSituation = {
+    canInstall: true,
+    hasSets: true,
+    dismissed: false,
+    notice: null,
+  };
+  it.each<[string, Partial<InstallSituation>, boolean]>([
+    ["mit Set und Angebot des Browsers", {}, true],
+    [
+      "ohne Angebot des Browsers nicht (Safari, Firefox, installiert)",
+      { canInstall: false },
+      false,
+    ],
+    ["ohne Set nicht", { hasSets: false }, false],
+    ["nach „Später“ nicht mehr", { dismissed: true }, false],
+    // Der Hinweis auf nicht geschützte Daten bietet das Installieren dann selbst an.
+    ["nicht neben dem Hinweis auf Backups", { notice: "backup" }, false],
+  ])("%s", (_name, situation, expected) => {
+    expect(installOffer({ ...offer, ...situation })).toBe(expected);
   });
 });

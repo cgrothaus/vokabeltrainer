@@ -62,7 +62,9 @@ test("E2E-26 Änderung in einem Tab: Set-Ansicht und Bibliothek im anderen zeich
   await other.getByRole("link", { name: TITLE, exact: true }).click();
   await setAction(other, "Set löschen");
   await other.getByRole("button", { name: "Set mit 3 Einträgen löschen" }).click();
-  await expect(page.getByRole("heading", { name: "Noch keine Vokabelsets" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Lerne Vokabeln mit Karteikarten" }),
+  ).toBeVisible();
   expect(errors, "Fehler in der Konsole").toEqual([]);
 });
 
@@ -122,7 +124,9 @@ test("E2E-26 Set in einem anderen Tab gelöscht: Die Sitzung endet, ohne etwas z
   await other.getByRole("link", { name: TITLE, exact: true }).click();
   await setAction(other, "Set löschen");
   await other.getByRole("button", { name: "Set mit 3 Einträgen löschen" }).click();
-  await expect(other.getByRole("heading", { name: "Noch keine Vokabelsets" })).toBeVisible();
+  await expect(
+    other.getByRole("heading", { name: "Lerne Vokabeln mit Karteikarten" }),
+  ).toBeVisible();
 
   await page.getByRole("button", { name: /Tippen zum Aufdecken/ }).click();
   await page.getByRole("button", { name: "Gewusst" }).click();
@@ -136,7 +140,9 @@ test("E2E-26 Set in einem anderen Tab gelöscht: Die Sitzung endet, ohne etwas z
   expect(await readStore(page, "settings")).toEqual([]);
 
   await page.getByRole("link", { name: "Zur Bibliothek" }).click();
-  await expect(page.getByRole("heading", { name: "Noch keine Vokabelsets" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Lerne Vokabeln mit Karteikarten" }),
+  ).toBeVisible();
   // Das Ende der Sitzung meldet keinen Speicherfehler.
   await expect(page.locator("#storage-notice")).toBeEmpty();
 });

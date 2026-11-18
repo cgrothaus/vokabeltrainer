@@ -34,6 +34,32 @@ const ICONS = {
   edit: [["path", { d: "M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4" }]],
   download: [["path", { d: "M12 4v11M8 11l4 4 4-4M5 19h14" }]],
   trash: [["path", { d: "M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" }]],
+  phone: [
+    [
+      "path",
+      {
+        d: "M9.5 2.5h5A2.5 2.5 0 0 1 17 5v14a2.5 2.5 0 0 1-2.5 2.5h-5A2.5 2.5 0 0 1 7 19V5a2.5 2.5 0 0 1 2.5-2.5z",
+      },
+    ],
+    ["path", { d: "M11 18.5h2" }],
+  ],
+  share: [["path", { d: "M12 3v12M8 7l4-4 4 4M6 11H5v10h14V11h-1" }]],
+  home: [
+    [
+      "path",
+      { d: "M8 4h8a4 4 0 0 1 4 4v8a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V8a4 4 0 0 1 4-4zM12 8v8M8 12h8" },
+    ],
+  ],
+  cloud: [
+    [
+      "path",
+      {
+        d: "M7 18h10a4 4 0 0 0 .5-8 6 6 0 0 0-11.5 1.5A3.3 3.3 0 0 0 7 18zM12 11v5M9.5 13.5L12 11l2.5 2.5",
+      },
+    ],
+  ],
+  restore: [["path", { d: "M4 12a8 8 0 1 0 2.5-5.8M4 4v4h4" }]],
+  file: [["path", { d: "M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5" }]],
 } satisfies Record<string, Shape[]>;
 
 export type IconName = keyof typeof ICONS;

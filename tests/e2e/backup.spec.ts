@@ -66,7 +66,7 @@ const emptyBackup = JSON.stringify({
   data: { sets: [], reviewEvents: [], sessions: [], settings: [] },
 });
 
-const restoreRegion = (page: Page) => page.getByRole("region", { name: "Backup wiederherstellen" });
+const restoreRegion = (page: Page) => page.getByRole("region", { name: "Backup laden" });
 
 const chooseBackup = (page: Page, content: string) =>
   page.getByLabel("Backup-Datei auswählen").setInputFiles({
@@ -109,12 +109,21 @@ test("E2E-02 Backup → frisches Gerät → Wiederherstellen ergibt denselben Be
   const fresh = await freshPage(browser, testInfo);
   const freshErrors = collectErrors(fresh);
   await fresh.goto("./");
-  await expect(fresh.getByRole("heading", { name: "Noch keine Vokabelsets" })).toBeVisible();
-  await fresh.getByRole("link", { name: "Backup und Wiederherstellung" }).click();
-  await chooseBackup(fresh, content);
   await expect(
-    fresh.getByText(/^Backup vom .+: 1 Set mit 3 Einträgen, 1 Lernsitzung, 1 Antwort\.$/),
-  ).toBeFocused();
+    fresh.getByRole("heading", { name: "Lerne Vokabeln mit Karteikarten" }),
+  ).toBeVisible();
+  // Im Empty State führt ein eigener Weg zum Laden (TDD 13.1).
+  await fresh.getByRole("link", { name: "Backup von einem anderen Gerät laden" }).click();
+  await chooseBackup(fresh, content);
+  await expect(fresh.getByText(/^Backup vom /)).toBeFocused();
+  await expect(fresh.locator(".confirm .tiles div")).toHaveText([
+    "Vokabelset1",
+    "Antwort1",
+    "Lernsitzung1",
+  ]);
+  await expect(
+    fresh.getByText("Auf diesem Gerät ist noch nichts gespeichert.", { exact: false }),
+  ).toBeVisible();
   // Auf einem leeren Gerät geht nichts verloren: keine Warnung (TDD 11.4).
   await expect(fresh.getByText(/Das Backup ersetzt/)).toHaveCount(0);
   await expect(fresh.getByRole("button", { name: "Vorher Backup speichern" })).toHaveCount(0);
@@ -213,11 +222,8 @@ test("Vokabelset statt Backup und Abbrechen ändern nichts", async ({ page }) =>
   await chooseBackup(page, emptyBackup);
   // Die erste Meldungsfläche gehört zur Dateiauswahl, die zweite zur Warnung vor dem Ersetzen.
   await expect(restoreRegion(page).getByRole("alert").first()).toBeEmpty();
-  await expect(
-    page.getByText(
-      "Backup vom 20. Oktober 2026: 0 Sets mit 0 Einträgen, 0 Lernsitzungen, 0 Antworten.",
-    ),
-  ).toBeVisible();
+  await expect(page.getByText("Backup vom 20. Oktober 2026", { exact: true })).toBeVisible();
+  await expect(page.locator(".confirm dd")).toHaveText(["0", "0", "0"]);
   await page.getByRole("button", { name: "Abbrechen" }).click();
   await expect(page.getByRole("button", { name: "Alle Daten ersetzen" })).toHaveCount(0);
 

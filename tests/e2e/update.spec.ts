@@ -55,7 +55,7 @@ const serviceWorkerReady = (page: Page) =>
 
 test("Neue Version wird erst nach Bestätigung aktiv", async ({ page }, testInfo) => {
   await withCopiedApp(testInfo, async (url, dir) => {
-    const oldText = "Noch keine Vokabelsets";
+    const oldText = "Lerne Vokabeln mit Karteikarten";
     const newText = "Die neue Version ist aktiv.";
     const notice = page.locator("#update-notice");
 

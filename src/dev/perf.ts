@@ -2,7 +2,8 @@
 // Build). Läuft auf einer eigenen Datenbank über die echten Wege der App: Import über Vorschau und
 // Speichern, Abgleich mit dem vorhandenen Set über einen Export mit Änderungen, Lernüberblick wie in der
 // Set-Ansicht (Lesen und Berechnen) und der Lernstand der Bibliothek über zehn Sets (`loadLibraryStart`,
-// `loadOverview` mit Zwischenspeicher).
+// `loadOverview` mit Zwischenspeicher) samt Prüfung der Backup-Erinnerung (D-46).
+import { loadReminder } from "../app/backupReminder";
 import { h } from "../app/dom";
 import { previewImport, saveImport, saveKnownImport } from "../app/importText";
 import { loadLibraryStart } from "../app/library";
@@ -219,6 +220,16 @@ async function measure(report: (line: string) => void): Promise<void> {
     );
     report(
       `  davon Berechnen (blockiert die Seite), höchstens: ${ms.format(slowestCompute)} ms → ${verdict(slowestCompute, LIMIT.compute)}`,
+    );
+    report("");
+
+    // Ohne Backup zählt die Erinnerung die Antworten jeder Sitzung (TDD 6.6); sie lädt nach wie der
+    // Lernstand der Bibliothek, deshalb dieselbe Grenze.
+    await breathe();
+    const [reminder, reminderTime] = await timed(() => loadReminder(db));
+    if (!reminder.due) throw new Error("Erinnerung fehlt");
+    report(
+      `Backup-Erinnerung über ${count.format(sessions.length)} Sitzungen ohne Backup: ${ms.format(reminderTime)} ms → ${verdict(reminderTime, LIMIT.library)}`,
     );
     report("");
 

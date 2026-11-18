@@ -1,4 +1,4 @@
-// Schaltfläche „Beispielset ausprobieren“ im Empty State (TDD 13.1, 13.2). Scheitert das Laden,
+// Schaltfläche „Mit dem Beispielset ausprobieren“ im Empty State (TDD 13.1, 13.2). Scheitert das Laden,
 // erscheint der Hinweis in `problem`, und die Schaltfläche wird wieder bedienbar.
 import { h } from "../dom";
 import type { SampleOutcome } from "../sampleSet";
@@ -30,7 +30,7 @@ export function sampleSetButton(
         button.disabled = false;
       },
     },
-    "Beispielset ausprobieren",
+    "Mit dem Beispielset ausprobieren",
   );
   return button;
 }

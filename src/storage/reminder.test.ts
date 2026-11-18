@@ -61,17 +61,24 @@ async function practise(id: string, startedAt: string, answers: number): Promise
 describe("readReminderState", () => {
   it("ohne Antworten gibt es nichts zu sichern", async () => {
     expect(await readReminderState(db)).toEqual({
-      unsavedAnswers: false,
+      unsavedStarts: [],
       lastBackupAt: undefined,
       snoozedUntil: undefined,
     });
   });
 
-  it("ohne Backup sind alle Antworten ungesichert", async () => {
+  it("ohne Backup sind alle Antworten ungesichert; Sitzungen ohne Antwort zählen nicht", async () => {
     await practise("a", "2026-10-01T18:00:00.000Z", 2);
+    await practise("b", "2026-10-03T18:00:00.000Z", 0);
+    await practise("c", "2026-10-02T18:00:00.000Z", 1);
     await setMeta(db, "backupReminderSnoozedUntil", "2026-10-04T18:00:00.000Z");
-    expect(await readReminderState(db)).toEqual({
-      unsavedAnswers: true,
+    const state = await readReminderState(db);
+    expect([...state.unsavedStarts].sort()).toEqual([
+      "2026-10-01T18:00:00.000Z",
+      "2026-10-02T18:00:00.000Z",
+    ]);
+    expect(state).toEqual({
+      unsavedStarts: expect.any(Array),
       lastBackupAt: undefined,
       snoozedUntil: "2026-10-04T18:00:00.000Z",
     });
@@ -80,15 +87,15 @@ describe("readReminderState", () => {
   it("mit Backup zählen nur Antworten aus Sitzungen danach", async () => {
     await practise("a", "2026-10-01T18:00:00.000Z", 2);
     await setMeta(db, "lastBackupAt", "2026-10-02T18:00:00.000Z");
-    expect((await readReminderState(db)).unsavedAnswers).toBe(false);
+    expect((await readReminderState(db)).unsavedStarts).toEqual([]);
 
     // Eine spätere Sitzung ohne Antwort ändert nichts.
     await practise("b", "2026-10-10T18:00:00.000Z", 0);
-    expect((await readReminderState(db)).unsavedAnswers).toBe(false);
+    expect((await readReminderState(db)).unsavedStarts).toEqual([]);
 
     await practise("c", "2026-10-20T18:00:00.000Z", 1);
     expect(await readReminderState(db)).toEqual({
-      unsavedAnswers: true,
+      unsavedStarts: ["2026-10-20T18:00:00.000Z"],
       lastBackupAt: "2026-10-02T18:00:00.000Z",
       snoozedUntil: undefined,
     });
@@ -97,6 +104,6 @@ describe("readReminderState", () => {
   it("liest einen unbrauchbaren Zeitpunkt des Backups wie keinen", async () => {
     await practise("a", "2026-10-01T18:00:00.000Z", 1);
     await setMeta(db, "lastBackupAt", "gestern");
-    expect((await readReminderState(db)).unsavedAnswers).toBe(true);
+    expect((await readReminderState(db)).unsavedStarts).toEqual(["2026-10-01T18:00:00.000Z"]);
   });
 });

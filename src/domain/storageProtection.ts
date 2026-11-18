@@ -21,3 +21,23 @@ export function protectionNotice(situation: ProtectionSituation): ProtectionNoti
   if (situation.ios && !situation.installed) return "install";
   return situation.hasSets ? "backup" : null;
 }
+
+export interface InstallSituation {
+  /** Der Browser hat die Installation angeboten (`beforeinstallprompt`, TDD 5.1). */
+  canInstall: boolean;
+  hasSets: boolean;
+  /** „Später“ wurde schon gewählt. */
+  dismissed: boolean;
+  /** Der Speicherschutz-Hinweis daneben; der Hinweis auf Backups bietet das Installieren selbst an. */
+  notice: ProtectionNotice;
+}
+
+/** Ob die Bibliothek einmal die ruhige Zeile „Als App installieren?“ zeigt (TDD 5.1, FR-35). */
+export function installOffer(situation: InstallSituation): boolean {
+  return (
+    situation.canInstall &&
+    situation.hasSets &&
+    !situation.dismissed &&
+    situation.notice !== "backup"
+  );
+}

@@ -259,3 +259,33 @@ export async function swipe(page: Page, target: Locator, dx: number): Promise<vo
   await page.mouse.move(x + dx, y, { steps: 6 });
   await page.mouse.up();
 }
+
+/**
+ * Spielt das Installationsangebot von Chromium (`beforeinstallprompt`, TDD 5.1) kurz nach dem Laden;
+ * `prompt()` zählt mit (`installPrompts`) und endet mit `outcome`. Vor `goto` aufrufen.
+ */
+export async function fakeInstallPrompt(
+  page: Page,
+  outcome: "accepted" | "dismissed" = "dismissed",
+): Promise<void> {
+  await page.addInitScript((outcome) => {
+    const counter = window as unknown as { __installPrompts: number };
+    counter.__installPrompts = 0;
+    window.addEventListener("load", () =>
+      setTimeout(() => {
+        const event = new Event("beforeinstallprompt", { cancelable: true });
+        Object.assign(event, {
+          prompt: async () => {
+            counter.__installPrompts++;
+          },
+          userChoice: Promise.resolve({ outcome }),
+        });
+        window.dispatchEvent(event);
+      }, 50),
+    );
+  }, outcome);
+}
+
+/** Wie oft `prompt()` des gespielten Angebots aufgerufen wurde. */
+export const installPrompts = (page: Page) =>
+  page.evaluate(() => (window as unknown as { __installPrompts: number }).__installPrompts);

@@ -24,7 +24,9 @@ test("Startseite zeigt die Bibliothek ohne fremde oder fehlgeschlagene Anfragen 
   await page.goto("./");
   await expect(page.getByRole("heading", { name: "Vokabeltrainer" })).toBeVisible();
   // Der Empty State erscheint erst, wenn die Datenbank offen ist und gelesen wurde (FR-22).
-  await expect(page.getByRole("heading", { name: "Noch keine Vokabelsets" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Lerne Vokabeln mit Karteikarten" }),
+  ).toBeVisible();
   // Icons und Manifest lädt der Browser nachgelagert, z. B. favicon.ico ohne <link rel="icon">.
   await page.waitForLoadState("networkidle");
 

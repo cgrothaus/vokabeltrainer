@@ -8,11 +8,14 @@ import {
   backButton,
   changeDevice,
   collectErrors,
+  endPractice,
   fakeDevice,
+  fakeInstallPrompt,
   importSet,
   libraryMessage,
   setAction,
   setFile,
+  startLearning,
 } from "./support";
 
 test.use({ viewport: { width: 320, height: 640 } });
@@ -92,7 +95,9 @@ test("Ohne Sets: Bibliothek, Hilfe, Import, Backup, Einstellungen, unbekannte Ad
   const errors = collectErrors(page);
   const findings: string[] = [];
   await page.goto("./");
-  await expect(page.getByRole("heading", { name: "Noch keine Vokabelsets" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Lerne Vokabeln mit Karteikarten" }),
+  ).toBeVisible();
   findings.push(...(await audit(page, "Bibliothek leer")));
 
   await page.goto("./#/help");
@@ -180,14 +185,11 @@ test("Mit Set: Bibliothek, Set-Ansicht, Löschen, Einrichtung, Karteikarten, Zwi
   }
   findings.push(...(await audit(page, "Ergebnis")));
 
-  // Mit Antworten und ohne Backup erinnert die Bibliothek daran (TDD 6.6).
   await page.goto("./");
-  await expect(page.getByRole("button", { name: "Backup speichern" })).toBeEnabled();
   await expect(page.locator(".setcard .status")).toContainText("zuletzt heute");
   await expect(page.getByRole("button", { name: /^Weiterlernen/ })).toBeVisible();
-  findings.push(
-    ...(await audit(page, "Bibliothek mit Lernstand, Weiterlernen, Backup-Erinnerung")),
-  );
+  await expect(page.locator(".hints")).not.toHaveAttribute("aria-busy");
+  findings.push(...(await audit(page, "Bibliothek mit Lernstand, Weiterlernen")));
   await page.getByRole("link", { name: "Wetter", exact: true }).click();
   await expect(page.locator(".tiles")).toBeVisible();
   findings.push(...(await audit(page, "Set-Ansicht mit Lernstand")));
@@ -213,19 +215,51 @@ test("Mit Set: Bibliothek, Set-Ansicht, Löschen, Einrichtung, Karteikarten, Zwi
   expect(errors).toEqual([]);
 });
 
-test("Speicherschutz: Anleitung zum Home-Bildschirm und Hinweis auf Backups", async ({ page }) => {
+test("Speicherschutz, Installation und Backup-Erinnerung (TDD 5.1, 6.6)", async ({ page }) => {
   const errors = collectErrors(page);
   const findings: string[] = [];
+  const hintsChecked = () => expect(page.locator(".hints")).not.toHaveAttribute("aria-busy");
   await fakeDevice(page, { ios: true });
-  await importSet(page, "Wetter");
-  await page.getByText("So kommt die App auf den Home-Bildschirm").click();
-  await expect(page.locator(".hint").getByRole("listitem")).toHaveCount(4);
-  findings.push(...(await audit(page, "Bibliothek mit Anleitung zum Home-Bildschirm")));
+  await page.goto("./");
+  await expect(page.getByRole("region", { name: "Zuerst auf den Home-Bildschirm" })).toBeVisible();
+  findings.push(...(await audit(page, "Empty State mit Anleitung zum Home-Bildschirm")));
 
+  await importSet(page, "Wetter");
+  await page.getByRole("button", { name: "Schützen" }).click();
+  await expect(page.getByRole("dialog", { name: "Auf den Home-Bildschirm" })).toBeVisible();
+  findings.push(...(await audit(page, "Blatt mit dem Umzug auf den Home-Bildschirm")));
+  await page.keyboard.press("Escape");
+  findings.push(...(await audit(page, "Bibliothek mit „Schützen“")));
+
+  // Nicht geschützt, Browser bietet die Installation an (TDD 5.1).
   await changeDevice(page, { ios: false });
+  await fakeInstallPrompt(page);
   await page.reload();
-  await expect(page.locator(".hint")).toContainText("nicht dauerhaft geschützt");
-  findings.push(...(await audit(page, "Bibliothek mit Hinweis auf Backups")));
+  await expect(page.getByRole("button", { name: "Installieren" })).toBeVisible();
+  findings.push(...(await audit(page, "Bibliothek mit Hinweis auf Backups und Installieren")));
+
+  // Eine Antwort vor acht Tagen ohne Backup: Die Erinnerung ist fällig (D-46).
+  const now = Date.now();
+  await page.clock.setFixedTime(new Date(now - 8 * 86_400_000));
+  await startLearning(page, "Wetter");
+  await page.locator(".flash .front").click();
+  await page.getByRole("button", { name: "Gewusst", exact: true }).click();
+  await expect(page.getByText("1 von 3 geschafft")).toBeVisible();
+  await endPractice(page);
+  await page.clock.setFixedTime(new Date(now));
+  await page.reload();
+  await hintsChecked();
+  await expect(page.getByRole("button", { name: "Sichern" })).toBeEnabled();
+  findings.push(...(await audit(page, "Bibliothek mit Backup-Erinnerung")));
+
+  // Geschützt wie Chrome auf Android: nur das Angebot zur Installation.
+  await changeDevice(page, { granted: true });
+  await page.reload();
+  await expect(page.getByText("Als App installieren? Deine Vokabeln kommen mit.")).toBeVisible();
+  findings.push(...(await audit(page, "Bibliothek mit Installationsangebot")));
+  await page.goto("./#/settings");
+  await expect(page.getByRole("button", { name: "Als App installieren" })).toBeVisible();
+  findings.push(...(await audit(page, "Einstellungen mit Installieren")));
 
   expect(findings).toEqual([]);
   expect(errors).toEqual([]);

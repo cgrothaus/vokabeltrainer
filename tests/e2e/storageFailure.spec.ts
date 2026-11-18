@@ -191,9 +191,7 @@ test("E2E-19 Wiederherstellen bei vollem Speicher lässt den Bestand unveränder
     ),
   });
   await page.getByRole("button", { name: "Alle Daten ersetzen" }).click();
-  await expect(
-    page.getByRole("region", { name: "Backup wiederherstellen" }).getByRole("alert"),
-  ).toContainText(
+  await expect(page.getByRole("region", { name: "Backup laden" }).getByRole("alert")).toContainText(
     "Der Speicher auf diesem Gerät ist voll. Das Backup wurde nicht wiederhergestellt; deine bisherigen Daten sind unverändert.",
   );
   expect(await readStore<StoredSet>(page, "sets")).toHaveLength(1);
@@ -285,7 +283,9 @@ test("E2E-19 Verlorene Verbindung: Der nächste Zugriff verbindet neu, ohne Meld
 }) => {
   const errors = collectErrors(page);
   await page.goto("./");
-  await expect(page.getByRole("heading", { name: "Noch keine Vokabelsets" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Lerne Vokabeln mit Karteikarten" }),
+  ).toBeVisible();
   await loseConnection(page);
   await importSet(page, "Englisch – Wetter");
   expect(await readStore<StoredSet>(page, "sets")).toHaveLength(1);

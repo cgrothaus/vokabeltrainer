@@ -70,7 +70,9 @@ const openSettings = async (page: Page) => {
 test("Einstellungen aus dem Empty State mit Version und Weg zum Backup", async ({ page }) => {
   const errors = collectErrors(page);
   await page.goto("./");
-  await expect(page.getByRole("heading", { name: "Noch keine Vokabelsets" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Lerne Vokabeln mit Karteikarten" }),
+  ).toBeVisible();
   await openSettings(page);
   await expect(page.getByText(/^Version \d+\.\d+\.\d+\+\w+$/)).toBeVisible();
 
@@ -191,7 +193,9 @@ test("E2E-18 Alle Daten löschen: Ankündigung, Abbrechen, danach leere Biblioth
   await start.click();
   await page.getByRole("button", { name: "1 Set und Lernstand löschen" }).click();
   await expect(libraryMessage(page)).toHaveText("Alle Daten gelöscht.");
-  await expect(page.getByRole("heading", { name: "Noch keine Vokabelsets" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Lerne Vokabeln mit Karteikarten" }),
+  ).toBeVisible();
   for (const store of STORES) expect(await readStore(page, store), store).toEqual([]);
   const meta = await readStore<{ key: string }>(page, "meta");
   expect(meta.map((record) => record.key)).toContain("persistRequested");

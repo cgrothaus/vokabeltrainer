@@ -45,10 +45,14 @@ test("E2E-16 Empty State → Hilfe → Vorlage kopieren und Formatbeschreibung t
   const errors = collectErrors(page);
   await withStubs(page, "ok");
   await page.goto("./");
-  await expect(page.getByRole("heading", { name: "Noch keine Vokabelsets" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Erstes Vokabelset importieren" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Lerne Vokabeln mit Karteikarten" }),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Erstes Vokabelset hinzufügen" })).toBeVisible();
   // Die Wege unter der Liste stecken bei leerer Bibliothek im Empty State.
-  await expect(page.getByRole("link", { name: "Vokabelset hinzufügen" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Vokabelset hinzufügen", exact: true })).toHaveCount(
+    0,
+  );
 
   await page.getByRole("link", { name: "Wie bekomme ich ein Vokabelset?" }).click();
   await expect(
@@ -116,7 +120,9 @@ test("Formatbeschreibung liegt neben der App, auch offline und im Browser mit de
 
 test("Hilfe ist aus Bibliothek mit Sets und aus dem Import erreichbar", async ({ page }) => {
   await importSet(page, "Englisch – Wetter");
-  await expect(page.getByRole("heading", { name: "Noch keine Vokabelsets" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Lerne Vokabeln mit Karteikarten" })).toHaveCount(
+    0,
+  );
   await page.getByRole("link", { name: "Wie bekomme ich ein Vokabelset?" }).click();
   await expect(
     page.getByRole("heading", { name: "Wie bekomme ich ein Vokabelset?" }),

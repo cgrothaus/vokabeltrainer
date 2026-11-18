@@ -1,12 +1,15 @@
-// Einstellungen (TDD 3.2, 10, 13.5, FR-21, FR-25): Darstellung, Weg zum Backup, alle Daten löschen und
-// die App-Version.
+// Einstellungen (TDD 3.2, 10, 13.5, 13.6, FR-21, FR-25, FR-35): Darstellung als Segmentschalter, Stand
+// des Speicherschutzes mit „Als App installieren“ bzw. dem Weg zum Home-Bildschirm, Backup, alle Daten
+// löschen und die App-Version.
 import type { RecordCounts } from "../../domain/backup";
 import type { PersistenceState } from "../../domain/storageProtection";
 import type { Theme } from "../../domain/theme";
 import { frame } from "../components/frame";
+import { type IosDevice, openHomeScreenSheet } from "../components/homeScreen";
 import { openSheet } from "../components/sheet";
 import type { DeleteAllOutcome } from "../deleteAll";
 import { focusSoon, h } from "../dom";
+import { icon } from "../icons";
 import type { SaveThemeOutcome } from "../theme";
 
 export interface SettingsContext {
@@ -19,6 +22,13 @@ export interface SettingsContext {
   onRemoved: (message: string) => void;
   appVersion: string;
   persistence: PersistenceState;
+  /** Auf iOS im Browser: Gerät für den Weg zum Home-Bildschirm (TDD 6.6), sonst `null`. */
+  homeScreen: IosDevice | null;
+  hasSets: () => Promise<boolean>;
+  canInstall: () => boolean;
+  /** Zeigt die Rückfrage des Browsers; direkt im Klick aufrufen (TDD 5.1). */
+  install: () => void;
+  onInstallChange: (listener: () => void, signal: AbortSignal) => void;
 }
 
 /** Stand des Speicherschutzes (TDD 6.6, 13.6); Hinweise dazu stehen in der Bibliothek. */
@@ -39,7 +49,7 @@ const NO_SCOPE =
 
 const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
-export function settingsView(context: SettingsContext): Node {
+export function settingsView(context: SettingsContext, signal: AbortSignal): Node {
   const main = h("main", { class: "settings" });
   const page = frame({ back: { parent: "#/" } }, main);
   focusSoon(page.setTitle("Einstellungen"));
@@ -48,10 +58,24 @@ export function settingsView(context: SettingsContext): Node {
     h(
       "section",
       { "aria-labelledby": "settings-data" },
-      h("h2", { id: "settings-data" }, "Daten"),
-      h("p", null, PERSISTENCE_TEXT[context.persistence]),
-      h("p", null, h("a", { href: "#/backup" }, "Backup und Wiederherstellung")),
-      deletion(context, page.element),
+      h("h2", { id: "settings-data" }, "Deine Daten"),
+      protection(context, page.element, signal),
+      h(
+        "ul",
+        { class: "rows" },
+        h(
+          "li",
+          null,
+          h(
+            "a",
+            { href: "#/backup" },
+            icon("shield"),
+            h("span", null, "Backup und Wiederherstellung"),
+            icon("chevron"),
+          ),
+        ),
+        h("li", null, deletion(context, page.element)),
+      ),
     ),
     h(
       "section",
@@ -63,6 +87,53 @@ export function settingsView(context: SettingsContext): Node {
   return page.element;
 }
 
+/** Stand des Speicherschutzes als Karte mit Punkt und Satz, dazu der Weg, ihn zu verbessern. */
+function protection(context: SettingsContext, within: Element, signal: AbortSignal): Node {
+  const granted = context.persistence === "granted";
+  const action = h("div", { class: "panel-actions" });
+  const showAction = () => {
+    // Installieren ist Komfort, auch bei gewährtem Speicher (TDD 5.1); der Home-Bildschirm schützt.
+    if (context.canInstall())
+      return action.replaceChildren(
+        h("button", { type: "button", onclick: context.install }, "Als App installieren"),
+      );
+    if (granted || !context.homeScreen) return action.replaceChildren();
+    const device = context.homeScreen;
+    const open: HTMLButtonElement = h(
+      "button",
+      {
+        type: "button",
+        onclick: async () => {
+          const hasSets = await context.hasSets().catch(() => true);
+          openHomeScreenSheet(within, { device, hasSets, returnTo: open });
+        },
+      },
+      "Auf den Home-Bildschirm",
+    );
+    action.replaceChildren(open);
+  };
+  showAction();
+  context.onInstallChange(showAction, signal);
+  return h(
+    "div",
+    { class: "panel" },
+    h(
+      "p",
+      { class: "state" },
+      h("span", { class: granted ? "dot ok" : "dot", "aria-hidden": "true" }),
+      h("span", null, PERSISTENCE_TEXT[context.persistence]),
+    ),
+    h(
+      "p",
+      { class: "muted" },
+      granted
+        ? "Dein Gerät löscht die Vokabeln nicht von selbst."
+        : "Der Browser kann die Vokabeln löschen, wenn du länger nicht lernst. Ein Backup schützt sie.",
+    ),
+    action,
+  );
+}
+
 function themeChoice(context: SettingsContext): Node {
   const status = h("p", { "aria-live": "polite" });
   return h(
@@ -71,7 +142,7 @@ function themeChoice(context: SettingsContext): Node {
     h("legend", null, "Darstellung"),
     h(
       "div",
-      { class: "choices" },
+      { class: "seg" },
       THEMES.map(([value, label]) =>
         h(
           "label",
@@ -87,7 +158,7 @@ function themeChoice(context: SettingsContext): Node {
               if (!outcome.ok) status.textContent = outcome.error;
             },
           }),
-          label,
+          h("span", null, label),
         ),
       ),
     ),
@@ -114,13 +185,13 @@ function consequence(scope: RecordCounts): string {
 }
 
 /** Löschen mit Rückfrage im Blatt und Umfang wie beim Set (TDD 10, 13.7, FR-06). */
-function deletion(context: SettingsContext, within: Element): Node {
+function deletion(context: SettingsContext, within: Element): Node[] {
   const errors = h("div", { role: "alert" });
   const start = h(
     "button",
     {
       type: "button",
-      class: "secondary",
+      class: "destructive",
       onclick: async () => {
         start.disabled = true;
         errors.replaceChildren();
@@ -136,7 +207,8 @@ function deletion(context: SettingsContext, within: Element): Node {
         confirm(scope);
       },
     },
-    "Alle Daten löschen",
+    icon("trash"),
+    h("span", null, "Alle Daten löschen"),
   );
 
   const confirm = (scope: RecordCounts) => {
@@ -186,5 +258,5 @@ function deletion(context: SettingsContext, within: Element): Node {
     });
   };
 
-  return h("div", null, start, errors);
+  return [start, errors];
 }

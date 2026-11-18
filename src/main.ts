@@ -51,7 +51,9 @@ import {
   onChangeElsewhere,
 } from "./platform/broadcast";
 import { canReadClipboard, copyText, readClipboard } from "./platform/clipboard";
-import { isInstalled, isIos } from "./platform/device";
+import { iosDeviceName, isInstalled, isIos } from "./platform/device";
+import { canInstall, install, onInstallChange, watchInstall } from "./platform/install";
+import { dismissInstallOffer, installOfferDismissed } from "./app/installOffer";
 import { persistenceState, requestPersistence } from "./platform/persistence";
 import type { EntryForm } from "./domain/entryForm";
 import type { StoredSet } from "./domain/model";
@@ -79,6 +81,8 @@ if (!root || !notice || !storageNotice)
 mountUpdateNotice(notice);
 registerServiceWorker(showUpdateNotice);
 mountStorageNotice(storageNotice);
+// Das Angebot des Browsers kann schon vor dem Öffnen der Datenbank kommen (TDD 5.1).
+watchInstall();
 
 /** Stores, deren Änderung andere Tabs neu zeichnen lässt (TDD 3.4). */
 const CHANGES_ELSEWHERE = new Set<StoreName>(["sets", "settings"]);
@@ -188,6 +192,12 @@ async function start(): Promise<void> {
       {
         protection: (hasSets) =>
           protectionNotice({ persistence, ios: isIos(), installed: isInstalled(), hasSets }),
+        device: iosDeviceName(),
+        canInstall,
+        install: () => void install(),
+        onInstallChange,
+        installOfferDismissed: () => installOfferDismissed(db),
+        dismissInstallOffer: () => dismissInstallOffer(db),
         loadReminder: () => loadReminder(db),
         prepareBackup: () => prepareBackup(db, __APP_VERSION__),
         saveBackup: (prepared) => saveBackup(db, prepared),
@@ -334,23 +344,31 @@ async function start(): Promise<void> {
         return outcome;
       },
     });
-  const settingsPage = () =>
-    settingsView({
-      theme,
-      chooseTheme: (chosen) => {
-        showTheme(chosen);
-        return saveTheme(db, chosen);
+  const settingsPage = (signal: AbortSignal) =>
+    settingsView(
+      {
+        theme,
+        chooseTheme: (chosen) => {
+          showTheme(chosen);
+          return saveTheme(db, chosen);
+        },
+        dataScope: () => dataScope(db),
+        removeAllData: () => removeAllData(db),
+        onRemoved: (removed) => {
+          showTheme("system");
+          message = removed;
+          replaceRoute("#/");
+        },
+        appVersion: __APP_VERSION__,
+        persistence,
+        homeScreen: isIos() && !isInstalled() ? iosDeviceName() : null,
+        hasSets: async () => (await countSets(db)) > 0,
+        canInstall,
+        install: () => void install(),
+        onInstallChange,
       },
-      dataScope: () => dataScope(db),
-      removeAllData: () => removeAllData(db),
-      onRemoved: (removed) => {
-        showTheme("system");
-        message = removed;
-        replaceRoute("#/");
-      },
-      appVersion: __APP_VERSION__,
-      persistence,
-    });
+      signal,
+    );
   const helpPage = () =>
     helpView({
       prompt: newSetPrompt(),

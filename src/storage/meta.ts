@@ -5,6 +5,8 @@ export type MetaKey =
   | "persistRequested"
   | "lastBackupAt"
   | "backupReminderSnoozedUntil"
+  /** „Später“ beim Installationsangebot der Bibliothek (TDD 5.1); tolerant gelesen, nicht im Backup. */
+  | "installOfferDismissedAt"
   /** Zeitpunkt der Sicherungskopie vor der letzten Migration (TDD 7.3). */
   | "preMigrationCopyAt";
 
