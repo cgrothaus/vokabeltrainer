@@ -259,3 +259,7 @@ dialog.sheet::backdrop {
     max-width: 28rem;
   }
 }
+
+.sheet .actions > a.action {
+  justify-content: center;
+}

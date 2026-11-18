@@ -1,9 +1,12 @@
-// Sitzung einrichten (TDD 12.1, FR-07, FR-08, D-27): Sektionen, Richtung, Anzahl in festen Stufen und
-// Anteil an Multiple Choice, vorbelegt mit der zuletzt gewählten Einrichtung des Sets.
+// Sitzung einrichten (TDD 12.1, FR-07, FR-08, D-27): oben „Wie beim letzten Mal“ mit der gemerkten
+// Einrichtung, darunter Sektionen als Chips, Richtung und Anzahl als Segmentschalter und der Anteil an
+// Multiple Choice, vorbelegt mit der gemerkten Einrichtung oder der Voreinstellung.
 import type { Direction, StoredSet } from "../../domain/model";
 import {
   type CountChoice,
   countOptions,
+  defaultSetup,
+  describeSetup,
   effectiveCount,
   fitCount,
   MC_SHARE_STEP,
@@ -12,13 +15,15 @@ import {
 } from "../../domain/practiceSetup";
 import { type Frame, frame } from "../components/frame";
 import { focusSoon, h } from "../dom";
+import { icon } from "../icons";
 import { languageName } from "../languages";
 import { failureMessage } from "../storageMessages";
 
 export interface LearnContext {
   /** `undefined`, wenn es das Set nicht gibt. */
   loadSet: () => Promise<StoredSet | undefined>;
-  loadSetup: (set: StoredSet) => Promise<PracticeSetup>;
+  /** Die gemerkte Einrichtung; `null`, wenn es keine gibt oder sie nicht lesbar ist. */
+  loadSetup: (set: StoredSet) => Promise<PracticeSetup | null>;
   /** Legt die Sitzung an und wechselt zu ihr; lehnt ab, wenn das Speichern scheitert. */
   startPractice: (set: StoredSet, setup: PracticeSetup) => Promise<void>;
 }
@@ -59,7 +64,13 @@ export function learnView(context: LearnContext, setId: string): Node {
   return page.element;
 }
 
-function form(set: StoredSet, initial: PracticeSetup, context: LearnContext, page: Frame): Node[] {
+function form(
+  set: StoredSet,
+  remembered: PracticeSetup | null,
+  context: LearnContext,
+  page: Frame,
+): Node[] {
+  const initial = remembered ?? defaultSetup(set);
   const selected = new Set(initial.sectionIds);
   let direction = initial.direction;
   // Die gewählte Stufe bleibt, auch wenn sie bei kleinerer Auswahl zeitweise als „alle“ erscheint.
@@ -111,26 +122,36 @@ function form(set: StoredSet, initial: PracticeSetup, context: LearnContext, pag
       h("legend", null, "Sektionen"),
       h(
         "div",
-        { class: "actions" },
-        h("button", { type: "button", class: "secondary", onclick: () => setAll(true) }, "Alle"),
-        h("button", { type: "button", class: "secondary", onclick: () => setAll(false) }, "Keine"),
-      ),
-      h(
-        "ul",
-        { class: "section-choice" },
+        { class: "toggles" },
         set.sections.map((section, index) =>
           h(
-            "li",
-            null,
+            "label",
+            { class: "toggle" },
+            boxes[index],
             h(
-              "label",
+              "span",
               null,
-              boxes[index],
               h("span", { class: "title" }, section.title),
-              h("span", { class: "count" }, count(section.entries.length, "Eintrag", "Einträge")),
+              " ",
+              h(
+                "span",
+                { class: "count" },
+                String(section.entries.length),
+                h(
+                  "span",
+                  { class: "visually-hidden" },
+                  section.entries.length === 1 ? " Vokabel" : " Vokabeln",
+                ),
+              ),
             ),
           ),
         ),
+      ),
+      h(
+        "div",
+        { class: "quick-choice" },
+        h("button", { type: "button", class: "textbtn", onclick: () => setAll(true) }, "Alle"),
+        h("button", { type: "button", class: "textbtn", onclick: () => setAll(false) }, "Keine"),
       ),
     );
 
@@ -140,7 +161,7 @@ function form(set: StoredSet, initial: PracticeSetup, context: LearnContext, pag
     h("legend", null, "Richtung"),
     h(
       "div",
-      { class: "choices" },
+      { class: "seg" },
       directions.map(([value, label]) =>
         h(
           "label",
@@ -152,13 +173,13 @@ function form(set: StoredSet, initial: PracticeSetup, context: LearnContext, pag
             checked: value === direction,
             onchange: () => (direction = value),
           }),
-          label,
+          h("span", null, label),
         ),
       ),
     ),
   );
 
-  const countChoices = h("div", { class: "choices" });
+  const countChoices = h("div", { class: "seg" });
   const countChoice = h("fieldset", null, h("legend", null, "Anzahl"), countChoices);
   const shareText = () => `${mcShare} % (Rest: Karteikarten)`;
   const shareValue = h("span", { class: "share-value" }, shareText());
@@ -187,7 +208,12 @@ function form(set: StoredSet, initial: PracticeSetup, context: LearnContext, pag
   const status = h("p", { "aria-live": "polite", class: "selection" });
   const problem = h("div", { role: "alert" });
   // In der Aktionsleiste, also außerhalb des Formulars; `form` verbindet beide (TDD 13.7).
-  const start = h("button", { type: "submit", form: "setup-form" });
+  // Mit gemerkter Einrichtung ist „Wie beim letzten Mal“ der Hauptweg, der Start unten zweitrangig.
+  const start = h("button", {
+    type: "submit",
+    form: "setup-form",
+    class: remembered ? "secondary" : null,
+  });
 
   const renderCounts = (total: number) => {
     const shown = fitCount(chosenCount, total);
@@ -206,7 +232,7 @@ function form(set: StoredSet, initial: PracticeSetup, context: LearnContext, pag
               update();
             },
           }),
-          option === "all" ? `alle (${total})` : String(option),
+          h("span", null, option === "all" ? `alle (${total})` : String(option)),
         ),
       ),
     );
@@ -228,25 +254,54 @@ function form(set: StoredSet, initial: PracticeSetup, context: LearnContext, pag
   };
   update();
 
+  const begin = async (chosen: PracticeSetup, buttons: HTMLButtonElement[]) => {
+    for (const button of buttons) button.disabled = true;
+    problem.textContent = "";
+    try {
+      await context.startPractice(set, chosen);
+    } catch (error) {
+      console.error("Sitzung nicht gestartet", error);
+      problem.textContent = failureMessage(error, "Die Lernsitzung wurde nicht gestartet.");
+      for (const button of buttons) button.disabled = false;
+      update();
+    }
+  };
+
+  const again: HTMLButtonElement | null =
+    remembered &&
+    h(
+      "button",
+      { type: "button", onclick: () => void begin(remembered, [again!, start]) },
+      icon("play"),
+      h("span", null, "Los geht’s"),
+    );
+  const quick = remembered && [
+    h(
+      "section",
+      { class: "quick", "aria-labelledby": "setup-again" },
+      h("h2", { id: "setup-again" }, "Wie beim letzten Mal"),
+      h(
+        "ul",
+        { class: "pills" },
+        describeSetup(set, remembered, languageName).map((part) => h("li", null, part)),
+      ),
+      again,
+    ),
+    h("p", { class: "or" }, "oder anpassen"),
+  ];
+
   focusSoon(page.setTitle(set.title));
   page.setDock(start);
   return [
-    h("p", { class: "languages" }, "Lernsitzung einrichten"),
+    h("p", { class: "lead" }, "Lernsitzung einrichten"),
+    ...(quick || []),
     h(
       "form",
       {
         id: "setup-form",
-        onsubmit: async (event: Event) => {
+        onsubmit: (event: Event) => {
           event.preventDefault();
-          start.disabled = true;
-          problem.textContent = "";
-          try {
-            await context.startPractice(set, setup());
-          } catch (error) {
-            console.error("Sitzung nicht gestartet", error);
-            problem.textContent = failureMessage(error, "Die Lernsitzung wurde nicht gestartet.");
-            start.disabled = false;
-          }
+          void begin(setup(), again ? [again, start] : [start]);
         },
       },
       sections,

@@ -41,7 +41,8 @@ export function defaultSetup(set: StoredSet): PracticeSetup {
   return {
     sectionIds: set.sections.map((section) => section.id),
     direction: "termToMeaning",
-    count: "all",
+    // Bei weniger Einträgen ergibt das „alle“ (`fitCount`, D-47).
+    count: 20,
     mcShare: DEFAULT_MC_SHARE,
   };
 }
@@ -108,4 +109,40 @@ export function pickEntries(set: StoredSet, setup: PracticeSetup, random: () => 
     .flatMap((section) => section.entries.map((entry) => entry.id));
   const count = effectiveCount(setup.count, ids.length);
   return count < ids.length ? shuffle(ids, random).slice(0, count) : ids;
+}
+
+/**
+ * Zusammenfassung für „Wie beim letzten Mal“ (TDD 12.1), z. B. „20 Vokabeln“, „Englisch → Deutsch“,
+ * „alle Sektionen“, „25 % Multiple Choice“. Bei nur einer Sektion entfällt die Angabe dazu.
+ */
+export function describeSetup(
+  set: StoredSet,
+  setup: PracticeSetup,
+  languageName: (code: string) => string,
+): string[] {
+  const cards = effectiveCount(setup.count, selectedEntryCount(set, setup.sectionIds));
+  const term = languageName(set.termLanguage);
+  const meaning = languageName(set.meaningLanguage);
+  const direction =
+    setup.direction === "mixed"
+      ? "Gemischt"
+      : setup.direction === "termToMeaning"
+        ? `${term} → ${meaning}`
+        : `${meaning} → ${term}`;
+  const chosen = set.sections.filter((section) => setup.sectionIds.includes(section.id));
+  const sections =
+    set.sections.length < 2
+      ? []
+      : chosen.length === set.sections.length
+        ? ["alle Sektionen"]
+        : chosen.length === 1
+          ? [chosen[0]!.title]
+          : [`${chosen.length} Sektionen`];
+  const share =
+    setup.mcShare === 0
+      ? "nur Karteikarten"
+      : setup.mcShare === 100
+        ? "nur Multiple Choice"
+        : `${setup.mcShare} % Multiple Choice`;
+  return [cards === 1 ? "1 Vokabel" : `${cards} Vokabeln`, direction, ...sections, share];
 }

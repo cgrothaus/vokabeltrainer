@@ -9,11 +9,14 @@ export const SWIPE_DISTANCE = 80;
 
 const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-/** Mit `follow` folgt das Element dem Finger, außer bei reduzierter Bewegung. */
+/**
+ * Mit `follow` folgt das Element dem Finger, außer bei reduzierter Bewegung; als Funktion entscheidet
+ * es je Geste, z. B. erst nach dem Aufdecken.
+ */
 export function onSwipe(
   element: HTMLElement,
   handler: (direction: SwipeDirection) => void,
-  follow = false,
+  follow: boolean | (() => boolean) = false,
 ): void {
   let start: { x: number; y: number; pointerId: number } | null = null;
   const reset = () => {
@@ -27,7 +30,8 @@ export function onSwipe(
     element.setPointerCapture(event.pointerId);
   });
   element.addEventListener("pointermove", (event) => {
-    if (!start || event.pointerId !== start.pointerId || !follow || reducedMotion()) return;
+    if (!start || event.pointerId !== start.pointerId || reducedMotion()) return;
+    if (!(typeof follow === "function" ? follow() : follow)) return;
     element.style.transform = `translateX(${event.clientX - start.x}px)`;
   });
   element.addEventListener("pointercancel", reset);

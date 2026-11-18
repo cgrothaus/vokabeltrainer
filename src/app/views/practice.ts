@@ -1,20 +1,26 @@
 // Lernsitzung (TDD 12.2, 12.3, FR-09, FR-10, FR-12) mit Karteikarten und Multiple Choice. Karteikarte:
-// Tippen, Enter, Leertaste oder Wischen deckt auf; erst danach bewerten Schaltflächen, Pfeil
-// links/rechts oder Wischen. Jede Eingabe löst genau eine Aktion aus. „Beenden“ und die Zurück-Taste
-// zeigen den Zwischenstand; Ergebnis und Zwischenstand listen die Fehler mit „Nur Fehler üben“ (D-29).
+// Tippen, Enter, Leertaste oder Wischen deckt auf, die Karte wendet sich; erst danach bewerten die
+// Schaltflächen unten, Pfeil links/rechts oder Wischen. Jede Eingabe löst genau eine Aktion aus.
+// „Beenden“ und die Zurück-Taste zeigen den Zwischenstand als Blatt über der Karte (D-51); das
+// Ergebnis listet die Fehler mit „Nur Fehler üben“ (D-29).
 import type { StoredEntry } from "../../domain/model";
 import { cardFaces, currentCard, type Result, sideText } from "../../domain/practice";
 import { entryDetails, hasDetails } from "../components/entryDetails";
 import { frame } from "../components/frame";
+import { openSheet, type Sheet } from "../components/sheet";
 import { onSwipe } from "../components/swipe";
 import { setUpdateBlocked } from "../components/updateNotice";
 import { focusSoon, h } from "../dom";
+import { icon } from "../icons";
+import { languageName } from "../languages";
 import type { PracticeSession, Question } from "../practice";
 import { hasMark, pushMark, replaceRoute } from "../router";
 import { failureMessage } from "../storageMessages";
 
 /** Markiert den zusätzlichen Verlaufseintrag, auf dem die Karten liegen. */
 const CARDS = "practice-cards";
+
+const SVG = "http://www.w3.org/2000/svg";
 
 /** Tasten, die ein Eingabefeld oder eine fokussierte Schaltfläche selbst behandelt. */
 const handledByTarget = (event: KeyboardEvent) =>
@@ -38,15 +44,30 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
 
   const { set } = practice;
   const main = h("main", { class: "practice" });
-  const page = frame({}, main);
+  // Fortschritt statt Titel in der App-Leiste; die `h1` mit dem Set-Titel bleibt für Screenreader.
+  const fill = h("span", null);
+  const count = h("span", { class: "count", id: "practice-count" });
+  const bar = h(
+    "span",
+    {
+      class: "progress",
+      role: "progressbar",
+      "aria-labelledby": "practice-count",
+      "aria-valuemin": 0,
+    },
+    fill,
+  );
+  const progress = h("div", { class: "session-progress" }, bar, count);
+  const page = frame({ actions: [progress] }, main);
   const problem = h("div", { role: "alert" });
   // Tastenkürzel der gerade gezeigten Karte; liefert `true`, wenn die Taste etwas ausgelöst hat.
   let onKey: ((event: KeyboardEvent) => boolean) | null = null;
   document.addEventListener(
     "keydown",
     (event) => {
-      // Eine gehaltene Taste löst nur einmal aus (FR-09).
+      // Eine gehaltene Taste löst nur einmal aus (FR-09); unter dem Zwischenstand ruht die Karte.
       if (event.repeat || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+      if (screen !== "cards") return;
       if (onKey?.(event)) event.preventDefault();
     },
     { signal },
@@ -66,7 +87,7 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
   };
 
   // Die Karten liegen auf einem zusätzlichen Verlaufseintrag mit derselben Adresse: Zurück löst so
-  // kein `hashchange` aus und führt zum Zwischenstand statt aus der Sitzung (D-29).
+  // kein `hashchange` aus und öffnet den Zwischenstand, statt die Sitzung zu verlassen (D-29).
   const onCards = () => hasMark(CARDS);
   const enterCards = () => {
     if (!onCards()) pushMark(CARDS);
@@ -81,7 +102,7 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
       if (location.hash !== "#/practice") return;
       if (onCards()) {
         // Vorwärts aus dem Zwischenstand: weiterlernen.
-        if (screen === "pause") proceed();
+        if (screen === "pause") resume();
       } else if (screen === "cards" && answered() && !practice.finished) showPause();
       // Ohne Antwort und nach dem Ende gibt es keinen Zwischenstand: gleich weiter zurück.
       else if (screen !== "pause") history.back();
@@ -91,6 +112,19 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
 
   const proceed = () => (practice.finished ? showResult() : showCard());
 
+  /** Fortschritt in der App-Leiste; „3 von 12 geschafft“ liest der Screenreader am Balken vor. */
+  const showProgress = () => {
+    const { done, total } = practice.state;
+    page.element.classList.add("in-session");
+    count.replaceChildren(
+      `${done} von ${total}`,
+      h("span", { class: "visually-hidden" }, " geschafft"),
+    );
+    bar.setAttribute("aria-valuemax", String(total));
+    bar.setAttribute("aria-valuenow", String(done));
+    fill.style.width = `${total === 0 ? 0 : Math.round((done / total) * 100)}%`;
+  };
+
   const showCard = () => {
     const card = currentCard(practice.state)!;
     const entry = practice.entry(card.entryId);
@@ -99,12 +133,6 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
       card.direction === "termToMeaning"
         ? [set.termLanguage, set.meaningLanguage]
         : [set.meaningLanguage, set.termLanguage];
-    const { done, total } = practice.state;
-    const head = h(
-      "div",
-      { class: "practice-head" },
-      h("p", null, `${done} von ${total} geschafft`),
-    );
     page.setTitle(set.title);
     page.setBack({
       label: "Beenden",
@@ -112,7 +140,7 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
       // Wie die Zurück-Taste; ohne Antwort gleich zur Bibliothek (D-29).
       onclick: () => (answered() ? history.back() : (location.hash = "#/")),
     });
-    page.setDock();
+    showProgress();
 
     /** Speichert die Antwort; erst danach geht es weiter (TDD 12.4). */
     const save = async (result: Result): Promise<boolean> => {
@@ -127,62 +155,67 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
         return false;
       }
       problem.textContent = saved.ok ? "" : saved.error;
-      // Inzwischen zum Zwischenstand gewechselt: mit dem neuen Stand zeigen, statt vorzurücken.
-      if (shown !== at && screen === "pause") {
+      // Inzwischen zum Zwischenstand gewechselt: ihn mit dem neuen Stand zeigen, statt vorzurücken;
+      // „Weiterlernen“ zeigt dann die nächste Karte.
+      if (screen === "pause") {
         if (practice.finished) showResult();
         else showPause();
+        return false;
       }
       return shown === at;
     };
 
     const showFlashcard = () => {
       let revealed = false;
+      let rating = false;
+      const rate = async (result: Result) => {
+        if (!revealed || rating) return;
+        rating = true;
+        again.disabled = known.disabled = true;
+        if (await save(result)) proceed();
+      };
+      const again = h(
+        "button",
+        { type: "button", class: "secondary", onclick: () => void rate("incorrect") },
+        "Nochmal",
+      );
+      const known = h(
+        "button",
+        { type: "button", class: "right", onclick: () => void rate("correct") },
+        icon("check"),
+        h("span", null, "Gewusst"),
+      );
+
+      const front = h(
+        "button",
+        { type: "button", class: "face front" },
+        h("span", { class: "lang-tag" }, languageName(promptLanguage)),
+        h("span", { class: "prompt", lang: promptLanguage }, faces.prompt),
+        h("span", { class: "small" }, "Tippen zum Aufdecken"),
+      );
+      const back = h(
+        "div",
+        { class: "face back", tabindex: -1, inert: true },
+        h("span", { class: "lang-tag" }, languageName(answerLanguage)),
+        h("span", { class: "prompt small", lang: promptLanguage }, faces.prompt),
+        h("span", { class: "answer", lang: answerLanguage }, faces.answer),
+        ...details(entry),
+        h("span", { class: "small swipe-hint" }, "← Nochmal · Gewusst →"),
+      );
+      const flash = h(
+        "div",
+        { class: "flash", onclick: () => reveal() },
+        h("div", { class: "flash-inner" }, front, back),
+      );
+
       const reveal = () => {
         // Ein Klick nach einer Wischgeste darf nicht ein zweites Mal aufdecken.
         if (revealed) return;
         revealed = true;
-        showAnswer();
-      };
-
-      const showAnswer = () => {
-        let rating = false;
-        const rate = async (result: Result) => {
-          if (rating) return;
-          rating = true;
-          again.disabled = known.disabled = true;
-          if (await save(result)) proceed();
-        };
-        const side = h(
-          "div",
-          { class: "card swipeable", tabindex: -1 },
-          h("span", { class: "prompt small", lang: promptLanguage }, faces.prompt),
-          h("span", { class: "answer", lang: answerLanguage }, faces.answer),
-          h("span", { class: "small" }, "← Nochmal · Gewusst →"),
-        );
-        // Eine neue Geste auf der Rückseite bewertet: rechts „Gewusst“, links „Nochmal“.
-        onSwipe(
-          side,
-          (direction) => void rate(direction === "right" ? "correct" : "incorrect"),
-          true,
-        );
-        const again = h(
-          "button",
-          { type: "button", class: "secondary", onclick: () => void rate("incorrect") },
-          "Nochmal",
-        );
-        const known = h(
-          "button",
-          { type: "button", onclick: () => void rate("correct") },
-          "Gewusst",
-        );
-        show(
-          "cards",
-          head,
-          side,
-          h("div", { class: "rating" }, again, known),
-          ...details(entry),
-          problem,
-        );
+        flash.classList.add("flipped");
+        front.inert = true;
+        back.inert = false;
+        page.setDock(again, known);
         onKey = (event) => {
           if (event.key === "ArrowRight") void rate("correct");
           else if (event.key === "ArrowLeft") void rate("incorrect");
@@ -190,18 +223,22 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
           return true;
         };
         // Fokus auf die Antwort, nicht auf eine Schaltfläche: Ein gehaltenes Enter bewertet so nicht.
-        focusSoon(side);
+        focusSoon(back);
       };
 
-      const front = h(
-        "button",
-        { type: "button", class: "card", onclick: reveal },
-        h("span", { class: "prompt", lang: promptLanguage }, faces.prompt),
-        h("span", { class: "small" }, "Tippen zum Aufdecken"),
+      // Vor dem Aufdecken deckt Wischen nur auf, in beide Richtungen (FR-09); danach bewertet eine neue
+      // Geste: rechts „Gewusst“, links „Nochmal“. Erst die Rückseite folgt dem Finger.
+      onSwipe(
+        flash,
+        (direction) => {
+          if (!revealed) reveal();
+          else void rate(direction === "right" ? "correct" : "incorrect");
+        },
+        () => revealed,
       );
-      // Wischen vor dem Aufdecken deckt nur auf, in beide Richtungen (FR-09).
-      onSwipe(front, reveal);
-      show("cards", head, front, problem);
+      const uncover = h("button", { type: "button", onclick: reveal }, "Aufdecken");
+      page.setDock(uncover);
+      show("cards", h("p", { class: "kind" }, "Karteikarte"), flash, problem);
       onKey = (event) => {
         if ((event.key !== "Enter" && event.key !== " ") || handledByTarget(event)) return false;
         reveal();
@@ -213,8 +250,8 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
     const showChoice = (question: Extract<Question, { mode: "multipleChoice" }>) => {
       const prompt = h(
         "div",
-        { class: "card question", tabindex: -1 },
-        h("span", { class: "small" }, "Multiple Choice"),
+        { class: "question", tabindex: -1 },
+        h("span", { class: "lang-tag" }, languageName(promptLanguage)),
         h("span", { class: "prompt", lang: promptLanguage }, faces.prompt),
       );
       const feedback = h("p", { class: "feedback", "aria-live": "polite" });
@@ -229,12 +266,14 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
           options[index]!.classList.add("wrong");
           options[index]!.prepend(h("span", { class: "mark" }, "✗ "));
         }
+        feedback.classList.add(right ? "good" : "bad");
         feedback.textContent = right
           ? "Richtig."
           : `Leider falsch. Richtig ist: ${question.options[question.correct]}`;
         if (!(await save(right ? "correct" : "incorrect"))) return;
         const next = h("button", { type: "button", onclick: proceed }, "Weiter");
-        after.replaceChildren(...details(entry), h("div", { class: "actions" }, next));
+        after.replaceChildren(...details(entry));
+        page.setDock(next);
         focusSoon(next);
       };
       const options = question.options.map((option, index) =>
@@ -249,13 +288,14 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
           option,
         ),
       );
+      page.setDock();
       show(
         "cards",
-        head,
+        h("p", { class: "kind" }, "Multiple Choice"),
         prompt,
-        h("div", { class: "options" }, options),
         feedback,
         after,
+        h("div", { class: "options" }, options),
         problem,
       );
       focusSoon(prompt);
@@ -268,28 +308,35 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
 
   const quota = (): Node[] => {
     const { firstCorrect, firstAttempts } = practice.state;
-    const { unsaved } = practice;
     return [
-      h("p", null, `${firstCorrect} von ${firstAttempts} beim ersten Mal gewusst.`),
-      // Ehrlich bleiben (AK-26, D-32): Was nicht gespeichert ist, fehlt im Lernstand.
-      ...(unsaved === 0
-        ? []
-        : [
-            h(
-              "p",
-              null,
-              unsaved === 1
-                ? "1 Antwort wurde nicht gespeichert und zählt nicht zum Lernstand."
-                : `${unsaved} Antworten wurden nicht gespeichert und zählen nicht zum Lernstand.`,
-            ),
-          ]),
+      h(
+        "p",
+        { class: "quota" },
+        h("span", { class: "hl" }, `${firstCorrect} von ${firstAttempts}`),
+        " beim ersten Mal gewusst.",
+      ),
+      ...unsavedNote(),
+    ];
+  };
+  // Ehrlich bleiben (AK-26, D-32): Was nicht gespeichert ist, fehlt im Lernstand.
+  const unsavedNote = (): Node[] => {
+    const { unsaved } = practice;
+    if (unsaved === 0) return [];
+    return [
+      h(
+        "p",
+        null,
+        unsaved === 1
+          ? "1 Antwort wurde nicht gespeichert und zählt nicht zum Lernstand."
+          : `${unsaved} Antworten wurden nicht gespeichert und zählen nicht zum Lernstand.`,
+      ),
     ];
   };
   const toLibrary = (secondary: boolean) =>
     h("a", { href: "#/", class: secondary ? "action secondary" : "action" }, "Zur Bibliothek");
 
   /** Die beim Erstversuch falschen Einträge mit „Nur Fehler üben“ (TDD 12.2); ohne Fehler nichts. */
-  const mistakes = (): { list: Node[]; repeat: HTMLButtonElement } | null => {
+  const mistakes = (): { list: Node; repeat: HTMLButtonElement } | null => {
     const { missed } = practice.state;
     if (missed.length === 0) return null;
     const again = async () => {
@@ -318,8 +365,10 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
       { type: "button", class: "secondary", onclick: () => void again() },
       `Nur Fehler üben (${missed.length})`,
     );
-    const list = [
-      h("h2", null, "Zum Nachlernen"),
+    const list = h(
+      "section",
+      { class: "panel", "aria-labelledby": "practice-missed" },
+      h("h2", { id: "practice-missed" }, "Zum Nachlernen"),
       h(
         "ul",
         { class: "mistakes" },
@@ -334,44 +383,110 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
           );
         }),
       ),
-    ];
+    );
     return { list, repeat };
   };
 
-  /** Zwischenstand (FR-12): Die Sitzung läuft weiter, bis sie verlassen wird. */
+  /** Zwischenstand (FR-12, D-51) als Blatt über der Karte; die Sitzung läuft weiter. */
+  let pause: Sheet | null = null;
+  const closePause = () => {
+    const open = pause;
+    pause = null;
+    open?.close();
+  };
+  /** „Weiterlernen“, Vorwärts oder das Blatt ohne Wahl schließen: weiter mit der aktuellen Karte. */
+  const resume = () => {
+    if (signal.aborted || screen !== "pause") return;
+    closePause();
+    enterCards();
+    proceed();
+  };
   const showPause = () => {
     const { queue, total } = practice.state;
+    closePause();
+    screen = "pause";
     // Nicht gespeicherte Antworten nennt der Zwischenstand selbst.
     problem.textContent = "";
-    const resume = h(
+    const open = queue.length;
+    const proceedButton = h(
       "button",
-      {
-        type: "button",
-        onclick: () => {
-          enterCards();
-          proceed();
-        },
+      { type: "button", onclick: resume },
+      `Weiterlernen (${open} offen)`,
+    );
+    // Den Fokus bekommt der Satz mit dem Stand, damit Screenreader ihn ansagen (TDD 13.7).
+    const [rate, ...note] = quota();
+    pause = openSheet(page.element, {
+      title: "Zwischenstand",
+      focus: rate as HTMLElement,
+      content: [
+        rate,
+        ...note,
+        h("p", null, `Noch offen: ${open} von ${total} Vokabeln.`),
+        practice.unsaved === 0 && h("p", null, "Was du schon beantwortet hast, ist gespeichert."),
+        h("div", { class: "actions" }, toLibrary(true), proceedButton),
+      ],
+      onDismiss: () => {
+        pause = null;
+        // Erst danach, sonst holt das Blatt den Fokus zurück auf „Beenden“ statt auf die Karte.
+        queueMicrotask(resume);
       },
-      `Weiterlernen (${queue.length} offen)`,
+    });
+  };
+
+  /** Erstversuchsquote als Ring (TDD 12.3); der Text daneben sagt dasselbe. */
+  const ring = (correct: number, of: number): Element => {
+    const svg = document.createElementNS(SVG, "svg");
+    svg.setAttribute("class", "ring");
+    svg.setAttribute("viewBox", "0 0 132 132");
+    svg.setAttribute("aria-hidden", "true");
+    const circle = (cls: string) => {
+      const shape = document.createElementNS(SVG, "circle");
+      for (const [key, value] of Object.entries({ class: cls, cx: "66", cy: "66", r: "54" }))
+        shape.setAttribute(key, value);
+      svg.appendChild(shape);
+      return shape;
+    };
+    circle("bg");
+    const fg = circle("fg");
+    const length = 2 * Math.PI * 54;
+    fg.setAttribute("stroke-dasharray", String(length));
+    fg.setAttribute("stroke-dashoffset", String(length));
+    const text = document.createElementNS(SVG, "text");
+    for (const [key, value] of Object.entries({ x: "66", y: "76", "text-anchor": "middle" }))
+      text.setAttribute(key, value);
+    text.textContent = `${correct}/${of}`;
+    svg.appendChild(text);
+    // Erst nach dem Einhängen füllen, damit der Ring sichtbar wächst.
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() =>
+        fg.setAttribute(
+          "stroke-dashoffset",
+          String(of === 0 ? length : length * (1 - correct / of)),
+        ),
+      ),
     );
-    const missed = mistakes();
-    show(
-      "pause",
-      ...quota(),
-      h("p", null, `Noch offen: ${queue.length} von ${total} Vokabeln.`),
-      ...(missed ? [...missed.list, h("div", { class: "actions" }, missed.repeat)] : []),
-      problem,
-    );
-    page.setBack(null);
-    page.setDock(toLibrary(true), resume);
-    focusSoon(page.setTitle("Zwischenstand"));
+    return svg;
   };
 
   const showResult = () => {
+    closePause();
     setUpdateBlocked(false);
     problem.textContent = "";
+    page.element.classList.remove("in-session");
     const missed = mistakes();
-    show("result", ...quota(), ...(missed?.list ?? []), problem);
+    const { firstCorrect, firstAttempts } = practice.state;
+    show(
+      "result",
+      h("div", { class: "trophy" }, ring(firstCorrect, firstAttempts), ...quota()),
+      missed?.list ??
+        h(
+          "section",
+          { class: "panel", "aria-labelledby": "practice-flawless" },
+          h("h2", { id: "practice-flawless" }, "Fehlerfrei"),
+          h("p", null, "Alles beim ersten Mal gewusst."),
+        ),
+      problem,
+    );
     page.setBack(null);
     page.setDock(missed?.repeat, toLibrary(false));
     focusSoon(page.setTitle("Geschafft"));
@@ -379,8 +494,10 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
 
   /** Das Set wurde inzwischen gelöscht, z. B. in einem anderen Tab (TDD 3.4): Es geht nicht weiter. */
   const showGone = (message: string) => {
+    closePause();
     setUpdateBlocked(false);
     problem.textContent = "";
+    page.element.classList.remove("in-session");
     show("result", h("p", null, message));
     page.setBack(null);
     page.setDock(toLibrary(false));

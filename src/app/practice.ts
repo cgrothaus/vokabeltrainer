@@ -81,15 +81,6 @@ export function currentPractice(): PracticeSession | null {
   return current;
 }
 
-/** Zuletzt gewählte Einrichtung des Sets (TDD 12.1); ist sie nicht lesbar, gilt die Voreinstellung. */
-export async function loadSetup(db: IDBDatabase, set: StoredSet): Promise<PracticeSetup> {
-  const stored = await getSetting(db, settingKey(set.id)).catch((error: unknown) => {
-    console.warn("Einrichtung nicht lesbar", error);
-    return undefined;
-  });
-  return restoreSetup(set, stored);
-}
-
 /** Die gemerkte Einrichtung, tolerant gelesen; `null`, wenn das Set noch keine hat (TDD 12.1). */
 export async function rememberedSetup(
   db: IDBDatabase,

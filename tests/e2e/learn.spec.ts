@@ -86,7 +86,7 @@ test("Sektion, Richtung, Anzahl und Anteil bestimmen die Sitzung und bleiben gem
   await startButton(page).click();
 
   await expect(page.getByText("0 von 10 geschafft")).toBeVisible();
-  const prompt = page.locator(".card .prompt");
+  const prompt = page.locator(".flash .front .prompt, .question .prompt");
   await expect(prompt).toHaveAttribute("lang", "de");
   expect(NUMBERS.map(([, meaning]) => meaning)).toContain(await prompt.textContent());
 
@@ -116,6 +116,41 @@ test("Sektion, Richtung, Anzahl und Anteil bestimmen die Sitzung und bleiben gem
   await expect(radio(page, "10")).toBeChecked();
   await expect(mcShare(page)).toHaveValue("40");
   await expect(startButton(page)).toHaveText("10 Vokabeln lernen");
+  expect(errors, "Fehler in der Konsole").toEqual([]);
+});
+
+test("„Wie beim letzten Mal“ fasst die gemerkte Einrichtung zusammen und startet sie sofort", async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  const set = await importTwoSections(page);
+  await openSetup(page);
+  // Ohne gemerkte Einrichtung gibt es keine Karte.
+  await expect(page.getByRole("region", { name: "Wie beim letzten Mal" })).toHaveCount(0);
+  await section(page, "Farben").uncheck();
+  await radio(page, "Gemischt").check();
+  await radio(page, "10").check();
+  await mcShare(page).fill("0");
+  await startButton(page).click();
+  await page.getByRole("button", { name: "Beenden" }).click();
+
+  await openSetup(page);
+  const again = page.getByRole("region", { name: "Wie beim letzten Mal" });
+  await expect(again.getByRole("listitem")).toHaveText([
+    "10 Vokabeln",
+    "Gemischt",
+    "Zahlen",
+    "nur Karteikarten",
+  ]);
+  await again.getByRole("button", { name: "Los geht’s" }).click();
+  await expect(page.getByText("0 von 10 geschafft")).toBeVisible();
+  await expect.poll(async () => (await readStore<Session>(page, "sessions")).length).toBe(2);
+  const sessions = await readStore<Session>(page, "sessions");
+  for (const session of sessions)
+    expect(session).toMatchObject({
+      sectionIds: [set.sections[1]!.id],
+      config: { direction: "mixed", count: 10, mcShare: 0 },
+    });
   expect(errors, "Fehler in der Konsole").toEqual([]);
 });
 

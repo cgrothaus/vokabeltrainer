@@ -14,16 +14,18 @@ import {
   swipe,
 } from "./support";
 
-const card = (page: Page) => page.getByRole("button", { name: /Tippen zum Aufdecken/ });
-const answerSide = (page: Page) => page.locator(".card.swipeable");
-const answerText = (page: Page) => page.locator(".card .answer");
+/** Vorderseite der noch nicht aufgedeckten Karte; nach dem Aufdecken wendet sich die Karte (TDD 12.3). */
+const card = (page: Page) => page.locator(".flash:not(.flipped) .front");
+const promptText = (page: Page) => page.locator(".flash .front .prompt");
+const answerSide = (page: Page) => page.locator(".flash.flipped");
+const answerText = (page: Page) => page.locator(".flash.flipped .answer");
 
 /** Deckt die aktuelle Karte auf, prüft die Antwort zur Frage und bewertet sie. */
 async function rate(page: Page, button: "Nochmal" | "Gewusst"): Promise<void> {
   await card(page).click();
-  const prompt = await page.locator(".card .prompt").textContent();
-  await expect(page.locator(".card .answer")).toHaveText(MEANINGS[prompt!]!);
-  await page.getByRole("button", { name: button }).click();
+  const prompt = await promptText(page).textContent();
+  await expect(answerText(page)).toHaveText(MEANINGS[prompt!]!);
+  await page.getByRole("button", { name: button, exact: true }).click();
 }
 
 async function startPractice(page: Page, title: string): Promise<void> {
@@ -74,35 +76,40 @@ test("E2E-01 Import (Text) → Lernen → Neuladen → Daten da", async ({ page 
   expect(errors, "Fehler in der Konsole").toEqual([]);
 });
 
-const pause = (page: Page) => page.getByRole("heading", { name: "Zwischenstand" });
+/** Der Zwischenstand ist ein Blatt über der Karte (D-51). */
+const pause = (page: Page) => page.getByRole("dialog", { name: "Zwischenstand" });
 const mistakes = (page: Page) => page.locator(".mistakes li");
 const statuses = async (page: Page) => (await sessions(page)).map((s) => s.status).sort();
 
-test("Beenden zeigt den Zwischenstand; Weiterlernen setzt dieselbe Sitzung fort", async ({
+test("Beenden zeigt den Zwischenstand als Blatt; Weiterlernen setzt dieselbe Sitzung fort", async ({
   page,
 }) => {
   const errors = collectErrors(page);
   await startPractice(page, "Englisch – Zwischenstand");
-  const missed = (await page.locator(".card .prompt").textContent())!;
+  const missed = (await promptText(page).textContent())!;
   await rate(page, "Nochmal");
   await rate(page, "Gewusst");
   await expect(page.getByText("1 von 3 geschafft")).toBeVisible();
 
   await page.getByRole("button", { name: "Beenden" }).click();
-  await expect(pause(page)).toBeFocused();
-  await expect(page.getByText("1 von 2 beim ersten Mal gewusst.")).toBeVisible();
-  await expect(page.getByText("Noch offen: 2 von 3 Vokabeln.")).toBeVisible();
-  await expect(mistakes(page)).toHaveText([`${missed} – ${MEANINGS[missed]}`]);
-  await expect(mistakes(page).locator("span").first()).toHaveAttribute("lang", "en");
+  // Den Fokus bekommt der Satz mit dem Stand; die Fehler stehen erst im Ergebnis.
+  await expect(pause(page).getByText("1 von 2 beim ersten Mal gewusst.")).toBeFocused();
+  await expect(pause(page).getByText("Noch offen: 2 von 3 Vokabeln.")).toBeVisible();
+  await expect(
+    pause(page).getByText("Was du schon beantwortet hast, ist gespeichert."),
+  ).toBeVisible();
+  await expect(pause(page).getByRole("button", { name: /Nur Fehler/ })).toHaveCount(0);
   expect(await statuses(page)).toEqual(["active"]);
 
-  await page.getByRole("button", { name: "Weiterlernen (2 offen)" }).click();
+  await pause(page).getByRole("button", { name: "Weiterlernen (2 offen)" }).click();
+  await expect(pause(page)).toHaveCount(0);
   await expect(page.getByText("1 von 3 geschafft")).toBeVisible();
   await rate(page, "Gewusst");
   await rate(page, "Gewusst");
   await expect(page.getByRole("heading", { name: "Geschafft" })).toBeVisible();
   await expect(page.getByText("2 von 3 beim ersten Mal gewusst.")).toBeVisible();
   await expect(mistakes(page)).toHaveText([`${missed} – ${MEANINGS[missed]}`]);
+  await expect(mistakes(page).locator("span").first()).toHaveAttribute("lang", "en");
   await expect.poll(() => statuses(page)).toEqual(["completed"]);
   expect(await events(page)).toHaveLength(4);
   expect(errors, "Fehler in der Konsole").toEqual([]);
@@ -115,9 +122,7 @@ test("Zwischenstand → Bibliothek beendet die Sitzung; ohne Antwort führt Been
   await rate(page, "Gewusst");
   await page.getByRole("button", { name: "Beenden" }).click();
   await expect(pause(page)).toBeVisible();
-  // Ohne Fehler keine Liste.
-  await expect(page.locator(".mistakes")).toHaveCount(0);
-  await page.getByRole("link", { name: "Zur Bibliothek" }).click();
+  await pause(page).getByRole("link", { name: "Zur Bibliothek" }).click();
   await expect(librarySets(page)).toHaveText(["Englisch – Beenden 3 Einträge"]);
   await expect.poll(() => statuses(page)).toEqual(["ended"]);
   expect(await events(page)).toHaveLength(1);
@@ -141,6 +146,8 @@ test("Zurück zeigt den Zwischenstand, ein zweites Zurück verlässt die Sitzung
 
   // Vorwärts geht es weiter, Zurück wieder zum Zwischenstand.
   await page.goForward();
+  await expect(pause(page)).toHaveCount(0);
+  await expect(card(page)).toBeVisible();
   await expect(page.getByText("1 von 3 geschafft")).toBeVisible();
   await page.goBack();
   await expect(pause(page)).toBeVisible();
@@ -163,7 +170,7 @@ test("Nur Fehler üben: nur die Fehler, eigene Sitzung mit Verweis, Einrichtung 
 }) => {
   const errors = collectErrors(page);
   await startPractice(page, "Englisch – Fehler");
-  const missed = (await page.locator(".card .prompt").textContent())!;
+  const missed = (await promptText(page).textContent())!;
   await rate(page, "Nochmal");
   for (let i = 0; i < 3; i++) await rate(page, "Gewusst");
   await expect(page.getByRole("heading", { name: "Geschafft" })).toBeVisible();
@@ -171,7 +178,7 @@ test("Nur Fehler üben: nur die Fehler, eigene Sitzung mit Verweis, Einrichtung 
 
   await page.getByRole("button", { name: "Nur Fehler üben (1)" }).click();
   await expect(page.getByText("0 von 1 geschafft")).toBeVisible();
-  await expect(page.locator(".card .prompt")).toHaveText(missed);
+  await expect(promptText(page)).toHaveText(missed);
   await rate(page, "Gewusst");
   await expect(page.getByRole("heading", { name: "Geschafft" })).toBeVisible();
   await expect(page.getByText("1 von 1 beim ersten Mal gewusst.")).toBeVisible();
@@ -192,24 +199,31 @@ test("Nur Fehler üben: nur die Fehler, eigene Sitzung mit Verweis, Einrichtung 
   expect(errors, "Fehler in der Konsole").toEqual([]);
 });
 
-test("Nur Fehler üben aus dem Zwischenstand beendet die Ausgangssitzung", async ({ page }) => {
-  await startPractice(page, "Englisch – Fehler im Zwischenstand");
+test("Den Zwischenstand ohne Wahl schließen setzt fort; Zurück zeigt ihn wieder", async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  await startPractice(page, "Englisch – Blatt schließen");
   await rate(page, "Nochmal");
-  await page.getByRole("button", { name: "Beenden" }).click();
-  await page.getByRole("button", { name: "Nur Fehler üben (1)" }).click();
-  await expect(page.getByText("0 von 1 geschafft")).toBeVisible();
-  await expect
-    .poll(async () => (await sessions(page)).map((s) => [s.status, !!s.repeatOf]).sort())
-    .toEqual([
-      ["active", true],
-      ["ended", false],
-    ]);
+  const beenden = page.getByRole("button", { name: "Beenden" });
+  await beenden.click();
+  await expect(pause(page)).toBeVisible();
 
-  // Zurück führt auch aus der Fehlersitzung zum Zwischenstand, sobald es eine Antwort gibt.
-  await rate(page, "Nochmal");
+  // Escape wie „Weiterlernen“: die Karte kommt wieder, der Fokus liegt auf ihr.
+  await page.keyboard.press("Escape");
+  await expect(pause(page)).toHaveCount(0);
+  await expect(card(page)).toBeFocused();
+  expect(await statuses(page)).toEqual(["active"]);
+
+  // Der Zusatzeintrag im Verlauf ist wieder da: Zurück zeigt erneut den Zwischenstand.
   await page.goBack();
   await expect(pause(page)).toBeVisible();
-  await expect(page.getByRole("button", { name: "Weiterlernen (1 offen)" })).toBeVisible();
+  await expect(pause(page).getByRole("button", { name: "Weiterlernen (3 offen)" })).toBeVisible();
+  await pause(page).getByRole("button", { name: "Weiterlernen (3 offen)" }).click();
+  await rate(page, "Gewusst");
+  await expect(page.getByText("1 von 3 geschafft")).toBeVisible();
+  expect(await statuses(page)).toEqual(["active"]);
+  expect(errors, "Fehler in der Konsole").toEqual([]);
 });
 
 test("Neuladen beendet die Sitzung als unterbrochen", async ({ page }) => {
@@ -311,7 +325,7 @@ test("Rückseite zeigt Grammatik, Beispiele und Notiz", async ({ page }) => {
   await importText(page, JSON.stringify(file), `„${title}“ mit 3 Einträgen gespeichert.`);
   await startLearning(page, title);
 
-  const term = (await page.locator(".card .prompt").textContent())!;
+  const term = (await promptText(page).textContent())!;
   await card(page).click();
   const details = page.locator(".details");
   await expect(details.getByText("Wortart: Nomen · Plural: " + term + "s")).toBeVisible();

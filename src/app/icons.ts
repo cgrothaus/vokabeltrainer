@@ -8,6 +8,7 @@ type Shape = [tag: "path" | "circle", attributes: Record<string, string>];
 const ICONS = {
   back: [["path", { d: "M15 5l-7 7 7 7" }]],
   close: [["path", { d: "M6 6l12 12M18 6L6 18" }]],
+  check: [["path", { d: "M5 12.5l4.5 4.5L19 7.5" }]],
   gear: [
     ["circle", { cx: "12", cy: "12", r: "3" }],
     [

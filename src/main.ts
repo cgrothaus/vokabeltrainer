@@ -27,7 +27,7 @@ import { forgetAllOverviews, loadOverview } from "./app/overview";
 import { previewImport, saveImport, saveKnownImport } from "./app/importText";
 import { loadSampleSet } from "./app/sampleSet";
 import { loadLibraryStart } from "./app/library";
-import { beginPractice, currentPractice, loadSetup, quickStart } from "./app/practice";
+import { beginPractice, currentPractice, quickStart, rememberedSetup } from "./app/practice";
 import { replaceRoute, type Router, startRouter } from "./app/router";
 import { applyTheme, loadTheme, saveTheme } from "./app/theme";
 import { backupView } from "./app/views/backup";
@@ -303,7 +303,11 @@ async function start(): Promise<void> {
     learnView(
       {
         loadSet: () => getSet(db, id),
-        loadSetup: (set) => loadSetup(db, set),
+        loadSetup: (set) =>
+          rememberedSetup(db, set).catch((error: unknown) => {
+            console.warn("Einrichtung nicht lesbar", error);
+            return null;
+          }),
         startPractice: async (set: StoredSet, setup: PracticeSetup) => {
           await beginPractice(db, set, setup);
           location.hash = "#/practice";

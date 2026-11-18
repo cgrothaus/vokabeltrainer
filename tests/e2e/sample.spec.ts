@@ -39,7 +39,7 @@ test("Empty State → Beispielset ausprobieren → Set-Ansicht → Lernen", asyn
   );
 
   await startLearning(page, TITLE);
-  await expect(page.getByText("0 von 57 geschafft")).toBeVisible();
+  await expect(page.getByText("0 von 20 geschafft")).toBeVisible();
   expect(errors, "Fehler in der Konsole").toEqual([]);
 });
 
@@ -103,7 +103,7 @@ test("E2E-05 Empty State → Beispielset → Sitzung mit Multiple Choice", async
   let missed: string | undefined;
   for (let question = 0; question < 11; question++) {
     await expect(options).toHaveCount(4);
-    const prompt = page.locator(".card .prompt");
+    const prompt = page.locator(".flash .front .prompt, .question .prompt");
     await expect(prompt).toHaveAttribute("lang", "en");
     const entry = byTerm.get((await prompt.textContent())!)!;
     const texts = await options.allTextContents();
@@ -154,7 +154,7 @@ test("E2E-05 Empty State → Beispielset → Sitzung mit Multiple Choice", async
   await expect(page.locator(".mistakes li")).toHaveText([`${missed} – ${shown(wrongEntry)}`]);
   await page.getByRole("button", { name: "Nur Fehler üben (1)" }).click();
   await expect(page.getByText("0 von 1 geschafft")).toBeVisible();
-  await expect(page.locator(".card .prompt")).toHaveText(missed!);
+  await expect(page.locator(".flash .front .prompt, .question .prompt")).toHaveText(missed!);
   await expect(options).toHaveCount(4);
   await options.nth((await options.allTextContents()).indexOf(shown(wrongEntry))).click();
   await page.getByRole("button", { name: "Weiter" }).click();

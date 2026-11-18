@@ -154,17 +154,20 @@ test("Mit Set: Bibliothek, Set-Ansicht, Löschen, Einrichtung, Karteikarten, Zwi
   findings.push(...(await audit(page, "Einrichtung")));
   await start.click();
 
-  const front = page.getByRole("button", { name: /Tippen zum Aufdecken/ });
+  // Vorderseite der noch nicht aufgedeckten Karte; die Karte wendet sich beim Aufdecken.
+  const front = page.locator(".flash:not(.flipped) .front");
   await expect(front).toBeVisible();
   findings.push(...(await audit(page, "Karteikarte vorn")));
   await front.click();
+  await expect(page.locator(".flash.flipped .back")).toBeFocused();
   findings.push(...(await audit(page, "Karteikarte hinten")));
   await page.getByRole("button", { name: "Nochmal" }).click();
-  await expect(page.locator(".rating")).toBeHidden();
+  await expect(front).toBeVisible();
   await page.getByRole("button", { name: "Beenden" }).click();
-  await expect(page.getByRole("heading", { name: "Zwischenstand" })).toBeVisible();
+  const pause = page.getByRole("dialog", { name: "Zwischenstand" });
+  await expect(pause).toBeVisible();
   findings.push(...(await audit(page, "Zwischenstand")));
-  await page.getByRole("button", { name: "Weiterlernen" }).click();
+  await pause.getByRole("button", { name: /^Weiterlernen/ }).click();
 
   // Alle übrigen Karten als gewusst bewerten, bis das Ergebnis erscheint.
   const done = page.getByRole("heading", { name: /Geschafft/ });
@@ -172,8 +175,8 @@ test("Mit Set: Bibliothek, Set-Ansicht, Löschen, Einrichtung, Karteikarten, Zwi
     await expect(front.or(done)).toBeVisible();
     if (await done.isVisible()) break;
     await front.click();
-    await page.getByRole("button", { name: "Gewusst" }).click();
-    await expect(page.locator(".rating")).toBeHidden();
+    await page.getByRole("button", { name: "Gewusst", exact: true }).click();
+    await expect(page.locator(".flash.flipped")).toHaveCount(0);
   }
   findings.push(...(await audit(page, "Ergebnis")));
 
@@ -188,6 +191,9 @@ test("Mit Set: Bibliothek, Set-Ansicht, Löschen, Einrichtung, Karteikarten, Zwi
   await page.getByRole("link", { name: "Wetter", exact: true }).click();
   await expect(page.locator(".tiles")).toBeVisible();
   findings.push(...(await audit(page, "Set-Ansicht mit Lernstand")));
+  await page.getByRole("link", { name: "Wetter lernen" }).click();
+  await expect(page.getByRole("region", { name: "Wie beim letzten Mal" })).toBeVisible();
+  findings.push(...(await audit(page, "Einrichtung wie beim letzten Mal")));
 
   await page.goto("./#/backup");
   await page.getByLabel("Backup-Datei auswählen").setInputFiles({
@@ -267,7 +273,7 @@ test("Beispielset: Set-Ansicht mit Lernstand, Multiple Choice mit Rückmeldung",
   expect(errors).toEqual([]);
 });
 
-test("Tablet: Set-Ansicht und Bibliothek bei 768 px (TDD 13.7)", async ({ page }) => {
+test("Tablet: Set-Ansicht, Bibliothek und Karteikarte bei 768 px (TDD 13.7)", async ({ page }) => {
   await page.setViewportSize({ width: 768, height: 1024 });
   const errors = collectErrors(page);
   const findings: string[] = [];
@@ -280,6 +286,13 @@ test("Tablet: Set-Ansicht und Bibliothek bei 768 px (TDD 13.7)", async ({ page }
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Vokabeltrainer");
   await expect(page.locator(".hints")).not.toHaveAttribute("aria-busy");
   findings.push(...(await audit(page, "Bibliothek Tablet")));
+
+  await page.getByRole("button", { name: /lernen$/ }).click();
+  await page.getByRole("slider", { name: "Multiple Choice" }).fill("0");
+  await page.getByRole("button", { name: "20 Vokabeln lernen" }).click();
+  await page.locator(".flash .front").click();
+  await expect(page.getByRole("button", { name: "Gewusst", exact: true })).toBeVisible();
+  findings.push(...(await audit(page, "Karteikarte hinten Tablet")));
   expect(findings).toEqual([]);
   expect(errors, "Fehler in der Konsole").toEqual([]);
 });
@@ -445,7 +458,7 @@ test("Nach einem Seitenwechsel: Fokus auf der Überschrift, Seitentitel nennt di
   // Ohne gemerkte Einrichtung führt der Knopf der Bibliothek zur Einrichtung (D-50).
   await page.getByRole("button", { name: "Wetter lernen" }).click();
   await page.getByRole("button", { name: "3 Vokabeln lernen" }).click();
-  await expect(page.getByRole("button", { name: /Tippen zum Aufdecken/ })).toBeFocused();
+  await expect(page.locator(".flash .front")).toBeFocused();
 
   await page.goto("./#/gibt-es-nicht");
   await expect(heading("Seite nicht gefunden")).toBeFocused();

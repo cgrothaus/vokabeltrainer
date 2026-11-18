@@ -3,6 +3,7 @@ import type { StoredSection, StoredSet } from "./model";
 import {
   countOptions,
   defaultSetup,
+  describeSetup,
   effectiveCount,
   fitCount,
   pickEntries,
@@ -53,13 +54,19 @@ describe("settingKey", () => {
 });
 
 describe("defaultSetup", () => {
-  it("wählt alle Sektionen, Lernsprache → Muttersprache und alle Einträge", () => {
+  it("wählt alle Sektionen, Lernsprache → Muttersprache und 20 Vokabeln", () => {
     expect(defaultSetup(set)).toEqual({
       sectionIds: ["a", "b", "c"],
       direction: "termToMeaning",
-      count: "all",
+      count: 20,
       mcShare: 25,
     });
+  });
+
+  it("ergibt bei weniger Einträgen alle", () => {
+    const small = storedSet(section("a", 12));
+    expect(fitCount(defaultSetup(small).count, 12)).toBe("all");
+    expect(effectiveCount(defaultSetup(small).count, 12)).toBe(12);
   });
 });
 
@@ -104,7 +111,7 @@ describe("restoreSetup", () => {
     expect(restoreSetup(set, { sections: ["b"], direction: "sideways" })).toEqual({
       sectionIds: ["b"],
       direction: "termToMeaning",
-      count: "all",
+      count: 20,
       mcShare: 25,
     });
     // Nur ganze Prozent in Schritten des Reglers.
@@ -225,5 +232,47 @@ describe("pickEntries", () => {
       mcShare: 25,
     };
     expect(pickEntries(set, setup, sequence(0.5))).toEqual(ids("c"));
+  });
+});
+
+describe("describeSetup", () => {
+  const names = (code: string) => ({ en: "Englisch", de: "Deutsch" })[code] ?? code;
+  const base: PracticeSetup = {
+    sectionIds: ["a", "b", "c"],
+    direction: "termToMeaning",
+    count: 20,
+    mcShare: 25,
+  };
+
+  it("fasst die gemerkte Einrichtung zusammen", () => {
+    expect(describeSetup(set, base, names)).toEqual([
+      "20 Vokabeln",
+      "Englisch → Deutsch",
+      "alle Sektionen",
+      "25 % Multiple Choice",
+    ]);
+  });
+
+  it("nennt die tatsächliche Anzahl und die gewählten Sektionen", () => {
+    expect(
+      describeSetup(set, { ...base, sectionIds: ["c"], direction: "meaningToTerm" }, names),
+    ).toEqual(["5 Vokabeln", "Deutsch → Englisch", "Sektion c", "25 % Multiple Choice"]);
+    expect(
+      describeSetup(
+        set,
+        { ...base, sectionIds: ["a", "c"], count: "all", direction: "mixed", mcShare: 0 },
+        names,
+      ),
+    ).toEqual(["17 Vokabeln", "Gemischt", "2 Sektionen", "nur Karteikarten"]);
+    expect(describeSetup(set, { ...base, mcShare: 100 }, names).at(-1)).toBe("nur Multiple Choice");
+  });
+
+  it("lässt die Sektionen bei nur einer weg", () => {
+    const single = storedSet(section("a", 1));
+    expect(describeSetup(single, { ...base, sectionIds: ["a"] }, names)).toEqual([
+      "1 Vokabel",
+      "Englisch → Deutsch",
+      "25 % Multiple Choice",
+    ]);
   });
 });
