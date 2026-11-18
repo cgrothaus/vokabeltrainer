@@ -1,55 +1,5 @@
-:root {
-  color-scheme: light dark;
-  --bg: #ffffff;
-  --fg: #1a1a1a;
-  --accent: #1f5fbf;
-  --surface: #f1f4f9;
-  --border: #d5dbe5;
-  --right: #1e7a3c;
-  --wrong: #b3261e;
-  font-family:
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
-  line-height: 1.5;
-  -webkit-text-size-adjust: 100%;
-}
-
-/* Darstellung (TDD 13.5): ohne `data-theme` folgt die App dem Gerät, „light“ und „dark“ haben Vorrang.
-   Die dunklen Farben stehen deshalb zweimal und müssen gleich bleiben; ein E2E-Test vergleicht sie.
-   Bewusst ohne light-dark(): Vite rechnet es auf prefers-color-scheme herunter. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #121212;
-    --fg: #ececec;
-    --accent: #7fb0ff;
-    --surface: #1e2229;
-    --border: #353b46;
-    --right: #6fd08c;
-    --wrong: #ff8a80;
-  }
-}
-
-:root[data-theme="dark"] {
-  --bg: #121212;
-  --fg: #ececec;
-  --accent: #7fb0ff;
-  --surface: #1e2229;
-  --border: #353b46;
-  --right: #6fd08c;
-  --wrong: #ff8a80;
-}
-
-/* Regler, Radioknöpfe und Scrollleisten folgen der gewählten Darstellung. */
-:root[data-theme="light"] {
-  color-scheme: light;
-}
-
-:root[data-theme="dark"] {
-  color-scheme: dark;
-}
+@import "./tokens.css";
+@import "./frame.css";
 
 *,
 *::before,
@@ -61,17 +11,11 @@
    mit breiter Systemschrift (TDD 13.4); bei normaler Größe ändert sich nichts. */
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--fg);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: var(--text-m);
   overflow-wrap: break-word;
-}
-
-main {
-  max-width: 40rem;
-  margin: 0 auto;
-  padding: 1rem max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom))
-    max(1rem, env(safe-area-inset-left));
-  padding-top: max(1rem, env(safe-area-inset-top));
+  -webkit-tap-highlight-color: transparent;
 }
 
 a {
@@ -97,9 +41,9 @@ button {
   min-height: 44px;
   padding: 0.5rem 1rem;
   border: none;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-m);
   background: var(--accent);
-  color: var(--bg);
+  color: var(--on-accent);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
@@ -112,9 +56,15 @@ button:disabled {
 
 /* Zweitrangige Aktion, z. B. „Nochmal“ oder „Beenden“: unterscheidet sich auch durch den Rahmen. */
 button.secondary {
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   background: var(--surface);
-  color: var(--fg);
+  color: var(--ink);
+}
+
+/* Zerstörerische Aktion, z. B. „Löschen“ im Blatt (TDD 13.7): rot und mit eindeutigem Text. */
+button.danger {
+  background: var(--wrong);
+  color: var(--surface);
 }
 
 /* Link, der wie eine Schaltfläche aussieht, z. B. „Vokabelset importieren“. */
@@ -123,9 +73,9 @@ a.action {
   align-items: center;
   min-height: 44px;
   padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-m);
   background: var(--accent);
-  color: var(--bg);
+  color: var(--on-accent);
   font-weight: 600;
   text-decoration: none;
 }
@@ -140,10 +90,10 @@ textarea {
   width: 100%;
   margin: 0.25rem 0 0.75rem;
   padding: 0.5rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: 0.5rem;
   background: var(--surface);
-  color: var(--fg);
+  color: var(--ink);
   /* 16px verhindert das automatische Zoomen von iOS beim Fokussieren. */
   font:
     1rem / 1.4 ui-monospace,
@@ -198,7 +148,7 @@ h2:focus {
   justify-content: space-between;
   gap: 0.5rem 1rem;
   padding: 0.75rem 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--line);
   overflow-wrap: anywhere;
 }
 
@@ -244,7 +194,7 @@ h2:focus {
   gap: 0.75rem;
   min-height: 44px;
   padding: 0.25rem 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--line);
   font-weight: 400;
   cursor: pointer;
 }
@@ -271,7 +221,7 @@ h2:focus {
   gap: 0.5rem;
   min-height: 44px;
   padding: 0.5rem 0.75rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: 0.5rem;
   background: var(--surface);
   font-weight: 400;
@@ -335,10 +285,10 @@ h2:focus {
   min-height: 12rem;
   margin: 1rem 0;
   padding: 1.5rem 1rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: 0.75rem;
   background: var(--surface);
-  color: var(--fg);
+  color: var(--ink);
   font-weight: 400;
   text-align: center;
   overflow-wrap: anywhere;
@@ -376,9 +326,9 @@ h2:focus {
 }
 
 .options .option {
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   background: var(--surface);
-  color: var(--fg);
+  color: var(--ink);
   font-weight: 400;
   text-align: left;
   overflow-wrap: anywhere;
@@ -453,7 +403,7 @@ h2:focus {
 }
 
 .sets .count {
-  color: var(--fg);
+  color: var(--ink);
   opacity: 0.75;
 }
 
@@ -511,7 +461,7 @@ h2:focus {
 }
 
 .section {
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--line);
 }
 
 /* Ohne `display: flex`, sonst verschwindet das Dreieck zum Aufklappen; Höhe über den Innenabstand. */
@@ -548,7 +498,7 @@ h2:focus {
 
 .entries > li {
   padding: 0.5rem 0;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--line);
 }
 
 .entries p {
@@ -573,7 +523,7 @@ h2:focus {
 .badge {
   display: inline-block;
   padding: 0 0.4rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: 0.25rem;
   font-size: 0.75rem;
   vertical-align: middle;
@@ -585,9 +535,9 @@ h2:focus {
 
 /* Zweitrangiger Link wie „Bearbeiten“: sieht aus wie eine zweitrangige Schaltfläche. */
 a.action.secondary {
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   background: var(--surface);
-  color: var(--fg);
+  color: var(--ink);
 }
 
 /* Set bearbeiten (TDD 10, D-41): Einträge als Liste von Links zum Formular. */
@@ -613,7 +563,7 @@ a.action.secondary {
   align-items: center;
   gap: 0.5rem;
   padding: 0.25rem 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--line);
 }
 
 .edit-entries a {
@@ -660,7 +610,7 @@ button.icon {
   min-width: 0;
   margin: 1rem 0 0;
   padding: 0.5rem 1rem 1rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: 0.5rem;
 }
 
@@ -682,10 +632,10 @@ button.icon {
   min-height: 44px;
   margin: 0.25rem 0 0;
   padding: 0.5rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: 0.5rem;
   background-color: var(--surface);
-  color: var(--fg);
+  color: var(--ink);
   /* 16px verhindert das automatische Zoomen von iOS beim Fokussieren. */
   font: inherit;
   font-size: 1rem;
@@ -737,7 +687,7 @@ button.icon {
 .editor .example + .example {
   margin-top: 1rem;
   padding-top: 0.5rem;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--line);
 }
 
 .editor .hint-text {
@@ -785,7 +735,7 @@ button.icon {
 .confirm {
   margin: 1rem 0;
   padding: 0.25rem 1rem 1rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: 0.5rem;
   background: var(--surface);
 }
@@ -828,7 +778,7 @@ button.icon {
   margin: 1rem 0;
   padding: 0 1rem;
   border-left: 4px solid var(--accent);
-  background: var(--bg);
+  background: var(--paper);
 }
 
 /* Die Warnung endet mit einer Schaltfläche, die sonst am Rand säße. */
@@ -874,7 +824,7 @@ button.icon {
 .changes .conflict {
   margin: 1rem 0;
   padding-top: 0.5rem;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--line);
 }
 
 /* Nebeneinander, solange Platz ist; `min()` hält die Spalte bei großer Schrift in der Breite. */
@@ -887,9 +837,9 @@ button.icon {
 
 .changes .version {
   padding: 0 0.75rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: 0.5rem;
-  background: var(--bg);
+  background: var(--paper);
   overflow-wrap: anywhere;
 }
 
@@ -903,7 +853,7 @@ button.icon {
   display: flow-root;
   margin: 1rem 0;
   padding: 0 1rem;
-  border-left: 4px solid var(--border);
+  border-left: 4px solid var(--line);
   background: var(--surface);
   overflow-wrap: anywhere;
 }
@@ -949,7 +899,7 @@ button.icon {
 pre.prompt {
   margin: 0.5rem 0 0.75rem;
   padding: 0.75rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: 0.5rem;
   background: var(--surface);
   font:
@@ -973,14 +923,9 @@ pre.prompt {
   cursor: pointer;
 }
 
-/* Hinweisleisten am unteren Rand: Speicherproblem (TDD 6.5) über „Neue Version verfügbar“ (TDD 5.3). */
-.notices {
-  position: fixed;
-  inset: auto 0 0;
-}
-
+/* Hinweisleisten am unteren Rand: Speicherproblem (TDD 6.5) über „Neue Version verfügbar“ (TDD 5.3);
+   ihre Lage über der Aktionsleiste steht in frame.css. */
 .notices:has(.notice:not(:empty)) {
-  padding-bottom: env(safe-area-inset-bottom);
   background: var(--surface);
 }
 
@@ -993,7 +938,7 @@ pre.prompt {
   padding: 0.75rem max(1rem, env(safe-area-inset-right)) 0.75rem
     max(1rem, env(safe-area-inset-left));
   background: var(--surface);
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--line);
 }
 
 .notice .actions {
@@ -1008,13 +953,4 @@ pre.prompt {
 
 .notice p {
   margin: 0;
-}
-
-/* Platz unter dem Inhalt, solange eine Hinweisleiste steht, damit sie nichts verdeckt. */
-body:has(.notice:not(:empty)) main {
-  padding-bottom: 8rem;
-}
-
-body:has(.notice:not(:empty) ~ .notice:not(:empty)) main {
-  padding-bottom: 16rem;
 }

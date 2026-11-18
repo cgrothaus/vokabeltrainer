@@ -3,6 +3,7 @@
 // zum Korrigieren eines Sets (D-44).
 import { FORMAT_EXAMPLE } from "../../content/help";
 import type { Delivery } from "../../platform/deliverFile";
+import { frame } from "../components/frame";
 import { promptBox } from "../components/promptBox";
 import { h } from "../dom";
 
@@ -26,10 +27,9 @@ const DELIVERED = {
 } as const;
 
 export function helpView(context: HelpContext): Node {
-  return h(
+  const main = h(
     "main",
     { class: "help" },
-    h("h1", null, "Wie bekomme ich ein Vokabelset?"),
     h(
       "p",
       null,
@@ -86,8 +86,8 @@ export function helpView(context: HelpContext): Node {
       ),
     ),
     h("p", null, h("a", { href: "#/import", class: "action" }, "Vokabelset importieren")),
-    h("p", null, h("a", { href: "#/" }, "Zurück zur Bibliothek")),
   );
+  return frame({ title: "Wie bekomme ich ein Vokabelset?", back: { parent: "#/" } }, main).element;
 }
 
 function shareSection(context: HelpContext): Node {

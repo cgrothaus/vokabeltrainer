@@ -4,6 +4,7 @@
 import { readFile } from "node:fs/promises";
 import { type Browser, expect, type Page, test, type TestInfo } from "@playwright/test";
 import {
+  backButton,
   changeDevice,
   collectErrors,
   fakeDevice,
@@ -100,7 +101,7 @@ test("E2E-22 Installiert: Beim Start wird erneut gefragt, danach kein Hinweis", 
   await expect(
     page.getByText("Deine Daten sind auf diesem Gerät dauerhaft geschützt."),
   ).toBeVisible();
-  await page.getByRole("link", { name: "Zurück zur Bibliothek" }).click();
+  await backButton(page).click();
   await expect(page.getByRole("link", { name: "Englisch – Wetter", exact: true })).toBeVisible();
   await expect(hint(page)).toHaveCount(0);
   expect(errors, "Fehler in der Konsole").toEqual([]);
@@ -146,7 +147,7 @@ test("E2E-22 Umzug auf den Home-Bildschirm: Nach dem Wiederherstellen wird gefra
   await app.getByRole("button", { name: "Wiederherstellen", exact: true }).click();
   await expect(app.getByText("Backup wiederhergestellt.")).toBeFocused();
   await expect.poll(async () => readDevice(app)).toMatchObject({ asked: 1, granted: true });
-  await app.getByRole("link", { name: "Zurück zur Bibliothek" }).click();
+  await backButton(app).click();
   await expect(app.getByRole("link", { name: "Englisch – Wetter", exact: true })).toBeVisible();
   await expect(hint(app)).toHaveCount(0);
   expect(errors, "Fehler in der Konsole").toEqual([]);

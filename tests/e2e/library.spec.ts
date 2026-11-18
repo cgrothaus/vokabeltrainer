@@ -3,6 +3,7 @@
 import { expect, type Page, test } from "@playwright/test";
 import type { ReviewEvent, Session, StoredSet } from "../../src/domain/model";
 import {
+  backButton,
   collectErrors,
   endPractice,
   importSet,
@@ -172,7 +173,7 @@ test("Set löschen kündigt den Umfang an und löscht den Lernstand mit", async 
 test("Unbekannte Set-Adresse zeigt einen Hinweis mit Weg zurück", async ({ page }) => {
   await page.goto("./#/set/unbekannt");
   await expect(page.getByRole("heading", { name: "Set nicht gefunden" })).toBeVisible();
-  await page.getByRole("link", { name: "Zurück zur Bibliothek" }).click();
+  await backButton(page).click();
   await expect(page.getByRole("heading", { name: "Vokabeltrainer" })).toBeVisible();
 
   await page.goto("./#/set/");

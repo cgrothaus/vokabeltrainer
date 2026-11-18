@@ -27,7 +27,7 @@ import { forgetAllOverviews, loadOverview } from "./app/overview";
 import { previewImport, saveImport, saveKnownImport } from "./app/importText";
 import { loadSampleSet } from "./app/sampleSet";
 import { beginPractice, currentPractice, loadSetup } from "./app/practice";
-import { type Router, startRouter } from "./app/router";
+import { replaceRoute, type Router, startRouter } from "./app/router";
 import { applyTheme, loadTheme, saveTheme } from "./app/theme";
 import { backupView } from "./app/views/backup";
 import { editSetView } from "./app/views/editSet";
@@ -211,11 +211,11 @@ async function start(): Promise<void> {
       onSaved: (saved) => {
         void askOnceAfterSave();
         message = saved;
-        location.hash = "#/";
+        replaceRoute("#/");
       },
       onUpdated: (setId, saved) => {
         message = saved;
-        location.hash = `#/set/${encodeURIComponent(setId)}`;
+        replaceRoute(`#/set/${encodeURIComponent(setId)}`);
       },
     });
   const setPage = (_signal: AbortSignal, id: string) =>
@@ -226,19 +226,22 @@ async function start(): Promise<void> {
       removeSet: (set) => removeSet(db, set),
       onRemoved: (removed) => {
         message = removed;
-        location.hash = "#/";
+        replaceRoute("#/");
       },
       takeMessage,
     });
   const editPage = (_signal: AbortSignal, id: string) =>
-    editSetView({
-      loadSet: () => getSet(db, id),
-      addSection: (set, title) => addSectionTo(db, set, title),
-      renameSection: (set, sectionId, title) => renameSectionIn(db, set, sectionId, title),
-      removeSection: (set, sectionId) => removeSection(db, set, sectionId),
-      moveSection: (set, sectionId, step) => moveSectionIn(db, set, sectionId, step),
-      moveEntry: (set, entryId, step) => moveEntryIn(db, set, entryId, step),
-    });
+    editSetView(
+      {
+        loadSet: () => getSet(db, id),
+        addSection: (set, title) => addSectionTo(db, set, title),
+        renameSection: (set, sectionId, title) => renameSectionIn(db, set, sectionId, title),
+        removeSection: (set, sectionId) => removeSection(db, set, sectionId),
+        moveSection: (set, sectionId, step) => moveSectionIn(db, set, sectionId, step),
+        moveEntry: (set, entryId, step) => moveEntryIn(db, set, entryId, step),
+      },
+      id,
+    );
   const exportPage = (_signal: AbortSignal, id: string) =>
     exportView(
       {
@@ -284,14 +287,17 @@ async function start(): Promise<void> {
   const newEntryPage = (signal: AbortSignal, setId: string, sectionId: string) =>
     entryEditorView(entryContext(setId), signal, setId, { sectionId });
   const learnPage = (_signal: AbortSignal, id: string) =>
-    learnView({
-      loadSet: () => getSet(db, id),
-      loadSetup: (set) => loadSetup(db, set),
-      startPractice: async (set: StoredSet, setup: PracticeSetup) => {
-        await beginPractice(db, set, setup);
-        location.hash = "#/practice";
+    learnView(
+      {
+        loadSet: () => getSet(db, id),
+        loadSetup: (set) => loadSetup(db, set),
+        startPractice: async (set: StoredSet, setup: PracticeSetup) => {
+          await beginPractice(db, set, setup);
+          location.hash = "#/practice";
+        },
       },
-    });
+      id,
+    );
   const practicePage = (signal: AbortSignal) => practiceView(currentPractice(), signal);
   const backupPage = () =>
     backupView({
@@ -323,7 +329,7 @@ async function start(): Promise<void> {
       onRemoved: (removed) => {
         showTheme("system");
         message = removed;
-        location.hash = "#/";
+        replaceRoute("#/");
       },
       appVersion: __APP_VERSION__,
       persistence,

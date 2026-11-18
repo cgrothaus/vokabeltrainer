@@ -4,6 +4,7 @@
 import { readFile } from "node:fs/promises";
 import { type Browser, expect, type Page, test, type TestInfo } from "@playwright/test";
 import {
+  backButton,
   collectErrors,
   endPractice,
   importSet,
@@ -123,7 +124,7 @@ test("E2E-02 Backup → frisches Gerät → Wiederherstellen ergibt denselben Be
   expect(await readAll(fresh)).toEqual(before);
   expect(await lastBackupAt(fresh)).toBe(file.exportedAt);
   await expect(fresh.getByText(/^Letztes Backup: /)).toBeVisible();
-  await fresh.getByRole("link", { name: "Zurück zur Bibliothek" }).click();
+  await backButton(fresh).click();
   await expect(librarySets(fresh)).toHaveText(["Englisch – Wetter 3 Einträge"]);
   expect(freshErrors, "Fehler in der Konsole").toEqual([]);
   await fresh.context().close();
@@ -220,7 +221,7 @@ test("Vokabelset statt Backup und Abbrechen ändern nichts", async ({ page }) =>
   await page.getByRole("button", { name: "Abbrechen" }).click();
   await expect(page.getByRole("button", { name: "Alle Daten ersetzen" })).toHaveCount(0);
 
-  await page.getByRole("link", { name: "Zurück zur Bibliothek" }).click();
+  await backButton(page).click();
   await expect(librarySets(page)).toHaveText(["Englisch – Bleibt 3 Einträge"]);
   expect(errors, "Fehler in der Konsole").toEqual([]);
 });

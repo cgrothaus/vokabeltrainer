@@ -156,7 +156,7 @@ test("E2E-19 Ende der Sitzung nicht gespeichert: Speicherhinweis bis zum nächst
   await notice(page).getByRole("button", { name: "Ausblenden" }).click();
   await expect(notice(page)).toBeEmpty();
   await failWrites(page, null);
-  await page.getByRole("link", { name: "Zurück zur Bibliothek" }).click();
+  await page.getByRole("link", { name: "Zur Bibliothek" }).click();
   await startLearning(page, "Englisch – Wetter");
   // Erst wenn die Sitzung gespeichert ist; sonst träfe die Störung schon ihren Start.
   await expect(page.getByText("0 von 3 geschafft")).toBeVisible();

@@ -10,6 +10,7 @@ import {
   type PracticeSetup,
   selectedEntryCount,
 } from "../../domain/practiceSetup";
+import { type Frame, frame } from "../components/frame";
 import { focusSoon, h } from "../dom";
 import { languageName } from "../languages";
 import { failureMessage } from "../storageMessages";
@@ -26,16 +27,13 @@ const NOT_LOADED = "Das Vokabelset konnte nicht geladen werden. Lade die Seite n
 
 const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
-const back = () => h("p", null, h("a", { href: "#/" }, "Zurück zur Bibliothek"));
-
-export function learnView(context: LearnContext): Node {
+export function learnView(context: LearnContext, setId: string): Node {
   const main = h("main", { class: "setup" });
-  const fail = (title: string, text: string, alert = false) =>
-    main.replaceChildren(
-      h("h1", null, title),
-      h("p", alert ? { role: "alert" } : null, text),
-      back(),
-    );
+  const page = frame({ back: { parent: `#/set/${encodeURIComponent(setId)}` } }, main);
+  const fail = (title: string, text: string, alert = false) => {
+    page.setTitle(title);
+    main.replaceChildren(h("p", alert ? { role: "alert" } : null, text));
+  };
   void (async () => {
     let set: StoredSet | undefined;
     try {
@@ -54,12 +52,14 @@ export function learnView(context: LearnContext): Node {
       return fail(set.title, "Dieses Set hat noch keine Einträge zum Lernen.");
     }
     // Ist die Ansicht schon verlassen, hängt `main` nirgends mehr; das Ersetzen bleibt dann folgenlos.
-    main.replaceChildren(...form(set, await context.loadSetup(set), context));
+    main.replaceChildren(
+      ...h("div", null, form(set, await context.loadSetup(set), context, page)).childNodes,
+    );
   })();
-  return main;
+  return page.element;
 }
 
-function form(set: StoredSet, initial: PracticeSetup, context: LearnContext): Node[] {
+function form(set: StoredSet, initial: PracticeSetup, context: LearnContext, page: Frame): Node[] {
   const selected = new Set(initial.sectionIds);
   let direction = initial.direction;
   // Die gewählte Stufe bleibt, auch wenn sie bei kleinerer Auswahl zeitweise als „alle“ erscheint.
@@ -186,7 +186,8 @@ function form(set: StoredSet, initial: PracticeSetup, context: LearnContext): No
 
   const status = h("p", { "aria-live": "polite", class: "selection" });
   const problem = h("div", { role: "alert" });
-  const start = h("button", { type: "submit" });
+  // In der Aktionsleiste, also außerhalb des Formulars; `form` verbindet beide (TDD 13.7).
+  const start = h("button", { type: "submit", form: "setup-form" });
 
   const renderCounts = (total: number) => {
     const shown = fitCount(chosenCount, total);
@@ -227,14 +228,14 @@ function form(set: StoredSet, initial: PracticeSetup, context: LearnContext): No
   };
   update();
 
-  const heading = h("h1", { class: "set-title" }, set.title);
-  focusSoon(heading);
+  focusSoon(page.setTitle(set.title));
+  page.setDock(start);
   return [
-    heading,
     h("p", { class: "languages" }, "Lernsitzung einrichten"),
     h(
       "form",
       {
+        id: "setup-form",
         onsubmit: async (event: Event) => {
           event.preventDefault();
           start.disabled = true;
@@ -253,9 +254,7 @@ function form(set: StoredSet, initial: PracticeSetup, context: LearnContext): No
       countChoice,
       shareChoice,
       status,
-      h("div", { class: "actions" }, start),
     ),
     problem,
-    back(),
   ];
 }

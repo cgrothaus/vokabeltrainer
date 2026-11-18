@@ -1,10 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- Zwei Karteikarten; das Motiv liegt im Sicherheitskreis für maskierbare Icons (Radius 40 %). -->
-  <rect width="512" height="512" fill="#ffffff"/>
-  <g transform="translate(256 256) scale(1.28) translate(-252 -248)">
-    <rect x="136" y="166" width="220" height="150" rx="18" fill="#9dbbe8" transform="rotate(-10 246 241)"/>
-    <rect x="156" y="196" width="220" height="150" rx="18" fill="#1f5fbf"/>
-    <rect x="186" y="238" width="120" height="16" rx="8" fill="#ffffff"/>
-    <rect x="186" y="288" width="160" height="16" rx="8" fill="#ffffff" opacity="0.7"/>
+  <!-- Karteikarte mit roter Kopflinie auf Petrol (TDD 13.7); das Motiv liegt im Sicherheitskreis für
+       maskierbare Icons (Radius 40 %). -->
+  <rect width="512" height="512" fill="#006a80"/>
+  <g transform="translate(256 256) scale(1.2) translate(-256 -256)">
+  <rect x="136" y="170" width="240" height="170" rx="16" fill="#9fd4df" transform="rotate(-9 256 255) translate(-14 -16)"/>
+  <g transform="translate(0 6)">
+    <rect x="136" y="170" width="240" height="170" rx="16" fill="#ffffff"/>
+    <rect x="136" y="210" width="240" height="7" fill="#df5a4e"/>
+    <rect x="160" y="248" width="192" height="5" rx="2.5" fill="#d3def2"/>
+    <rect x="160" y="278" width="192" height="5" rx="2.5" fill="#d3def2"/>
+    <rect x="160" y="308" width="192" height="5" rx="2.5" fill="#d3def2"/>
+  </g>
   </g>
 </svg>

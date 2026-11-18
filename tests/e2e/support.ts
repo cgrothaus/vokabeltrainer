@@ -64,8 +64,12 @@ export async function startLearning(page: Page, title: string): Promise<void> {
 /** Beendet eine Sitzung mit mindestens einer Antwort über den Zwischenstand; endet in der Bibliothek. */
 export async function endPractice(page: Page): Promise<void> {
   await page.getByRole("button", { name: "Beenden" }).click();
-  await page.getByRole("link", { name: "Zurück zur Bibliothek" }).click();
+  await page.getByRole("link", { name: "Zur Bibliothek" }).click();
 }
+
+/** „Zurück“ in der App-Leiste (TDD 13.7). */
+export const backButton = (page: Page) =>
+  page.getByRole("banner").getByRole("button", { name: "Zurück", exact: true });
 
 /** Meldung oben in der Bibliothek, z. B. nach dem Import; die Hinweisleiste für Updates zählt nicht. */
 export const libraryMessage = (page: Page) => page.getByRole("main").getByRole("status");

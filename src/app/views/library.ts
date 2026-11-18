@@ -3,6 +3,7 @@ import type { StoredSet } from "../../domain/model";
 import { groupSets, setSize } from "../../domain/library";
 import type { ProtectionNotice } from "../../domain/storageProtection";
 import { backupReminder, type ReminderActions } from "../components/backupReminder";
+import { frame, iconLink } from "../components/frame";
 import { learnButton } from "../components/learnButton";
 import { protectionHint } from "../components/protectionHint";
 import { h } from "../dom";
@@ -44,17 +45,21 @@ export function libraryView(context: LibraryContext): Node {
   const message = text && h("p", { role: "status", class: "message", tabindex: "-1" }, text);
   // Fokus auf die Meldung, sobald die Ansicht eingehängt ist, damit Screenreader sie vorlesen.
   if (message) queueMicrotask(() => message.isConnected && message.focus());
-  return h(
-    "main",
-    null,
-    h("h1", null, "Vokabeltrainer"),
-    message,
-    hints,
-    sets,
-    more,
-    h("p", null, h("a", { href: "#/backup" }, "Backup und Wiederherstellung")),
-    h("p", null, h("a", { href: "#/settings" }, "Einstellungen")),
-  );
+  return frame(
+    {
+      title: "Vokabeltrainer",
+      actions: [iconLink("#/settings", "Einstellungen", "gear")],
+    },
+    h(
+      "main",
+      null,
+      message,
+      hints,
+      sets,
+      more,
+      h("p", null, h("a", { href: "#/backup" }, "Backup und Wiederherstellung")),
+    ),
+  ).element;
 }
 
 /**

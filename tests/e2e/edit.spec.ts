@@ -125,7 +125,7 @@ test("E2E-07: Zurück mit Änderungen fragt nach; Verwerfen ändert nichts", asy
   await expect(field(page, "Wort")).toHaveValue("sunshine");
 
   await page.goBack();
-  await page.getByRole("button", { name: "Verwerfen" }).first().click();
+  await page.getByRole("dialog").getByRole("button", { name: "Verwerfen" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(`${TITLE} bearbeiten`);
   await expect(entryLinks(page)).toHaveText(["rain – Regen", "sun – Sonne", "autumn – Herbst"]);
   // Zurück führt danach zur Set-Ansicht, nicht noch einmal ins Formular.
@@ -137,7 +137,7 @@ test("E2E-07: Zurück mit Änderungen fragt nach; Verwerfen ändert nichts", asy
   await entryLinks(page).filter({ hasText: "sun" }).click();
   await field(page, "Bedeutung 1").fill("die Sonne");
   await page.goBack();
-  await page.getByRole("button", { name: "Speichern", exact: true }).first().click();
+  await page.getByRole("dialog").getByRole("button", { name: "Speichern", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(`${TITLE} bearbeiten`);
   await expect(entryLinks(page)).toHaveText(["rain – Regen", "sun – die Sonne", "autumn – Herbst"]);
   expect(errors).toEqual([]);
@@ -156,7 +156,7 @@ test("E2E-07: Eintrag löschen mit Ankündigung", async ({ page }) => {
   await expect(announcement).toBeHidden();
 
   await page.getByRole("button", { name: "Eintrag löschen" }).click();
-  await page.locator(".confirm").getByRole("button", { name: "Eintrag löschen" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Eintrag löschen" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(`${TITLE} bearbeiten`);
   await expect(entryLinks(page)).toHaveText(["rain – Regen", "autumn – Herbst"]);
 });

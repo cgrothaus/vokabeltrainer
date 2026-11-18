@@ -5,10 +5,12 @@
 import type { StoredEntry } from "../../domain/model";
 import { cardFaces, currentCard, type Result, sideText } from "../../domain/practice";
 import { entryDetails, hasDetails } from "../components/entryDetails";
+import { frame } from "../components/frame";
 import { onSwipe } from "../components/swipe";
 import { setUpdateBlocked } from "../components/updateNotice";
 import { focusSoon, h } from "../dom";
 import type { PracticeSession, Question } from "../practice";
+import { hasMark, pushMark, replaceRoute } from "../router";
 import { failureMessage } from "../storageMessages";
 
 /** Markiert den zusätzlichen Verlaufseintrag, auf dem die Karten liegen. */
@@ -22,7 +24,7 @@ const handledByTarget = (event: KeyboardEvent) =>
 export function practiceView(started: PracticeSession | null, signal: AbortSignal): Node {
   // Nach dem Neuladen gibt es keine Sitzung mehr (TDD 12.2).
   if (!started) {
-    location.replace("#/");
+    replaceRoute("#/");
     return h("main", null);
   }
   // Nach „Nur Fehler üben“ die neue Sitzung; das Set bleibt dasselbe.
@@ -36,6 +38,7 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
 
   const { set } = practice;
   const main = h("main", { class: "practice" });
+  const page = frame({}, main);
   const problem = h("div", { role: "alert" });
   // Tastenkürzel der gerade gezeigten Karte; liefert `true`, wenn die Taste etwas ausgelöst hat.
   let onKey: ((event: KeyboardEvent) => boolean) | null = null;
@@ -64,9 +67,9 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
 
   // Die Karten liegen auf einem zusätzlichen Verlaufseintrag mit derselben Adresse: Zurück löst so
   // kein `hashchange` aus und führt zum Zwischenstand statt aus der Sitzung (D-29).
-  const onCards = () => history.state === CARDS;
+  const onCards = () => hasMark(CARDS);
   const enterCards = () => {
-    if (!onCards()) history.pushState(CARDS, "");
+    if (!onCards()) pushMark(CARDS);
   };
   // Eine Antwort, die gerade gespeichert wird, zählt schon: Zurück direkt danach zeigt den Zwischenstand.
   let saving = false;
@@ -101,18 +104,15 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
       "div",
       { class: "practice-head" },
       h("p", null, `${done} von ${total} geschafft`),
-      h(
-        "button",
-        {
-          type: "button",
-          class: "secondary",
-          // Wie die Zurück-Taste; ohne Antwort gleich zur Bibliothek (D-29).
-          onclick: () => (answered() ? history.back() : (location.hash = "#/")),
-        },
-        "Beenden",
-      ),
     );
-    const title = h("h1", { class: "practice-title" }, set.title);
+    page.setTitle(set.title);
+    page.setBack({
+      label: "Beenden",
+      icon: "close",
+      // Wie die Zurück-Taste; ohne Antwort gleich zur Bibliothek (D-29).
+      onclick: () => (answered() ? history.back() : (location.hash = "#/")),
+    });
+    page.setDock();
 
     /** Speichert die Antwort; erst danach geht es weiter (TDD 12.4). */
     const save = async (result: Result): Promise<boolean> => {
@@ -177,7 +177,6 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
         );
         show(
           "cards",
-          title,
           head,
           side,
           h("div", { class: "rating" }, again, known),
@@ -202,7 +201,7 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
       );
       // Wischen vor dem Aufdecken deckt nur auf, in beide Richtungen (FR-09).
       onSwipe(front, reveal);
-      show("cards", title, head, front, problem);
+      show("cards", head, front, problem);
       onKey = (event) => {
         if ((event.key !== "Enter" && event.key !== " ") || handledByTarget(event)) return false;
         reveal();
@@ -252,7 +251,6 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
       );
       show(
         "cards",
-        title,
         head,
         prompt,
         h("div", { class: "options" }, options),
@@ -287,13 +285,13 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
           ]),
     ];
   };
-  const toLibrary = () =>
-    h("p", null, h("a", { href: "#/", class: "action" }, "Zurück zur Bibliothek"));
+  const toLibrary = (secondary: boolean) =>
+    h("a", { href: "#/", class: secondary ? "action secondary" : "action" }, "Zur Bibliothek");
 
-  /** Die beim Erstversuch falschen Einträge mit „Nur Fehler üben“ (TDD 12.2); leer ohne Fehler. */
-  const mistakes = (primary: boolean): Node[] => {
+  /** Die beim Erstversuch falschen Einträge mit „Nur Fehler üben“ (TDD 12.2); ohne Fehler nichts. */
+  const mistakes = (): { list: Node[]; repeat: HTMLButtonElement } | null => {
     const { missed } = practice.state;
-    if (missed.length === 0) return [];
+    if (missed.length === 0) return null;
     const again = async () => {
       repeat.disabled = true;
       let next: PracticeSession;
@@ -317,10 +315,10 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
     };
     const repeat = h(
       "button",
-      { type: "button", class: primary ? null : "secondary", onclick: () => void again() },
+      { type: "button", class: "secondary", onclick: () => void again() },
       `Nur Fehler üben (${missed.length})`,
     );
-    return [
+    const list = [
       h("h2", null, "Zum Nachlernen"),
       h(
         "ul",
@@ -336,8 +334,8 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
           );
         }),
       ),
-      h("div", { class: "actions" }, repeat),
     ];
+    return { list, repeat };
   };
 
   /** Zwischenstand (FR-12): Die Sitzung läuft weiter, bis sie verlassen wird. */
@@ -345,7 +343,6 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
     const { queue, total } = practice.state;
     // Nicht gespeicherte Antworten nennt der Zwischenstand selbst.
     problem.textContent = "";
-    const heading = h("h1", { tabindex: -1 }, "Zwischenstand");
     const resume = h(
       "button",
       {
@@ -357,37 +354,40 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
       },
       `Weiterlernen (${queue.length} offen)`,
     );
+    const missed = mistakes();
     show(
       "pause",
-      heading,
       ...quota(),
       h("p", null, `Noch offen: ${queue.length} von ${total} Vokabeln.`),
-      h("div", { class: "actions" }, resume),
-      ...mistakes(false),
+      ...(missed ? [...missed.list, h("div", { class: "actions" }, missed.repeat)] : []),
       problem,
-      toLibrary(),
     );
-    focusSoon(heading);
+    page.setBack(null);
+    page.setDock(toLibrary(true), resume);
+    focusSoon(page.setTitle("Zwischenstand"));
   };
 
   const showResult = () => {
     setUpdateBlocked(false);
     problem.textContent = "";
-    const heading = h("h1", { tabindex: -1 }, "Geschafft");
-    show("result", heading, ...quota(), ...mistakes(true), problem, toLibrary());
-    focusSoon(heading);
+    const missed = mistakes();
+    show("result", ...quota(), ...(missed?.list ?? []), problem);
+    page.setBack(null);
+    page.setDock(missed?.repeat, toLibrary(false));
+    focusSoon(page.setTitle("Geschafft"));
   };
 
   /** Das Set wurde inzwischen gelöscht, z. B. in einem anderen Tab (TDD 3.4): Es geht nicht weiter. */
   const showGone = (message: string) => {
     setUpdateBlocked(false);
     problem.textContent = "";
-    const heading = h("h1", { tabindex: -1 }, "Lernsitzung beendet");
-    show("result", heading, h("p", null, message), toLibrary());
-    focusSoon(heading);
+    show("result", h("p", null, message));
+    page.setBack(null);
+    page.setDock(toLibrary(false));
+    focusSoon(page.setTitle("Lernsitzung beendet"));
   };
 
   enterCards();
   showCard();
-  return main;
+  return page.element;
 }

@@ -41,7 +41,7 @@ export function applyTheme(theme: Theme): void {
   else root.dataset.theme = theme;
   // Die Leiste des Browsers bzw. der Home-Bildschirm-App nimmt den Hintergrund der gewählten
   // Darstellung; die Farbe kommt aus dem CSS, damit sie nur dort steht.
-  const background = getComputedStyle(root).getPropertyValue("--bg").trim();
+  const background = getComputedStyle(root).getPropertyValue("--paper").trim();
   for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) {
     if (!deviceColors.has(meta)) deviceColors.set(meta, meta.content);
     meta.content = theme === "system" ? deviceColors.get(meta)! : background;

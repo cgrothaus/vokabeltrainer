@@ -4,6 +4,7 @@
 import type { ExportScope } from "../../domain/exportSet";
 import type { StoredSet } from "../../domain/model";
 import type { Delivery } from "../../platform/deliverFile";
+import { frame } from "../components/frame";
 import { promptBox } from "../components/promptBox";
 import type { PreparedExport } from "../exportSet";
 import { type Child, focusSoon, h } from "../dom";
@@ -32,32 +33,24 @@ const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : 
 
 export function exportView(context: ExportContext, setId: string): Node {
   const main = h("main", { class: "setup export" });
-  const back = (href: string, label: string) => h("p", null, h("a", { href }, label));
-  const fail = (title: string, text: string, alert = false) =>
-    main.replaceChildren(
-      h("h1", null, title),
-      h("p", alert ? { role: "alert" } : null, text),
-      back("#/", "Zurück zur Bibliothek"),
-    );
+  const page = frame({ back: { parent: `#/set/${encodeURIComponent(setId)}` } }, main);
+  const fail = (title: string, text: string, alert = false) => {
+    page.setTitle(title);
+    main.replaceChildren(h("p", alert ? { role: "alert" } : null, text));
+  };
   context.loadSet().then(
     // Ist die Ansicht schon verlassen, hängt `main` nirgends mehr; das Ersetzen bleibt dann folgenlos.
     (set) => {
       if (!set) return fail("Set nicht gefunden", "Dieses Vokabelset gibt es nicht (mehr).");
-      main.replaceWith(
-        h(
-          "main",
-          { class: "setup export" },
-          content(set, context),
-          back(`#/set/${encodeURIComponent(setId)}`, "Zurück zum Set"),
-        ),
-      );
+      page.setTitle(set.title);
+      main.replaceChildren(...h("div", null, content(set, context)).childNodes);
     },
     (error: unknown) => {
       console.error("Set nicht lesbar", error);
       fail("Exportieren", NOT_LOADED, true);
     },
   );
-  return main;
+  return page.element;
 }
 
 function content(set: StoredSet, context: ExportContext): Child[] {
@@ -209,7 +202,6 @@ function content(set: StoredSet, context: ExportContext): Child[] {
   update();
 
   return [
-    h("h1", { class: "set-title" }, set.title),
     h("p", { class: "languages" }, "Exportieren"),
     h(
       "p",

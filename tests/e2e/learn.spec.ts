@@ -2,7 +2,7 @@
 // Sitzung; die Einrichtung wird pro Set gemerkt und mit dem Set gelöscht (TDD 12.1, FR-07, FR-08, FR-21, D-27).
 import { expect, type Page, test } from "@playwright/test";
 import type { Session, StoredSet } from "../../src/domain/model";
-import { collectErrors, importText, readStore } from "./support";
+import { backButton, collectErrors, importText, readStore } from "./support";
 
 const TITLE = "Englisch – Farben und Zahlen";
 
@@ -162,6 +162,6 @@ test("Unbekanntes Set: Hinweis statt Einrichtung", async ({ page }) => {
   const errors = collectErrors(page);
   await page.goto("./#/learn/unbekannt");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Set nicht gefunden");
-  await expect(page.getByRole("link", { name: "Zurück zur Bibliothek" })).toBeVisible();
+  await expect(backButton(page)).toBeVisible();
   expect(errors, "Fehler in der Konsole").toEqual([]);
 });

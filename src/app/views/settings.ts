@@ -3,6 +3,8 @@
 import type { RecordCounts } from "../../domain/backup";
 import type { PersistenceState } from "../../domain/storageProtection";
 import type { Theme } from "../../domain/theme";
+import { frame } from "../components/frame";
+import { openSheet } from "../components/sheet";
 import type { DeleteAllOutcome } from "../deleteAll";
 import { focusSoon, h } from "../dom";
 import type { SaveThemeOutcome } from "../theme";
@@ -38,12 +40,10 @@ const NO_SCOPE =
 const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 export function settingsView(context: SettingsContext): Node {
-  const heading = h("h1", null, "Einstellungen");
-  focusSoon(heading);
-  return h(
-    "main",
-    { class: "settings" },
-    heading,
+  const main = h("main", { class: "settings" });
+  const page = frame({ back: { parent: "#/" } }, main);
+  focusSoon(page.setTitle("Einstellungen"));
+  main.append(
     themeChoice(context),
     h(
       "section",
@@ -51,7 +51,7 @@ export function settingsView(context: SettingsContext): Node {
       h("h2", { id: "settings-data" }, "Daten"),
       h("p", null, PERSISTENCE_TEXT[context.persistence]),
       h("p", null, h("a", { href: "#/backup" }, "Backup und Wiederherstellung")),
-      deletion(context),
+      deletion(context, page.element),
     ),
     h(
       "section",
@@ -59,8 +59,8 @@ export function settingsView(context: SettingsContext): Node {
       h("h2", { id: "settings-about" }, "Über die App"),
       h("p", null, `Version ${context.appVersion}`),
     ),
-    h("p", null, h("a", { href: "#/" }, "Zurück zur Bibliothek")),
   );
+  return page.element;
 }
 
 function themeChoice(context: SettingsContext): Node {
@@ -113,9 +113,8 @@ function consequence(scope: RecordCounts): string {
   return scope.sessions === 0 ? `${sets} löschen` : `${sets} und Lernstand löschen`;
 }
 
-/** Löschen mit Ankündigung des Umfangs wie beim Set (TDD 10, FR-06). */
-function deletion(context: SettingsContext): Node {
-  const confirmation = h("div");
+/** Löschen mit Rückfrage im Blatt und Umfang wie beim Set (TDD 10, 13.7, FR-06). */
+function deletion(context: SettingsContext, within: Element): Node {
   const errors = h("div", { role: "alert" });
   const start = h(
     "button",
@@ -140,18 +139,12 @@ function deletion(context: SettingsContext): Node {
     "Alle Daten löschen",
   );
 
-  const cancel = () => {
-    confirmation.replaceChildren();
-    start.disabled = false;
-    start.focus();
-  };
-
   const confirm = (scope: RecordCounts) => {
-    const text = h("p", null, describeScope(scope));
     const remove = h(
       "button",
       {
         type: "button",
+        class: "danger",
         onclick: async () => {
           remove.disabled = abort.disabled = true;
           let outcome: DeleteAllOutcome;
@@ -162,18 +155,23 @@ function deletion(context: SettingsContext): Node {
             outcome = { ok: false, error: "Die Daten konnten nicht gelöscht werden." };
           }
           if (outcome.ok) return context.onRemoved("Alle Daten gelöscht.");
-          confirmation.replaceChildren();
+          sheet.close();
           errors.textContent = outcome.error;
           start.disabled = false;
         },
       },
       consequence(scope),
     );
-    const abort = h("button", { type: "button", class: "secondary", onclick: cancel }, "Abbrechen");
-    confirmation.replaceChildren(
-      h(
-        "div",
-        { class: "confirm" },
+    const abort = h(
+      "button",
+      { type: "button", class: "secondary", onclick: () => sheet.dismiss() },
+      "Abbrechen",
+    );
+    const text = h("p", null, describeScope(scope));
+    const sheet = openSheet(within, {
+      title: "Alle Daten löschen?",
+      focus: text,
+      content: [
         text,
         h(
           "p",
@@ -181,11 +179,12 @@ function deletion(context: SettingsContext): Node {
           "Das lässt sich nicht rückgängig machen. ",
           h("a", { href: "#/backup" }, "Vorher ein Backup speichern"),
         ),
-        h("div", { class: "actions" }, remove, abort),
-      ),
-    );
-    focusSoon(text);
+        h("div", { class: "actions" }, abort, remove),
+      ],
+      returnTo: start,
+      onDismiss: () => (start.disabled = false),
+    });
   };
 
-  return h("div", null, start, confirmation, errors);
+  return h("div", null, start, errors);
 }

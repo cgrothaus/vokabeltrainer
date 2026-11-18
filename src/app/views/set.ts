@@ -5,7 +5,9 @@ import { setSize } from "../../domain/library";
 import type { Answer, StoredEntry, StoredSection, StoredSet } from "../../domain/model";
 import { describeDay, type Overview, type SetStats } from "../../domain/stats";
 import { entryDetails } from "../components/entryDetails";
+import { type Frame, frame } from "../components/frame";
 import { learnButton } from "../components/learnButton";
+import { openSheet } from "../components/sheet";
 import type { DeleteOutcome, DeletionScope } from "../deleteSet";
 import { type Child, focusSoon, h } from "../dom";
 import { languageName } from "../languages";
@@ -31,10 +33,9 @@ const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : 
 
 const REVIEW_STATUS = { unchecked: "ungeprüft", checked: "geprüft" } as const;
 
-const back = () => h("p", null, h("a", { href: "#/" }, "Zurück zur Bibliothek"));
-
 export function setView(context: SetContext): Node {
   const main = h("main", { class: "set" });
+  const page = frame({ back: { parent: "#/" } }, main);
   // Gleich nehmen: Beim Neuzeichnen (anderer Tab) erschiene sie sonst nicht noch einmal.
   const text = context.takeMessage();
   const message = text && h("p", { role: "status", class: "message" }, text);
@@ -42,30 +43,26 @@ export function setView(context: SetContext): Node {
     // Ist die Ansicht schon verlassen, hängt `main` nirgends mehr; das Ersetzen bleibt dann folgenlos.
     (set) => {
       if (set) {
-        main.replaceWith(h("main", { class: "set" }, content(set, context, message)));
+        page.setTitle(set.title);
+        main.replaceChildren(...h("div", null, content(set, context, message, page)).childNodes);
+        if (setSize(set).entries > 0) page.setDock(learnButton(set));
         // Fokus auf die Meldung, damit Screenreader sie vorlesen (D-34).
         if (message) focusSoon(message);
         return;
       }
-      main.replaceChildren(
-        h("h1", null, "Set nicht gefunden"),
-        h("p", null, "Dieses Vokabelset gibt es nicht (mehr)."),
-        back(),
-      );
+      page.setTitle("Set nicht gefunden");
+      main.replaceChildren(h("p", null, "Dieses Vokabelset gibt es nicht (mehr)."));
     },
     (error: unknown) => {
       console.error("Set nicht lesbar", error);
-      main.replaceChildren(
-        h("h1", null, "Vokabelset"),
-        h("p", { role: "alert" }, NOT_LOADED),
-        back(),
-      );
+      page.setTitle("Vokabelset");
+      main.replaceChildren(h("p", { role: "alert" }, NOT_LOADED));
     },
   );
-  return main;
+  return page.element;
 }
 
-function content(set: StoredSet, context: SetContext, message: Child): Child[] {
+function content(set: StoredSet, context: SetContext, message: Child, page: Frame): Child[] {
   const { entries } = setSize(set);
   const overview = h("div", { class: "overview" });
   // Je Sektion eine Zeile im Titel, auch zugeklappt sichtbar; gefüllt, sobald der Lernstand da ist.
@@ -87,7 +84,8 @@ function content(set: StoredSet, context: SetContext, message: Child): Child[] {
     },
   );
   return [
-    h("h1", { class: "set-title" }, set.title),
+    // Der Titel in der App-Leiste ist einzeilig; aus Dateien kann er lang sein (TDD 13.7).
+    h("p", { class: "display" }, set.title),
     message,
     h(
       "p",
@@ -98,7 +96,6 @@ function content(set: StoredSet, context: SetContext, message: Child): Child[] {
     h(
       "div",
       { class: "actions" },
-      entries > 0 && learnButton(set),
       h(
         "a",
         { href: `#/edit/${encodeURIComponent(set.id)}`, class: "action secondary" },
@@ -116,8 +113,7 @@ function content(set: StoredSet, context: SetContext, message: Child): Child[] {
     set.sections.length === 0
       ? h("p", null, "Dieses Set hat noch keine Sektionen.")
       : set.sections.map((section) => sectionView(section, set, sectionLines.get(section.id)!)),
-    deletion(set, context),
-    back(),
+    deletion(set, context, page.element),
   ];
 }
 
@@ -240,8 +236,8 @@ function describeScope(scope: DeletionScope): string {
 }
 
 /** Löschen mit Ankündigung des Umfangs (FR-02); die Schaltfläche nennt die Folge (TDD 13.3). */
-function deletion(set: StoredSet, context: SetContext): Node {
-  const confirmation = h("div");
+/** Löschen mit Rückfrage im Blatt (TDD 10, 13.7): nennt vorher, was mitgelöscht wird. */
+function deletion(set: StoredSet, context: SetContext, within: Element): Node {
   const errors = h("div", { role: "alert" });
   const start = h(
     "button",
@@ -266,18 +262,12 @@ function deletion(set: StoredSet, context: SetContext): Node {
     "Set löschen",
   );
 
-  const cancel = () => {
-    confirmation.replaceChildren();
-    start.disabled = false;
-    start.focus();
-  };
-
   const confirm = (scope: DeletionScope) => {
-    const text = h("p", null, describeScope(scope));
     const remove = h(
       "button",
       {
         type: "button",
+        class: "danger",
         onclick: async () => {
           remove.disabled = abort.disabled = true;
           let outcome: DeleteOutcome;
@@ -288,7 +278,7 @@ function deletion(set: StoredSet, context: SetContext): Node {
             outcome = { ok: false, error: "Das Set konnte nicht gelöscht werden." };
           }
           if (outcome.ok) return context.onRemoved(`„${set.title}“ gelöscht.`);
-          confirmation.replaceChildren();
+          sheet.close();
           errors.textContent = outcome.error;
           start.disabled = false;
         },
@@ -297,11 +287,16 @@ function deletion(set: StoredSet, context: SetContext): Node {
         ? `Set mit ${count(scope.entries, "Eintrag", "Einträgen")} löschen`
         : "Endgültig löschen",
     );
-    const abort = h("button", { type: "button", class: "secondary", onclick: cancel }, "Abbrechen");
-    confirmation.replaceChildren(
-      h(
-        "div",
-        { class: "confirm" },
+    const abort = h(
+      "button",
+      { type: "button", class: "secondary", onclick: () => sheet.dismiss() },
+      "Abbrechen",
+    );
+    const text = h("p", null, describeScope(scope));
+    const sheet = openSheet(within, {
+      title: "Set löschen?",
+      focus: text,
+      content: [
         text,
         h(
           "p",
@@ -309,11 +304,12 @@ function deletion(set: StoredSet, context: SetContext): Node {
           "Das lässt sich nicht rückgängig machen. ",
           h("a", { href: "#/backup" }, "Vorher ein Backup speichern"),
         ),
-        h("div", { class: "actions" }, remove, abort),
-      ),
-    );
-    focusSoon(text);
+        h("div", { class: "actions" }, abort, remove),
+      ],
+      returnTo: start,
+      onDismiss: () => (start.disabled = false),
+    });
   };
 
-  return h("div", { class: "delete" }, start, confirmation, errors);
+  return h("div", { class: "delete" }, start, errors);
 }

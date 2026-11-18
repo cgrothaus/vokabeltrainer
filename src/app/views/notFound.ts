@@ -1,10 +1,9 @@
+import { frame } from "../components/frame";
 import { h } from "../dom";
 
 export function notFoundView(): Node {
-  return h(
-    "main",
-    null,
-    h("h1", null, "Seite nicht gefunden"),
-    h("p", null, h("a", { href: "#/" }, "Zur Bibliothek")),
-  );
+  return frame(
+    { title: "Seite nicht gefunden", back: { parent: "#/" } },
+    h("main", null, h("p", null, h("a", { href: "#/" }, "Zur Bibliothek"))),
+  ).element;
 }

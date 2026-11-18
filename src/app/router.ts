@@ -37,12 +37,68 @@ function resolve(
   return null;
 }
 
-/** Wie viele Ansichten seit dem Start gezeigt wurden; ab zwei liegt eine davon im Verlauf davor. */
-let shownViews = 0;
+/**
+ * Jeder Verlaufseintrag der App trägt seine Tiefe: wie viele Einträge der App davor liegen (D-48).
+ * „Zurück“ geht damit nur im Verlauf zurück, wenn es dort noch eine Ansicht der App gibt, auch nach
+ * Zurück, Ersetzen und Neuladen. `mark` kennzeichnet einen zusätzlichen Eintrag mit derselben
+ * Adresse, auf dem Lernsitzung oder Formular liegen (D-29).
+ */
+interface Entry {
+  depth: number;
+  mark?: string;
+}
 
-/** Ob die aktuelle Ansicht nicht die erste seit dem Laden ist, z. B. für „Zurück“ statt eines Links. */
-export function hasPreviousView(): boolean {
-  return shownViews > 1;
+const isEntry = (state: unknown): state is Entry =>
+  typeof state === "object" && state !== null && typeof (state as Entry).depth === "number";
+
+/** Tiefe des Eintrags, auf dem die App zuletzt stand; ein neuer Eintrag liegt eins tiefer. */
+let depth = 0;
+/** Ein `replaceRoute` läuft: Der neue Eintrag ersetzt den alten und behält dessen Tiefe. */
+let replacing = false;
+
+/** Merkt sich die Tiefe des aktuellen Eintrags und versieht einen neuen damit. */
+function track(first: boolean): void {
+  const state: unknown = history.state;
+  if (isEntry(state)) depth = state.depth;
+  else {
+    if (!first && !replacing) depth++;
+    history.replaceState({ depth } satisfies Entry, "");
+  }
+  replacing = false;
+}
+
+/** Wie viele Einträge der App im Verlauf vor dem aktuellen liegen. */
+export function historyDepth(): number {
+  const state: unknown = history.state;
+  return isEntry(state) ? state.depth : 0;
+}
+
+/** Legt einen zusätzlichen Eintrag mit derselben Adresse an (kein `hashchange`). */
+export function pushMark(mark: string): void {
+  depth = historyDepth() + 1;
+  history.pushState({ depth, mark } satisfies Entry, "");
+}
+
+/** Ob der aktuelle Eintrag der zusätzliche mit dieser Marke ist. */
+export function hasMark(mark: string): boolean {
+  const state: unknown = history.state;
+  return isEntry(state) && state.mark === mark;
+}
+
+/** Wechselt die Ansicht, ohne einen Eintrag anzulegen, z. B. nach dem Abschluss eines Ablaufs (D-48). */
+export function replaceRoute(hash: string): void {
+  if (hash === location.hash) return;
+  replacing = true;
+  location.replace(hash);
+}
+
+/**
+ * „Zurück“ der App-Leiste (TDD 13.7): wie der Browser im Verlauf zurück; ohne vorige Ansicht der App
+ * (Einstieg per Link) zur übergeordneten Ansicht `parent`, ohne die App zu verlassen.
+ */
+export function goBack(parent: string): void {
+  if (historyDepth() > 0) history.back();
+  else replaceRoute(parent);
 }
 
 const APP_TITLE = "Vokabeltrainer";
@@ -144,21 +200,31 @@ export function startRouter(
     const path = location.hash.slice(1) || "/";
     const [pattern, view, params] = resolve(path, routes) ?? [null, notFound, []];
     current = pattern;
-    if (!redraw) shownViews++;
     root.replaceChildren(view(leave.signal, ...params));
     announce(root, leave.signal, path === "/", redrawn);
     if (redrawn) restore(root, leave.signal, redrawn);
   };
-  const navigate = () => render();
+  const navigate = () => {
+    track(false);
+    render();
+  };
+  // Zurück und Vorwärts zwischen Einträgen derselben Adresse lösen kein `hashchange` aus.
+  const popped = () => {
+    const state: unknown = history.state;
+    if (isEntry(state)) depth = state.depth;
+  };
   const redrawIfStale = () => {
     if (stale && !document.hidden && current !== null && redrawable.includes(current)) render(true);
   };
   window.addEventListener("hashchange", navigate);
+  window.addEventListener("popstate", popped);
   document.addEventListener("visibilitychange", redrawIfStale);
+  track(true);
   render();
   return {
     stop: () => {
       window.removeEventListener("hashchange", navigate);
+      window.removeEventListener("popstate", popped);
       document.removeEventListener("visibilitychange", redrawIfStale);
       leave?.abort();
     },

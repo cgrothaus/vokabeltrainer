@@ -13,7 +13,9 @@ import {
 } from "../../domain/entryForm";
 import type { StoredSet } from "../../domain/model";
 import { GENDERS, PARTS_OF_SPEECH } from "../components/entryDetails";
+import { frame } from "../components/frame";
 import { leaveQuestion } from "../components/leaveQuestion";
+import { openSheet, type Sheet } from "../components/sheet";
 import { guardUnsaved, type UnsavedGuard } from "../components/unsavedGuard";
 import type { EditOutcome, EntryOutcome } from "../editSet";
 import { type Child, focusSoon, h } from "../dom";
@@ -37,50 +39,29 @@ export function entryEditorView(
   target: EditorTarget,
 ): Node {
   const main = h("main", { class: "editor" });
-  const missing = (title: string, text: string, href: string, link: string) =>
-    main.replaceChildren(
-      h("h1", null, title),
-      h("p", null, text),
-      h("p", null, h("a", { href }, link)),
-    );
+  const page = frame({ back: { parent: `#/edit/${encodeURIComponent(setId)}` } }, main);
+  const missing = (title: string, text: string) => {
+    page.setTitle(title);
+    main.replaceChildren(h("p", null, text));
+  };
   void context.loadSet().then(
     (set) => {
       if (signal.aborted) return;
-      if (!set)
-        return missing(
-          "Set nicht gefunden",
-          "Dieses Vokabelset gibt es nicht (mehr).",
-          "#/",
-          "Zurück zur Bibliothek",
-        );
-      const editPath = `#/edit/${encodeURIComponent(set.id)}`;
+      if (!set) return missing("Set nicht gefunden", "Dieses Vokabelset gibt es nicht (mehr).");
       if ("entryId" in target) {
         const found = findEntry(set, target.entryId);
         if (!found)
-          return missing(
-            "Eintrag nicht gefunden",
-            "Diesen Eintrag gibt es nicht (mehr).",
-            editPath,
-            "Zurück zum Bearbeiten",
-          );
+          return missing("Eintrag nicht gefunden", "Diesen Eintrag gibt es nicht (mehr).");
         return editor(main, set, entryToForm(found.entry, found.section.id), target.entryId);
       }
       if (!set.sections.some((section) => section.id === target.sectionId))
-        return missing(
-          "Sektion nicht gefunden",
-          "Diese Sektion gibt es nicht (mehr).",
-          editPath,
-          "Zurück zum Bearbeiten",
-        );
+        return missing("Sektion nicht gefunden", "Diese Sektion gibt es nicht (mehr).");
       editor(main, set, emptyEntryForm(target.sectionId));
     },
     (error: unknown) => {
       console.error("Set nicht lesbar", error);
-      main.replaceChildren(
-        h("h1", null, "Eintrag bearbeiten"),
-        h("p", { role: "alert" }, NOT_LOADED),
-        h("p", null, h("a", { href: `#/edit/${encodeURIComponent(setId)}` }, "Zurück")),
-      );
+      page.setTitle("Eintrag bearbeiten");
+      main.replaceChildren(h("p", { role: "alert" }, NOT_LOADED));
     },
   );
 
@@ -103,7 +84,7 @@ export function entryEditorView(
       resume: () => hideQuestion(),
     });
 
-    const question = h("div");
+    let question: Sheet | null = null;
     const summary = h("div", { role: "alert" });
     const status = h("p", { "aria-live": "polite", class: "selection" });
     const fields = h("div");
@@ -481,10 +462,11 @@ export function entryEditorView(
 
     // Frage beim Verlassen mit Änderungen (Zurück-Taste).
     function showQuestion() {
-      question.replaceChildren(
-        leaveQuestion("Deine Änderungen an diesem Eintrag sind noch nicht gespeichert.", {
+      question = leaveQuestion(
+        page.element,
+        "Deine Änderungen an diesem Eintrag sind noch nicht gespeichert.",
+        {
           save: async () => {
-            hideQuestion();
             if (await save()) {
               original = structuredClone(form);
               guard.leave();
@@ -492,16 +474,17 @@ export function entryEditorView(
           },
           discard,
           stay: () => {
-            hideQuestion();
             guard.stay();
             document.getElementById("term")?.focus();
           },
-        }),
+        },
       );
     }
 
+    /** Vorwärts nach der Frage: Das Blatt geht zu, ohne dass noch etwas geschieht. */
     function hideQuestion() {
-      question.replaceChildren();
+      question?.close();
+      question = null;
     }
 
     const submit = h("button", { type: "submit" }, "Speichern");
@@ -514,11 +497,9 @@ export function entryEditorView(
       button("Verwerfen", discard),
     );
 
-    const heading = h("h1", null, entryId === undefined ? "Neuer Eintrag" : "Eintrag bearbeiten");
+    page.setTitle(entryId === undefined ? "Neuer Eintrag" : "Eintrag bearbeiten");
     main.replaceChildren(
-      heading,
       h("p", { class: "languages" }, set.title),
-      question,
       summary,
       h(
         "form",
@@ -537,26 +518,24 @@ export function entryEditorView(
     );
     render();
 
-    /** Löschen mit Ankündigung; die Antworten zum Eintrag bleiben, zählen aber nicht mehr (TDD 10). */
+    /**
+     * Löschen mit Rückfrage im Blatt (TDD 10, 13.7); die Antworten zum Eintrag bleiben, zählen aber
+     * nicht mehr.
+     */
     function deletion(id: string): Node {
-      const confirmation = h("div");
       const start = button("Eintrag löschen", () => {
         start.disabled = true;
-        const text = h(
-          "p",
-          null,
-          `„${original.term.text}“ wird gelöscht. Dein Lernstand zu diesem Eintrag zählt danach nicht mehr.`,
-        );
         const remove = h(
           "button",
           {
             type: "button",
+            class: "danger",
             onclick: async () => {
               remove.disabled = abort.disabled = true;
               const outcome = await context.removeEntry(set, id);
               if (signal.aborted) return;
               if (outcome.ok) return discard();
-              confirmation.replaceChildren();
+              sheet.close();
               start.disabled = false;
               summary.textContent = outcome.error;
               focusSoon(summary);
@@ -566,25 +545,25 @@ export function entryEditorView(
         );
         const abort = h(
           "button",
-          {
-            type: "button",
-            class: "secondary",
-            onclick: () => {
-              confirmation.replaceChildren();
-              start.disabled = false;
-              start.focus();
-            },
-          },
+          { type: "button", class: "secondary", onclick: () => sheet.dismiss() },
           "Abbrechen",
         );
-        confirmation.replaceChildren(
-          h("div", { class: "confirm" }, text, h("div", { class: "actions" }, remove, abort)),
+        const text = h(
+          "p",
+          null,
+          `„${original.term.text}“ wird gelöscht. Dein Lernstand zu diesem Eintrag zählt danach nicht mehr.`,
         );
-        focusSoon(text);
+        const sheet = openSheet(page.element, {
+          title: "Eintrag löschen?",
+          focus: text,
+          content: [text, h("div", { class: "actions" }, abort, remove)],
+          returnTo: start,
+          onDismiss: () => (start.disabled = false),
+        });
       });
-      return h("div", { class: "delete" }, start, confirmation);
+      return h("div", { class: "delete" }, start);
     }
   }
 
-  return main;
+  return page.element;
 }

@@ -129,7 +129,7 @@ test("E2E-26 Set in einem anderen Tab gelöscht: Die Sitzung endet, ohne etwas z
   expect(await readStore(page, "sessions")).toEqual([]);
   expect(await readStore(page, "settings")).toEqual([]);
 
-  await page.getByRole("link", { name: "Zurück zur Bibliothek" }).click();
+  await page.getByRole("link", { name: "Zur Bibliothek" }).click();
   await expect(page.getByRole("heading", { name: "Noch keine Vokabelsets" })).toBeVisible();
   // Das Ende der Sitzung meldet keinen Speicherfehler.
   await expect(page.locator("#storage-notice")).toBeEmpty();

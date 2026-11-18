@@ -5,6 +5,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page, test } from "@playwright/test";
 import {
+  backButton,
   changeDevice,
   collectErrors,
   fakeDevice,
@@ -57,6 +58,10 @@ function checkLayout(target: number): string[] {
 /** Prüft den aktuellen Zustand hell und dunkel und liefert die Befunde mit Zustandsnamen. */
 async function audit(page: Page, state: string): Promise<string[]> {
   const findings: string[] = [];
+  // Ein Blatt blendet sich ein; mitten in der Bewegung stimmt der Kontrast noch nicht.
+  await page.evaluate(() =>
+    Promise.all(document.getAnimations().map((animation) => animation.finished)),
+  );
   for (const colorScheme of ["light", "dark"] as const) {
     await page.emulateMedia({ colorScheme });
     const where = `${state} (${colorScheme === "light" ? "hell" : "dunkel"})`;
@@ -138,6 +143,7 @@ test("Mit Set: Bibliothek, Set-Ansicht, Löschen, Einrichtung, Karteikarten, Zwi
   await page.locator("summary").first().click();
   findings.push(...(await audit(page, "Set-Ansicht aufgeklappt")));
   await page.getByRole("button", { name: "Set löschen" }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
   findings.push(...(await audit(page, "Set löschen, Ankündigung")));
   await page.getByRole("button", { name: "Abbrechen" }).click();
 
@@ -186,6 +192,7 @@ test("Mit Set: Bibliothek, Set-Ansicht, Löschen, Einrichtung, Karteikarten, Zwi
 
   await page.goto("./#/settings");
   await page.getByRole("button", { name: "Alle Daten löschen" }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
   findings.push(...(await audit(page, "Alle Daten löschen, Ankündigung")));
 
   expect(findings).toEqual([]);
@@ -226,7 +233,7 @@ test("Beispielset: Set-Ansicht mit Lernstand, Multiple Choice mit Rückmeldung",
   await page.getByRole("radio", { name: "Einzelne Sektionen" }).check();
   await page.getByRole("checkbox").first().check();
   findings.push(...(await audit(page, "Export, einzelne Sektionen")));
-  await page.getByRole("link", { name: "Zurück zum Set" }).click();
+  await backButton(page).click();
 
   await page
     .getByRole("link", { name: /lernen$/ })
@@ -244,6 +251,23 @@ test("Beispielset: Set-Ansicht mit Lernstand, Multiple Choice mit Rückmeldung",
 
   expect(findings).toEqual([]);
   expect(errors).toEqual([]);
+});
+
+test("Tablet: Set-Ansicht und Bibliothek bei 768 px (TDD 13.7)", async ({ page }) => {
+  await page.setViewportSize({ width: 768, height: 1024 });
+  const errors = collectErrors(page);
+  const findings: string[] = [];
+  await page.goto("./");
+  await page.getByRole("button", { name: "Beispielset ausprobieren" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Beispielset");
+  findings.push(...(await audit(page, "Set-Ansicht Tablet")));
+
+  await backButton(page).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Vokabeltrainer");
+  await expect(page.locator(".hints")).not.toHaveAttribute("aria-busy");
+  findings.push(...(await audit(page, "Bibliothek Tablet")));
+  expect(findings).toEqual([]);
+  expect(errors, "Fehler in der Konsole").toEqual([]);
 });
 
 test("Bearbeiten: Set bearbeiten, Eintragsformular, Fehler, Frage beim Verlassen", async ({

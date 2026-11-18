@@ -3,6 +3,7 @@
 import { type BackupFile, backupFileName } from "../../domain/backup";
 import { deliverFile } from "../../platform/deliverFile";
 import type { OpenResult } from "../../storage/database";
+import { frame } from "../components/frame";
 import { h } from "../dom";
 
 export type StorageProblem =
@@ -101,6 +102,7 @@ function backupButton(backup: BackupFile): Node {
   );
 }
 
+/** Ohne „Zurück“: Die App kann hier nirgendwohin wechseln. */
 function screen(title: string, ...content: (Node | Node[])[]): Node {
-  return h("main", null, h("h1", null, title), content);
+  return frame({ title }, h("main", null, content)).element;
 }

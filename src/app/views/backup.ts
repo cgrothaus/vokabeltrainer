@@ -8,6 +8,7 @@ import {
 } from "../../domain/backup";
 import type { Delivery } from "../../platform/deliverFile";
 import type { CheckOutcome, PreparedBackup, RestoreOutcome } from "../backup";
+import { frame } from "../components/frame";
 import { focusSoon, h } from "../dom";
 import { failureMessage } from "../storageMessages";
 
@@ -68,19 +69,22 @@ function describeLocal(scope: RecordCounts | null): string {
 
 export function backupView(context: BackupContext): Node {
   const save = saveSection(context);
-  return h(
-    "main",
-    { class: "backup" },
-    h("h1", null, "Backup und Wiederherstellung"),
-    save.section,
-    // Nach dem Wiederherstellen gibt es einen neuen Bestand; das vorbereitete Backup wäre veraltet.
-    restoreSection(context, save),
-    h("p", null, h("a", { href: "#/" }, "Zurück zur Bibliothek")),
-  );
+  return frame(
+    { title: "Backup und Wiederherstellung", back: { parent: "#/" }, dock: [save.button] },
+    h(
+      "main",
+      { class: "backup" },
+      save.section,
+      // Nach dem Wiederherstellen gibt es einen neuen Bestand; das vorbereitete Backup wäre veraltet.
+      restoreSection(context, save),
+    ),
+  ).element;
 }
 
 interface SaveSection {
   section: Node;
+  /** „Backup speichern“ als Hauptaktion in der Aktionsleiste (TDD 13.7). */
+  button: Node;
   /** Liest den Bestand neu ein, z. B. nach dem Wiederherstellen. */
   refresh: () => void;
   /** Speichert das vorbereitete Backup; direkt im Klick aufrufen (TDD 11.2). */
@@ -167,11 +171,10 @@ function saveSection(context: BackupContext): SaveSection {
       "Ein Backup enthält alle Vokabelsets, deinen Lernstand und deine Einstellungen. Speichere es an einem sicheren Ort, zum Beispiel in „Dateien“ oder in deiner Cloud.",
     ),
     last,
-    save,
     status,
     problem,
   );
-  return { section, refresh, saveNow };
+  return { section, button: save, refresh, saveNow };
 }
 
 /** Bestand auf diesem Gerät; `null`, wenn er sich nicht lesen ließ. */

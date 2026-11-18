@@ -62,7 +62,7 @@ test("E2E-01 Import (Text) → Lernen → Neuladen → Daten da", async ({ page 
   expect(answers.filter((event) => event.entryId === missed.entryId)).toHaveLength(2);
   await expect.poll(async () => (await sessions(page)).map((s) => s.status)).toEqual(["completed"]);
 
-  await page.getByRole("link", { name: "Zurück zur Bibliothek" }).click();
+  await page.getByRole("link", { name: "Zur Bibliothek" }).click();
   await page.reload();
   await expect(librarySets(page)).toHaveText(["Englisch – Wetter 3 Einträge"]);
   expect(await events(page)).toEqual(answers);
@@ -116,7 +116,7 @@ test("Zwischenstand → Bibliothek beendet die Sitzung; ohne Antwort führt Been
   await expect(pause(page)).toBeVisible();
   // Ohne Fehler keine Liste.
   await expect(page.locator(".mistakes")).toHaveCount(0);
-  await page.getByRole("link", { name: "Zurück zur Bibliothek" }).click();
+  await page.getByRole("link", { name: "Zur Bibliothek" }).click();
   await expect(librarySets(page)).toHaveText(["Englisch – Beenden 3 Einträge"]);
   await expect.poll(() => statuses(page)).toEqual(["ended"]);
   expect(await events(page)).toHaveLength(1);

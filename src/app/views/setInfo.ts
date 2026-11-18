@@ -8,7 +8,9 @@ import {
   setInfoChanged,
   setInfoToForm,
 } from "../../domain/setInfoForm";
+import { type Frame, frame } from "../components/frame";
 import { leaveQuestion } from "../components/leaveQuestion";
+import type { Sheet } from "../components/sheet";
 import { setInfoFields } from "../components/setInfoFields";
 import { guardUnsaved } from "../components/unsavedGuard";
 import type { InfoOutcome } from "../editSet";
@@ -36,6 +38,7 @@ const editPath = (id: string) => `#/edit/${encodeURIComponent(id)}`;
 
 export function newSetView(context: NewSetContext, signal: AbortSignal): Node {
   const main = h("main", { class: "editor" });
+  const page = frame({ back: { parent: "#/" } }, main);
   void context
     .loadLanguages()
     .catch(() => [])
@@ -51,7 +54,7 @@ export function newSetView(context: NewSetContext, signal: AbortSignal): Node {
         oninput: () => (sectionTitle = sectionInput.value),
       });
       const sectionError = h("p", { id: `${sectionId}-error`, class: "field-error", hidden: true });
-      infoForm(main, signal, {
+      infoForm(page, main, signal, {
         title: "Leeres Set anlegen",
         intro:
           "Ein leeres Set füllst du selbst mit Einträgen. Die erste Sektion legst du gleich mit an; weitere kannst du später ergänzen.",
@@ -83,21 +86,20 @@ export function newSetView(context: NewSetContext, signal: AbortSignal): Node {
         done: (set, guard) => guard.leaveTo(editPath(set.id)),
       });
     });
-  return main;
+  return page.element;
 }
 
 export function setInfoView(context: SetInfoContext, signal: AbortSignal, setId: string): Node {
   const main = h("main", { class: "editor" });
+  const page = frame({ back: { parent: editPath(setId) } }, main);
   void Promise.all([context.loadSet(), context.loadLanguages().catch(() => [])]).then(
     ([set, languages]) => {
       if (signal.aborted) return;
-      if (!set)
-        return main.replaceChildren(
-          h("h1", null, "Set nicht gefunden"),
-          h("p", null, "Dieses Vokabelset gibt es nicht (mehr)."),
-          h("p", null, h("a", { href: "#/" }, "Zurück zur Bibliothek")),
-        );
-      infoForm(main, signal, {
+      if (!set) {
+        page.setTitle("Set nicht gefunden");
+        return main.replaceChildren(h("p", null, "Dieses Vokabelset gibt es nicht (mehr)."));
+      }
+      infoForm(page, main, signal, {
         title: "Angaben bearbeiten",
         intro: null,
         initial: setInfoToForm(set),
@@ -114,14 +116,11 @@ export function setInfoView(context: SetInfoContext, signal: AbortSignal, setId:
     },
     (error: unknown) => {
       console.error("Set nicht lesbar", error);
-      main.replaceChildren(
-        h("h1", null, "Angaben bearbeiten"),
-        h("p", { role: "alert" }, NOT_LOADED),
-        h("p", null, h("a", { href: editPath(setId) }, "Zurück")),
-      );
+      page.setTitle("Angaben bearbeiten");
+      main.replaceChildren(h("p", { role: "alert" }, NOT_LOADED));
     },
   );
-  return main;
+  return page.element;
 }
 
 interface InfoFormOptions {
@@ -140,14 +139,19 @@ interface InfoFormOptions {
   done: (set: StoredSet, guard: ReturnType<typeof guardUnsaved>) => void;
 }
 
-function infoForm(main: HTMLElement, signal: AbortSignal, options: InfoFormOptions): void {
+function infoForm(
+  page: Frame,
+  main: HTMLElement,
+  signal: AbortSignal,
+  options: InfoFormOptions,
+): void {
   const form = structuredClone(options.initial);
   let original = structuredClone(options.initial);
   let busy = false;
   let leaving = false;
   const changed = () => !leaving && (setInfoChanged(form, original) || options.extraChanged());
 
-  const question = h("div");
+  let question: Sheet | null = null;
   const summary = h("div", { role: "alert" });
   const fields = setInfoFields(form, options.languages);
   const submit = h("button", { type: "submit" }, options.submitLabel);
@@ -162,21 +166,18 @@ function infoForm(main: HTMLElement, signal: AbortSignal, options: InfoFormOptio
     fallback: options.fallback,
     changed,
     ask: () =>
-      question.replaceChildren(
-        leaveQuestion(options.question, {
-          save: async () => {
-            question.replaceChildren();
-            if (!(await save())) guard.stay();
-          },
-          discard,
-          stay: () => {
-            question.replaceChildren();
-            guard.stay();
-            document.getElementById("set-title")?.focus();
-          },
-        }),
-      ),
-    resume: () => question.replaceChildren(),
+      (question = leaveQuestion(page.element, options.question, {
+        save: async () => {
+          if (!(await save())) guard.stay();
+        },
+        discard,
+        stay: () => {
+          guard.stay();
+          document.getElementById("set-title")?.focus();
+        },
+      })),
+    // Vorwärts nach der Frage: Das Blatt geht zu, ohne dass noch etwas geschieht.
+    resume: () => question?.close(),
   });
 
   const discard = () => {
@@ -214,10 +215,9 @@ function infoForm(main: HTMLElement, signal: AbortSignal, options: InfoFormOptio
     return false;
   };
 
+  page.setTitle(options.title);
   main.replaceChildren(
-    h("h1", null, options.title),
     options.intro ? h("p", null, options.intro) : "",
-    question,
     summary,
     h(
       "form",

@@ -1,0 +1,256 @@
+/* App-Rahmen (TDD 13.7): App-Leiste oben, Inhalt in einer Spalte, Aktionsleiste unten in der
+   Daumenzone, Blatt von unten. Ab etwa 700 px (Tablet) wird die Spalte breiter. */
+
+html {
+  /* Was den Fokus bekommt, rutscht nicht unter die mitlaufende App-Leiste. */
+  scroll-padding-top: calc(4.5rem + env(safe-area-inset-top));
+  scroll-padding-bottom: var(--dock-space);
+}
+
+body {
+  --dock-space: 0px;
+}
+
+body:has(.screen > .dock:not([hidden])) {
+  --dock-space: var(--dock-height, 6rem);
+}
+
+/* Hinter der Statusleiste der installierten App steht Papier statt durchscheinendem Inhalt. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 10;
+  height: env(safe-area-inset-top);
+  background: var(--paper);
+}
+
+.screen > main,
+.appbar .bar,
+.dock .bar {
+  width: 100%;
+  max-width: 34rem;
+  margin: 0 auto;
+  padding-right: max(1rem, env(safe-area-inset-right));
+  padding-left: max(1rem, env(safe-area-inset-left));
+}
+
+.screen > main {
+  padding-top: 0.25rem;
+  padding-bottom: calc(var(--dock-space) + 1.5rem + env(safe-area-inset-bottom));
+}
+
+/* Platz unter dem Inhalt, solange eine Hinweisleiste steht, damit sie nichts verdeckt. */
+body:has(.notice:not(:empty)) .screen > main {
+  padding-bottom: calc(var(--dock-space) + 8rem);
+}
+
+body:has(.notice:not(:empty) ~ .notice:not(:empty)) .screen > main {
+  padding-bottom: calc(var(--dock-space) + 16rem);
+}
+
+/* App-Leiste: mitlaufend, Titel klein und einzeilig; der volle Titel steht, wo nötig, im Inhalt. */
+.appbar {
+  position: sticky;
+  top: env(safe-area-inset-top);
+  z-index: 5;
+  background: var(--paper);
+}
+
+.appbar .bar {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 56px;
+}
+
+.appbar .back:empty {
+  display: none;
+}
+
+/* Ohne „Zurück“ steht der Titel bündig mit dem Inhalt. */
+.appbar h1 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--text-l);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  hyphens: none;
+}
+
+.appbar .tools {
+  display: flex;
+  margin-left: auto;
+}
+
+.iconbtn,
+button.iconbtn {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.iconbtn:hover {
+  background: var(--accent-soft);
+}
+
+/* Der Zurück-Pfeil steht optisch am Rand, die Fläche bleibt 44 × 44. */
+.appbar .back .iconbtn {
+  margin-left: -10px;
+}
+
+svg.icon {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+svg.icon .fill {
+  fill: currentColor;
+  stroke: none;
+}
+
+/* Großer Titel im Inhalt, z. B. der volle Set-Titel (TDD 13.7). */
+.display {
+  margin: 0.25rem 0 0;
+  font-size: var(--text-display);
+  font-weight: 750;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+
+/* Aktionsleiste: fest unten mit Safe Area, Verlauf nach oben, damit der Inhalt sanft darunter läuft. */
+.dock {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 5;
+  padding-top: 1.125rem;
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, var(--paper) 72%, transparent);
+}
+
+.dock .bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+}
+
+.dock .bar > * {
+  flex: 1 1 8rem;
+  justify-content: center;
+  min-height: 54px;
+  font-size: var(--text-m);
+  font-weight: 700;
+  text-align: center;
+}
+
+/* Hinweisleisten (TDD 13.1) über der Aktionsleiste; ihre Höhe setzt `components/frame.ts`. */
+.notices {
+  position: fixed;
+  inset: auto 0 var(--dock-space);
+  z-index: 6;
+}
+
+body:not(:has(.screen > .dock:not([hidden]))) .notices:has(.notice:not(:empty)) {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Blatt von unten (TDD 13.7): modales `dialog`; der Rand außerhalb des Inhalts ist abgedunkelt. */
+dialog.sheet {
+  width: 100%;
+  max-width: 34rem;
+  max-height: 88%;
+  margin: auto auto 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-l) var(--radius-l) 0 0;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+  animation: sheet-up 0.25s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+dialog.sheet::backdrop {
+  background: var(--scrim);
+}
+
+.sheet-body {
+  display: grid;
+  gap: 1rem;
+  padding: 0.5rem max(1rem, env(safe-area-inset-right)) calc(1rem + env(safe-area-inset-bottom))
+    max(1rem, env(safe-area-inset-left));
+  overflow-wrap: anywhere;
+}
+
+.sheet-body > * {
+  min-width: 0;
+  margin: 0;
+}
+
+.sheet .grip {
+  justify-self: center;
+  width: 40px;
+  height: 5px;
+  margin: 0.25rem 0;
+  border-radius: 99px;
+  background: var(--line);
+}
+
+.sheet h2 {
+  font-size: var(--text-l);
+}
+
+.sheet .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+}
+
+.sheet .actions > * {
+  flex: 1 1 8rem;
+  min-height: 54px;
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  dialog.sheet {
+    animation: none;
+  }
+}
+
+@media (min-width: 700px) {
+  .screen > main,
+  .appbar .bar {
+    max-width: 46rem;
+  }
+
+  .dock .bar {
+    max-width: 28rem;
+  }
+}

@@ -3,6 +3,8 @@
 // Bearbeiten öffnen. Jede Aktion speichert sofort; danach wird neu gezeichnet und der Fokus bleibt an
 // der bewegten Stelle.
 import type { StoredEntry, StoredSection, StoredSet } from "../../domain/model";
+import { type Frame, frame } from "../components/frame";
+import { openSheet } from "../components/sheet";
 import type { EditOutcome } from "../editSet";
 import { type Child, focusSoon, h } from "../dom";
 import { languageName } from "../languages";
@@ -21,35 +23,27 @@ const NOT_LOADED = "Das Vokabelset konnte nicht geladen werden. Lade die Seite n
 
 const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
-const back = () => h("p", null, h("a", { href: "#/" }, "Zurück zur Bibliothek"));
-
-export function editSetView(context: EditSetContext): Node {
+export function editSetView(context: EditSetContext, setId: string): Node {
   const main = h("main", { class: "edit-set" });
+  const page = frame({ back: { parent: `#/set/${encodeURIComponent(setId)}` } }, main);
   void context.loadSet().then(
     (set) => {
-      if (set) return main.replaceWith(editor(set, context));
-      main.replaceChildren(
-        h("h1", null, "Set nicht gefunden"),
-        h("p", null, "Dieses Vokabelset gibt es nicht (mehr)."),
-        back(),
-      );
+      if (set) return main.replaceChildren(...editor(set, context, page));
+      page.setTitle("Set nicht gefunden");
+      main.replaceChildren(h("p", null, "Dieses Vokabelset gibt es nicht (mehr)."));
     },
     (error: unknown) => {
       console.error("Set nicht lesbar", error);
-      main.replaceChildren(
-        h("h1", null, "Set bearbeiten"),
-        h("p", { role: "alert" }, NOT_LOADED),
-        back(),
-      );
+      page.setTitle("Set bearbeiten");
+      main.replaceChildren(h("p", { role: "alert" }, NOT_LOADED));
     },
   );
-  return main;
+  return page.element;
 }
 
-function editor(loaded: StoredSet, context: EditSetContext): Node {
+function editor(loaded: StoredSet, context: EditSetContext, page: Frame): Node[] {
   let set = loaded;
   let busy = false;
-  const heading = h("h1", { class: "set-title" });
   const status = h("p", { "aria-live": "polite", class: "selection" });
   const problem = h("div", { role: "alert" });
   const body = h("div");
@@ -159,7 +153,8 @@ function editor(loaded: StoredSet, context: EditSetContext): Node {
       input.select();
     };
 
-    const remove = () => {
+    /** Ohne Einträge sofort, sonst mit Rückfrage im Blatt (TDD 10, 13.7). */
+    const remove = (event: Event) => {
       const removed = () =>
         run(() => context.removeSection(set, section.id), `Sektion „${section.title}“ gelöscht.`);
       const entries = section.entries.length;
@@ -169,37 +164,35 @@ function editor(loaded: StoredSet, context: EditSetContext): Node {
         null,
         `Gelöscht werden die Sektion „${section.title}“ und ${count(entries, "Eintrag", "Einträge")}. Dein Lernstand zu diesen Einträgen zählt danach nicht mehr.`,
       );
-      slot.replaceChildren(
-        h(
-          "div",
-          { class: "confirm" },
+      const sheet = openSheet(page.element, {
+        title: "Sektion löschen?",
+        focus: text,
+        content: [
           text,
           h(
             "div",
             { class: "actions" },
             h(
               "button",
-              { type: "button", onclick: () => void removed() },
-              `Sektion mit ${count(entries, "Eintrag", "Einträgen")} löschen`,
+              { type: "button", class: "secondary", onclick: () => sheet.dismiss() },
+              "Abbrechen",
             ),
             h(
               "button",
               {
                 type: "button",
-                class: "secondary",
+                class: "danger",
                 onclick: () => {
-                  slot.replaceChildren();
-                  body
-                    .querySelector<HTMLElement>(`[data-key="section-delete-${section.id}"]`)
-                    ?.focus();
+                  sheet.close();
+                  void removed();
                 },
               },
-              "Abbrechen",
+              `Sektion mit ${count(entries, "Eintrag", "Einträgen")} löschen`,
             ),
           ),
-        ),
-      );
-      focusSoon(text);
+        ],
+        returnTo: event.currentTarget as HTMLElement,
+      });
     };
 
     return h(
@@ -332,7 +325,7 @@ function editor(loaded: StoredSet, context: EditSetContext): Node {
 
   const render = () => {
     const setPath = encodeURIComponent(set.id);
-    heading.textContent = `${set.title} bearbeiten`;
+    page.setTitle(`${set.title} bearbeiten`);
     body.replaceChildren(
       h(
         "div",
@@ -360,7 +353,7 @@ function editor(loaded: StoredSet, context: EditSetContext): Node {
   };
   render();
 
-  return h("main", { class: "edit-set" }, heading, status, problem, body);
+  return [status, problem, body];
 }
 
 /** „autumn – Herbst; Spätzeit“, Wort und Bedeutungen in ihrer Sprache. */

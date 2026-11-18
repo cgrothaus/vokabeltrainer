@@ -6,6 +6,7 @@ import { MAX_IMPORT_SIZE } from "../../domain/importSet";
 import type { ImportDecisions } from "../../domain/merge";
 import type { StoredSet } from "../../domain/model";
 import type { ClipboardResult } from "../../platform/clipboard";
+import { frame } from "../components/frame";
 import { importChanges } from "../components/importChanges";
 import { focusSoon, h } from "../dom";
 import type {
@@ -307,13 +308,8 @@ export function importView(context: ImportContext): Node {
     file,
   );
 
-  return h(
-    "main",
-    { class: "import" },
-    h("h1", null, "Vokabelset importieren"),
-    input,
-    preview,
-    errors,
-    h("p", null, h("a", { href: "#/" }, "Zurück zur Bibliothek")),
-  );
+  return frame(
+    { title: "Vokabelset importieren", back: { parent: "#/" } },
+    h("main", { class: "import" }, input, preview, errors),
+  ).element;
 }

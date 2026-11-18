@@ -3,7 +3,7 @@
 // `hashchange` aus; mit Änderungen fragt die Ansicht nach, sonst geht es gleich weiter zurück.
 // Neuladen und Schließen fragt der Browser selbst (`beforeunload`). Solange das Formular offen ist,
 // bleibt eine neue App-Version zurückgehalten (TAK-12).
-import { hasPreviousView } from "../router";
+import { hasMark, historyDepth, pushMark, replaceRoute } from "../router";
 import { setUpdateBlocked } from "./updateNotice";
 
 const EDITING = "editing";
@@ -37,29 +37,29 @@ export function guardUnsaved(options: GuardOptions): UnsavedGuard {
   const hash = location.hash;
   // Nach dem Neuladen steht der zusätzliche Eintrag schon da; davor liegt dann die Ansicht, aus der
   // das Formular einmal geöffnet wurde.
-  const canGoBack = hasPreviousView() || history.state === EDITING;
+  const onForm = () => hasMark(EDITING);
+  const canGoBack = historyDepth() - (onForm() ? 1 : 0) > 0;
   let leaving = false;
 
   setUpdateBlocked(true);
   signal.addEventListener("abort", () => setUpdateBlocked(false));
 
-  const onForm = () => history.state === EDITING;
   const stay = () => {
-    if (!onForm()) history.pushState(EDITING, "");
+    if (!onForm()) pushMark(EDITING);
   };
   stay();
 
   const leave = () => {
     leaving = true;
     if (canGoBack) history.go(onForm() ? -2 : -1);
-    else location.replace(options.fallback);
+    else replaceRoute(options.fallback);
   };
 
   const leaveTo = (target: string) => {
     leaving = true;
-    if (!onForm()) return location.replace(target);
+    if (!onForm()) return replaceRoute(target);
     // Erst vom zusätzlichen Eintrag zurück (gleiche Adresse, kein `hashchange`), dann ersetzen.
-    window.addEventListener("popstate", () => location.replace(target), { once: true, signal });
+    window.addEventListener("popstate", () => replaceRoute(target), { once: true, signal });
     history.back();
   };
 

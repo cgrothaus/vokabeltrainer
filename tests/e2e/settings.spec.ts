@@ -2,6 +2,7 @@
 // App-Version und Wege. Das Farbschema des Geräts wird mit `emulateMedia` umgestellt.
 import { expect, type Page, test } from "@playwright/test";
 import {
+  backButton,
   collectErrors,
   endPractice,
   importSet,
@@ -57,7 +58,7 @@ async function deviceColors(page: Page): Promise<{ names: string[]; light: Color
   const dark = await colors(page, names);
   await page.emulateMedia({ colorScheme: "light" });
   const light = await colors(page, names);
-  expect(dark["--bg"]).not.toBe(light["--bg"]);
+  expect(dark["--paper"]).not.toBe(light["--paper"]);
   return { names, light, dark };
 }
 
@@ -103,7 +104,7 @@ test("E2E-17 Darstellung: eigene Wahl vor dem Gerät, gemerkt nach dem Neuladen"
   await page.getByRole("radio", { name: "Dunkel" }).check();
   expect(await colors(page, names)).toEqual(dark);
   expect(await colorScheme(page)).toBe("dark");
-  expect(await themeColors(page)).toEqual([dark["--bg"], dark["--bg"]]);
+  expect(await themeColors(page)).toEqual([dark["--paper"], dark["--paper"]]);
   await expect.poll(() => storedTheme(page)).toBe("dark");
 
   await page.reload();
@@ -115,7 +116,7 @@ test("E2E-17 Darstellung: eigene Wahl vor dem Gerät, gemerkt nach dem Neuladen"
   await page.getByRole("radio", { name: "Hell" }).check();
   expect(await colors(page, names)).toEqual(light);
   expect(await colorScheme(page)).toBe("light");
-  expect(await themeColors(page)).toEqual([light["--bg"], light["--bg"]]);
+  expect(await themeColors(page)).toEqual([light["--paper"], light["--paper"]]);
   await expect.poll(() => storedTheme(page)).toBe("light");
 
   // Wieder wie auf dem Gerät: folgt dessen Wechsel sofort.
@@ -155,7 +156,7 @@ test("E2E-17 Ein wiederhergestelltes Backup bringt seine Darstellung mit", async
   await expect(page.getByText("Backup wiederhergestellt.")).toBeFocused();
   expect(await colors(page, names)).toEqual(dark);
 
-  await page.getByRole("link", { name: "Zurück zur Bibliothek" }).click();
+  await backButton(page).click();
   await openSettings(page);
   await expect(page.getByRole("radio", { name: "Dunkel" })).toBeChecked();
 });
