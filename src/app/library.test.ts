@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto";
 import { IDBFactory } from "fake-indexeddb";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { StoredSet } from "../domain/model";
 import { settingKey } from "../domain/practiceSetup";
 import { openDatabase } from "../storage/database";
@@ -47,15 +47,27 @@ function remember(set: StoredSet, count: 10 | 20 | 30 | "all"): Promise<void> {
   });
 }
 
+/**
+ * Schnellstart eine Minute nach dem vorigen: Zwei Sitzungen in derselben Millisekunde hätten dasselbe
+ * `startedAt`, ihre Reihenfolge hinge dann von den zufälligen IDs ab (in der CI geschehen).
+ */
+function startLater(set: StoredSet): Promise<"started" | "setup"> {
+  vi.setSystemTime(Date.now() + 60_000);
+  return quickStart(db, set);
+}
+
 /** Startet per Schnellstart und beantwortet die erste Karte. */
 async function learn(set: StoredSet): Promise<void> {
-  expect(await quickStart(db, set)).toBe("started");
+  expect(await startLater(set)).toBe("started");
   const practice = currentPractice()!;
   const outcome = await practice.answer("correct");
   expect(outcome).toEqual({ ok: true });
 }
 
 beforeEach(async () => {
+  // Nur die Uhr: Die Rückrufe von fake-indexeddb laufen weiter.
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-11-18T08:00:00.000Z"));
   indexedDB = new IDBFactory();
   const result = await openDatabase({ appVersion: "test" });
   if (!result.ok) throw new Error(result.reason);
@@ -63,15 +75,19 @@ beforeEach(async () => {
   for (const set of [large, small, empty]) await addSet(db, set);
 });
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 describe("quickStart", () => {
   it("öffnet ohne gemerkte Einrichtung die Einrichtung und legt keine Sitzung an", async () => {
-    expect(await quickStart(db, large)).toBe("setup");
+    expect(await startLater(large)).toBe("setup");
     expect(await readLearningOrder(db)).toEqual({ order: [] });
   });
 
   it("startet mit der gemerkten Einrichtung sofort", async () => {
     await remember(large, 10);
-    expect(await quickStart(db, large)).toBe("started");
+    expect(await startLater(large)).toBe("started");
     const practice = currentPractice()!;
     expect(practice.set.id).toBe(large.id);
     expect(practice.state.total).toBe(10);
@@ -106,7 +122,7 @@ describe("loadLibraryStart", () => {
     await remember(small, "all");
     await learn(small);
     await remember(large, 10);
-    expect(await quickStart(db, large)).toBe("started");
+    expect(await startLater(large)).toBe("started");
     const start = await loadLibraryStart(db, [large, small]);
     expect(start.order).toEqual([large.id, small.id]);
     expect(start.continueWith?.set).toBe(small);
