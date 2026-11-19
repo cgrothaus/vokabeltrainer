@@ -46,12 +46,18 @@ export async function importSet(page: Page, title: string, base = "./"): Promise
   await importText(page, setFile(title), `„${title}“ mit 3 Einträgen gespeichert.`, base);
 }
 
-/** Wie `importSet` mit beliebigem Text; `saved` ist die erwartete Meldung in der Bibliothek. */
+/**
+ * Wie `importSet` mit beliebigem Text; `saved` ist die erwartete Meldung in der Set-Ansicht, die sich
+ * nach dem Speichern öffnet (TDD 9.2). Danach geht es zur Bibliothek.
+ */
 export async function importText(page: Page, text: string, saved: string, base = "./") {
   await page.goto(`${base}#/import`);
   await checkText(page, text);
   await page.getByRole("button", { name: "Speichern", exact: true }).click();
+  await expect(page).toHaveURL(/#\/set\//);
   await expect(libraryMessage(page)).toHaveText(saved);
+  await page.goto(base);
+  await expect(page.getByRole("heading", { level: 1, name: "Vokabeltrainer" })).toBeVisible();
 }
 
 /**

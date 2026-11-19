@@ -151,7 +151,7 @@ test("Mit Set: Bibliothek, Set-Ansicht, Löschen, Einrichtung, Karteikarten, Zwi
   const errors = collectErrors(page);
   const findings: string[] = [];
   await importSet(page, "Wetter");
-  findings.push(...(await audit(page, "Bibliothek mit Meldung")));
+  findings.push(...(await audit(page, "Bibliothek")));
 
   await page.getByRole("link", { name: "Wetter", exact: true }).click();
   await expect(page.getByText("Mit diesem Set hast du noch nicht gelernt.")).toBeVisible();
@@ -484,9 +484,12 @@ test("Nach einem Seitenwechsel: Fokus auf der Überschrift, Seitentitel nennt di
   await expect(heading("Vokabeltrainer")).toBeFocused();
   await expect(page).toHaveTitle("Vokabeltrainer");
 
-  // Eine Meldung der Ansicht hat Vorrang vor der Überschrift.
-  await importSet(page, "Wetter");
+  // Eine Meldung der Ansicht hat Vorrang vor der Überschrift: nach dem Speichern in der Set-Ansicht.
+  await page.goto("./#/import");
+  await checkText(page, setFile("Wetter"));
+  await page.getByRole("button", { name: "Speichern", exact: true }).click();
   await expect(libraryMessage(page)).toBeFocused();
+  await page.goto("./");
 
   // Die Set-Ansicht lädt nach; der Fokus folgt, sobald die Überschrift da ist.
   await page.getByRole("link", { name: "Wetter", exact: true }).click();

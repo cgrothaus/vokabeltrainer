@@ -64,8 +64,11 @@ test("Import (Text) mit Begleittext → Vorschau → Bibliothek → Neuladen →
   expect(await readStore(page, "sets")).toEqual([]);
 
   await page.getByRole("button", { name: "Speichern", exact: true }).click();
+  // Das neue Set öffnet sich mit der Meldung (TDD 9.2).
+  await expect(heading(page)).toHaveText("Englisch – Wetter");
   await expect(message(page)).toHaveText("„Englisch – Wetter“ mit 3 Einträgen gespeichert.");
   await expect(message(page)).toBeFocused();
+  await backButton(page).click();
   await expect(library(page)).toHaveText(["Englisch – Wetter 3 Einträge"]);
   await page.reload();
   await expect(library(page)).toHaveText(["Englisch – Wetter 3 Einträge"]);
@@ -105,8 +108,9 @@ test("Nach dem Speichern führt Zurück nicht in die Eingabe", async ({ page }) 
   await page.getByRole("link", { name: "Erstes Vokabelset hinzufügen" }).click();
   await checkText(page, setFile("Englisch – Gespeichert"));
   await page.getByRole("button", { name: "Speichern", exact: true }).click();
+  await expect(heading(page)).toHaveText("Englisch – Gespeichert");
   await expect(message(page)).toBeVisible();
-  // Die Bibliothek ersetzt Eingabe und Vorschau; davor liegt nur noch die leere Bibliothek.
+  // Die Set-Ansicht ersetzt Eingabe und Vorschau; davor liegt nur noch die Bibliothek.
   await page.goBack();
   await expect(heading(page)).toHaveText("Vokabeltrainer");
   await expect(page.getByLabel("Text einfügen")).toHaveCount(0);
@@ -121,6 +125,8 @@ test("Import (Datei) zeigt die Vorschau und speichert das Set", async ({ page })
   });
   await page.getByRole("button", { name: "Speichern", exact: true }).click();
   await expect(message(page)).toHaveText("„Englisch – aus Datei“ mit 3 Einträgen gespeichert.");
+  await expect(heading(page)).toHaveText("Englisch – aus Datei");
+  await page.goto("./");
   await expect(library(page)).toHaveText(["Englisch – aus Datei 3 Einträge"]);
 });
 
@@ -260,7 +266,7 @@ test("E2E-15 Dieselbe Datei ohne IDs zweimal: Hinweis auf das vorhandene Set", a
   await importOnce();
   await expect(duplicateNotice).toHaveCount(0);
   await page.getByRole("button", { name: "Speichern", exact: true }).click();
-  await expect(library(page)).toHaveText(["Englisch – Doppelt 3 Einträge"]);
+  await expect(heading(page)).toHaveText("Englisch – Doppelt");
 
   // Zweites Mal: Hinweis, Abbrechen lässt den Bestand unverändert.
   await importOnce();
@@ -273,6 +279,7 @@ test("E2E-15 Dieselbe Datei ohne IDs zweimal: Hinweis auf das vorhandene Set", a
   await importOnce();
   await page.getByRole("button", { name: "Trotzdem als neues Set speichern" }).click();
   await expect(message(page)).toHaveText("„Englisch – Doppelt“ mit 3 Einträgen gespeichert.");
+  await page.goto("./");
   await expect(library(page)).toHaveText([
     "Englisch – Doppelt 3 Einträge",
     "Englisch – Doppelt 3 Einträge",

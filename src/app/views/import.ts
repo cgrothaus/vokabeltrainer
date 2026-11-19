@@ -32,8 +32,8 @@ export interface ImportContext {
   ) => Promise<KnownSaveOutcome>;
   /** `null`: Der Browser kann die Zwischenablage nicht lesen; die Schaltfläche entfällt. */
   readClipboard: (() => Promise<ClipboardResult>) | null;
-  /** Nach dem Speichern, mit der Erfolgsmeldung für die Bibliothek. */
-  onSaved: (message: string) => void;
+  /** Nach dem Speichern eines neuen Sets, mit der Meldung für seine Set-Ansicht (TDD 9.2). */
+  onSaved: (setId: string, message: string) => void;
   /** Nach der Übernahme in ein vorhandenes Set, mit der Meldung für die Set-Ansicht. */
   onUpdated: (setId: string, message: string) => void;
 }
@@ -196,7 +196,7 @@ export function importView(context: ImportContext, signal: AbortSignal): Node {
           }
           text.value = "";
           const message = `„${outcome.title}“ mit ${entriesDative(outcome.entryCount)} gespeichert.`;
-          leave(() => context.onSaved(message));
+          leave(() => context.onSaved(outcome.setId, message));
         },
       },
       duplicate ? "Trotzdem als neues Set speichern" : "Speichern",

@@ -43,7 +43,7 @@ export type PreviewOutcome =
   ({ ok: true } & ImportPreview) | ({ ok: true } & KnownPreview) | { ok: false; errors: string[] };
 
 export type SaveOutcome =
-  { ok: true; title: string; entryCount: number } | { ok: false; error: string };
+  { ok: true; setId: string; title: string; entryCount: number } | { ok: false; error: string };
 
 export type KnownSaveOutcome =
   | { ok: true; setId: string; message: string }
@@ -130,7 +130,7 @@ export async function saveImport(db: IDBDatabase, set: StoredSet): Promise<SaveO
         : storageMessage(saved.reason, "Das Set wurde nicht gespeichert.");
     return { ok: false, error };
   }
-  return { ok: true, title: set.title, entryCount: countEntries(set) };
+  return { ok: true, setId: set.id, title: set.title, entryCount: countEntries(set) };
 }
 
 /**

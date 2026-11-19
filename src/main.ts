@@ -233,10 +233,11 @@ async function start(): Promise<void> {
         saveKnownImport: (preview, mode, decisions) =>
           saveKnownImport(db, preview, mode, decisions),
         readClipboard: canReadClipboard() ? readClipboard : null,
-        onSaved: (saved) => {
+        // Ein neues Set öffnet sich mit der Meldung, ein bekanntes ebenso (TDD 9.1, 9.2).
+        onSaved: (setId, saved) => {
           void askOnceAfterSave();
           message = saved;
-          replaceRoute("#/");
+          replaceRoute(`#/set/${encodeURIComponent(setId)}`);
         },
         onUpdated: (setId, saved) => {
           message = saved;

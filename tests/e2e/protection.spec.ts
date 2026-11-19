@@ -12,7 +12,6 @@ import {
   fakeInstallPrompt,
   importSet,
   installPrompts,
-  libraryMessage,
   readDevice,
   readStore,
 } from "./support";
@@ -95,7 +94,8 @@ test("E2E-22 Ohne dauerhaften Speicher: Hinweis auf Backups erst mit Sets, Einst
 test("E2E-22 Gewährter Speicher: kein Hinweis, auch nicht auf iOS", async ({ page }) => {
   await fakeDevice(page, { ios: true, granted: true });
   await importSet(page, "Englisch – Wetter");
-  await expect(libraryMessage(page)).toBeVisible();
+  // Erst wenn die Hinweise geprüft sind, sagt ihr Fehlen etwas.
+  await expect(page.locator(".hints")).not.toHaveAttribute("aria-busy", "true");
   await expect(hint(page)).toHaveCount(0);
   await openSettings(page);
   await expect(
