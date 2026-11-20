@@ -67,8 +67,15 @@ jobs:
         run: npm ci
 
       # Nicht gecacht: Wiederherstellen dauert so lange wie der Download, Systempakete sind nicht cachebar.
+      # Der Download hing schon über 10 Minuten (normal: unter einer): je Versuch 4 Minuten, bis zu drei Versuche.
       - name: Browser für E2E installieren
-        run: npx playwright install --with-deps ${{ matrix.browser }}
+        timeout-minutes: 15
+        run: |
+          for attempt in 1 2 3; do
+            timeout 4m npx playwright install --with-deps ${{ matrix.browser }} && exit 0
+            echo "Installation gescheitert (Versuch $attempt von 3)"
+          done
+          exit 1
 
       - name: E2E-Tests (${{ matrix.browser }})
         run: npm run test:e2e -- --project=${{ matrix.project }}

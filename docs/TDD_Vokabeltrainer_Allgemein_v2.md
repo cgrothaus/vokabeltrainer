@@ -1,6 +1,6 @@
 # TDD: Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.60 – CI mit E2E je Browser  
+**Version:** 2.61 – Browserinstallation in der CI mit Zeitlimit und Wiederholung  
 **Stand:** 20. November 2026  
 **Bezug:** PRD 2.9 (`PRD_Vokabeltrainer_Allgemein_v2.md`), Formatspezifikation Version 1 (`Formatspezifikation_Vokabelset_v1.md`), Review-Notizen (`20261019_TDD_v1_Review_Notizen.md`)  
 **Status:** Entwurf; Grundlage für M0 (Walking Skeleton)  
@@ -195,7 +195,7 @@ Workflow `.github/workflows/ci.yml`, ausgelöst bei jedem Push, Pull Request und
 - Job `check` (Limit 15 Minuten, etwa eine Minute): `npm ci` → Formatprüfung (`npm run format:check`) → Typprüfung (`npm run typecheck`, also `tsc -b` über die Projektreferenzen) → Unit- und Integrationstests → Build mit Prüfung der Build-Ausgabe, dieselben Prüfungen wie lokal vor jedem Commit.
 - Job `e2e` als Matrix mit je einem Lauf für `mobile-chromium` und `mobile-webkit` (Limit 25 Minuten, `fail-fast: false`): `npm ci` → Browser installieren → Playwright-Tests gegen `vite preview` mit zwei Workern und ohne Wiederholungen. Seit E2E über 200 Tests umfasst, hätte ein Job mit einem Worker das Limit von 15 Minuten gerissen (zuletzt bis 14 Minuten, zwei Abbrüche); die Aufteilung nach Browser halbiert die Laufzeit, die Reserve im Limit fängt Schwankungen des geteilten Runners auf. Wächst die Laufzeit eines Jobs wieder in die Nähe von 12 Minuten, teilt man weiter (`--shard`).
 
-- Jeder E2E-Job installiert nur seinen Browser per `npx playwright install --with-deps <browser>`, weder gecacht (laut Playwright so schnell wie das Wiederherstellen, Systempakete sind nicht cachebar) noch über das Playwright-Container-Image. So steht die Playwright-Version nur in `package.json`.
+- Jeder E2E-Job installiert nur seinen Browser per `npx playwright install --with-deps <browser>`, weder gecacht (laut Playwright so schnell wie das Wiederherstellen, Systempakete sind nicht cachebar) noch über das Playwright-Container-Image. So steht die Playwright-Version nur in `package.json`. Der Schritt hat 4 Minuten je Versuch und bis zu drei Versuche, weil der Download einmal über 10 Minuten hing (normal sind unter einer Minute).
 - npm-Abhängigkeiten cacht `actions/setup-node` (`cache: npm`); ein `packageManager`-Feld ist dafür nicht nötig.
 - Bei Fehlern wird der Playwright-Report (mit Traces) als Artefakt `playwright-report-<projekt>` für 14 Tage hochgeladen; Fehler erscheinen zusätzlich als Annotationen am Lauf.
 - Ein neuerer Lauf derselben Ref bricht den älteren ab, außer auf `main` und `production`.
@@ -1242,6 +1242,7 @@ Geprüft am 18. bis 20. Oktober 2026; Quellen 30–45 aus der Recherche zur Dida
 | 2.58 | 20. November 2026 | Feinschliff der Lernsitzung nach Hinweisen des Nutzers: Aufdecken und „Antworten zeigen“ erst nach 0,5 s, Bewerten schiebt die Karte zur Seite, Ziehen mit Neigung und Zurückfedern, Wenden mit sanftem Verlauf, nächste Karte blendet ein (12.3, D-60); Lautsprecher ohne farbigen Kreis, fährt mit der Karte und blendet beim Wenden aus (12.11); E2E-30 (15.4) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.59 | 20. November 2026 | Gerätemodelle in Prüfberichten und Messungen allgemein gehalten (iPhone, iPad, Android-Smartphone), damit keine privaten Angaben im öffentlichen Repository stehen; keine inhaltliche Änderung | Claude (Anthropic), Modell Claude Sonnet 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.60 | 20. November 2026 | CI: E2E je Browser als Matrix mit eigenem Job und Zeitlimit von 25 Minuten, zwei Worker statt einem, `deploy` wartet auf `check` und `e2e` (4.5); Anlass: Laufzeit von 5 auf bis zu 14 Minuten gewachsen, zwei Abbrüche am Limit von 15 Minuten | Claude (Anthropic), Modell Claude Sonnet 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.61 | 20. November 2026 | CI: Browserinstallation mit 4 Minuten je Versuch und bis zu drei Versuchen (4.5); Anlass: Der Download hing im ersten Lauf auf `production` über 10 Minuten, ein früherer Lauf war am selben Schritt abgebrochen worden | Claude (Anthropic), Modell Claude Sonnet 5.5, in Zusammenarbeit mit dem Nutzer |
 
 ---
 
