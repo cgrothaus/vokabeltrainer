@@ -7,7 +7,7 @@ export default defineConfig({
   testDir: "tests/e2e",
   forbidOnly: !!process.env.CI,
   // Empfehlung von Playwright für CI; keine Wiederholungen, damit instabile Tests auffallen.
-  // Lokal zwei statt der Standardzahl (halbe Kernzahl): Mehrere Läufe paralleler Sitzungen haben am
+  // Lokal zwei statt der Standardzahl (halbe Kernzahl): Mehrere Läufe paralleler Sitzungen
   // haben den Entwicklungsrechner überlastet.
   workers: process.env.CI ? 1 : 2,
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : [["list"]],
