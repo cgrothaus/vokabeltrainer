@@ -12,6 +12,7 @@ import {
   endPractice,
   fakeDevice,
   fakeInstallPrompt,
+  fakeSpeech,
   importSet,
   libraryMessage,
   setAction,
@@ -280,10 +281,20 @@ test("Beispielset: Set-Ansicht mit Lernstand, Multiple Choice mit Rückmeldung",
 }) => {
   const errors = collectErrors(page);
   const findings: string[] = [];
+  // Mit englischer Stimme: Lautsprecher an den Wörtern und „Lernen“ in den Einstellungen (TDD 12.11).
+  await fakeSpeech(page, [{ lang: "en-GB" }]);
   await page.goto("./");
   await page.getByRole("button", { name: "Beispielset ausprobieren" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Beispielset");
   findings.push(...(await audit(page, "Set-Ansicht Beispielset")));
+  await page.locator(".section summary").first().click();
+  await expect(page.getByRole("button", { name: /vorlesen$/ }).first()).toBeVisible();
+  findings.push(...(await audit(page, "Set-Ansicht mit Lautsprechern")));
+  await page.goto("./#/settings");
+  await expect(page.getByRole("switch", { name: /Automatisch vorlesen/ })).toBeVisible();
+  findings.push(...(await audit(page, "Einstellungen mit Vorlesen")));
+  await page.goBack();
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Beispielset");
   await page.getByText("Über dieses Set").click();
   findings.push(...(await audit(page, "Set-Ansicht, Über dieses Set")));
   await page.getByRole("banner").getByRole("button", { name: "Weitere Aktionen" }).click();
@@ -310,7 +321,8 @@ test("Beispielset: Set-Ansicht mit Lernstand, Multiple Choice mit Rückmeldung",
   await page.getByRole("button", { name: "10 Vokabeln lernen" }).click();
   const options = page.locator(".options button");
   await expect(page.getByRole("button", { name: "Antworten zeigen" })).toBeVisible();
-  findings.push(...(await audit(page, "Multiple Choice vor den Antworten")));
+  await expect(page.getByRole("button", { name: /vorlesen$/ })).toBeVisible();
+  findings.push(...(await audit(page, "Multiple Choice vor den Antworten, mit Lautsprecher")));
   await page.getByRole("button", { name: "Antworten zeigen" }).click();
   await expect(options).toHaveCount(4);
   await expect(options.first()).toBeVisible();

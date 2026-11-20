@@ -19,6 +19,12 @@ const ICONS = {
     ],
   ],
   play: [["path", { d: "M7 4.5v15l12-7.5z", class: "fill" }]],
+  speaker: [
+    [
+      "path",
+      { d: "M4 9.5h3.5L12 5.5v13l-4.5-4H4zM15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" },
+    ],
+  ],
   more: [
     ["circle", { cx: "5", cy: "12", r: "1.3" }],
     ["circle", { cx: "12", cy: "12", r: "1.3" }],

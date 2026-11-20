@@ -1,5 +1,5 @@
-// Einstellungen (TDD 3.2, 10, 13.5, 13.6, FR-21, FR-25, FR-35): Darstellung als Segmentschalter, Stand
-// des Speicherschutzes mit „Als App installieren“ bzw. dem Weg zum Home-Bildschirm, Backup, alle Daten
+// Einstellungen (TDD 3.2, 10, 13.5, 13.6, FR-21, FR-25, FR-35, FR-40): Darstellung als Segmentschalter,
+// „Automatisch vorlesen“, wenn das Gerät eine Stimme für eine Lernsprache hat, Stand des Speicherschutzes mit „Als App installieren“ bzw. dem Weg zum Home-Bildschirm, Backup, alle Daten
 // löschen und die App-Version.
 import type { RecordCounts } from "../../domain/backup";
 import type { PersistenceState } from "../../domain/storageProtection";
@@ -10,12 +10,18 @@ import { openSheet } from "../components/sheet";
 import type { DeleteAllOutcome } from "../deleteAll";
 import { focusSoon, h } from "../dom";
 import { icon } from "../icons";
+import type { SaveSpeakAloudOutcome } from "../speech";
 import type { SaveThemeOutcome } from "../theme";
 
 export interface SettingsContext {
   theme: Theme;
   /** Wendet die Darstellung sofort an und speichert sie danach. */
   chooseTheme: (theme: Theme) => Promise<SaveThemeOutcome>;
+  speakAloud: boolean;
+  /** Gilt sofort und wird danach gespeichert (TDD 12.11). */
+  chooseSpeakAloud: (on: boolean) => Promise<SaveSpeakAloudOutcome>;
+  /** Ob das Gerät für eine Lernsprache der Bibliothek eine Stimme hat. */
+  hasVoice: () => Promise<boolean>;
   dataScope: () => Promise<RecordCounts>;
   removeAllData: () => Promise<DeleteAllOutcome>;
   /** Nach dem Löschen; die App wechselt zur Bibliothek und zeigt dort die Meldung. */
@@ -55,6 +61,7 @@ export function settingsView(context: SettingsContext, signal: AbortSignal): Nod
   focusSoon(page.setTitle("Einstellungen"));
   main.append(
     themeChoice(context),
+    learning(context),
     h(
       "section",
       { "aria-labelledby": "settings-data" },
@@ -132,6 +139,48 @@ function protection(context: SettingsContext, within: Element, signal: AbortSign
     ),
     action,
   );
+}
+
+/** Abschnitt „Lernen“ (TDD 13.6, D-61): erscheint nur, wenn es eine passende Stimme gibt. */
+function learning(context: SettingsContext): Node {
+  const status = h("p", { "aria-live": "polite" });
+  const section = h(
+    "section",
+    { "aria-labelledby": "settings-learning", hidden: true },
+    h("h2", { id: "settings-learning" }, "Lernen"),
+    h(
+      "label",
+      { class: "switch-row" },
+      h(
+        "span",
+        null,
+        h("span", { class: "label" }, "Automatisch vorlesen"),
+        h(
+          "span",
+          { class: "muted" },
+          "Liest Wörter der Lernsprache in der Lernsitzung vor, sobald sie erscheinen.",
+        ),
+      ),
+      h("input", {
+        type: "checkbox",
+        role: "switch",
+        checked: context.speakAloud,
+        onchange: async (event: Event) => {
+          status.textContent = "";
+          const outcome = await context.chooseSpeakAloud(
+            (event.target as HTMLInputElement).checked,
+          );
+          if (!outcome.ok) status.textContent = outcome.error;
+        },
+      }),
+    ),
+    status,
+  );
+  void context.hasVoice().then(
+    (found) => (section.hidden = !found),
+    (error: unknown) => console.warn("Stimmen nicht geprüft", error),
+  );
+  return section;
 }
 
 function themeChoice(context: SettingsContext): Node {

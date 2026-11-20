@@ -8,6 +8,7 @@ import { cardFaces, currentCard, type Result, sideText } from "../../domain/prac
 import { entryDetails, hasDetails } from "../components/entryDetails";
 import { frame } from "../components/frame";
 import { openSheet, type Sheet } from "../components/sheet";
+import { speakButton } from "../components/speakButton";
 import { onSwipe } from "../components/swipe";
 import { setUpdateBlocked } from "../components/updateNotice";
 import { focusSoon, h } from "../dom";
@@ -16,6 +17,7 @@ import { languageName } from "../languages";
 import type { PracticeSession, Question } from "../practice";
 import { hasMark, pushMark, replaceRoute } from "../router";
 import { failureMessage } from "../storageMessages";
+import { type Say, stopSpeaking } from "../../platform/speech";
 
 /** Markiert den zusätzlichen Verlaufseintrag, auf dem die Karten liegen. */
 const CARDS = "practice-cards";
@@ -30,7 +32,19 @@ const handledByTarget = (event: KeyboardEvent) =>
   event.target instanceof Element &&
   event.target.closest("input, textarea, select, [contenteditable], button, a") !== null;
 
-export function practiceView(started: PracticeSession | null, signal: AbortSignal): Node {
+/** Vorlesen der Lernsprache (TDD 12.11, D-61). */
+export interface PracticeSpeech {
+  /** Vorlesen in der Sprache, `null` ohne passende Stimme. */
+  speaker: (lang: string) => Promise<Say | null>;
+  /** „Automatisch vorlesen“ aus den Einstellungen. */
+  auto: () => boolean;
+}
+
+export function practiceView(
+  started: PracticeSession | null,
+  signal: AbortSignal,
+  speech: PracticeSpeech,
+): Node {
   // Nach dem Neuladen gibt es keine Sitzung mehr (TDD 12.2).
   if (!started) {
     replaceRoute("#/");
@@ -47,6 +61,23 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
 
   const { set } = practice;
   const main = h("main", { class: "practice" });
+
+  // Vorlesen nur der Lernsprache (TDD 12.11): Der Knopf erscheint, sobald das Wort zu sehen ist und die
+  // Stimme bereitsteht. Automatisch nur im Klick, der das Wort zeigt; iOS spricht sonst nicht.
+  let say: Say | null = null;
+  let offered: { slot: HTMLElement; text: string } | null = null;
+  const offerSpeech = (slot: HTMLElement, text: string) => {
+    offered = { slot, text };
+    if (!say) return;
+    slot.replaceChildren(speakButton(text, say));
+    if (speech.auto()) say(text);
+  };
+  void speech.speaker(set.termLanguage).then((found) => {
+    say = found;
+    // Die erste Karte steht meist schon da, bevor die Stimme bereit ist: für sie nachholen.
+    if (found && offered?.slot.isConnected) offerSpeech(offered.slot, offered.text);
+  });
+  signal.addEventListener("abort", stopSpeaking);
   // Fortschritt statt Titel in der App-Leiste; die `h1` mit dem Set-Titel bleibt für Screenreader.
   const fill = h("span", null);
   const count = h("span", { class: "count", id: "practice-count" });
@@ -86,6 +117,7 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
     onKey = null;
     screen = next;
     shown = {};
+    offered = null;
     main.replaceChildren(...children);
   };
 
@@ -132,6 +164,10 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
     const card = currentCard(practice.state)!;
     const entry = practice.entry(card.entryId);
     const faces = cardFaces(entry, card.direction);
+    // Das Wort der Lernsprache: Frage in Richtung Muttersprache, sonst die Antwort.
+    const term = sideText(entry, "term");
+    const asksTerm = card.direction === "termToMeaning";
+    const speakSlot = h("span", { class: "speak-slot" });
     const [promptLanguage, answerLanguage] =
       card.direction === "termToMeaning"
         ? [set.termLanguage, set.meaningLanguage]
@@ -211,6 +247,8 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
         { class: "flash", onclick: () => reveal() },
         h("div", { class: "flash-inner" }, front, back),
       );
+      // Neben der Karte, nicht darin: Die Karte fängt den Zeiger fürs Wischen ein.
+      const cardWithSpeaker = h("div", { class: "card-wrap" }, flash, speakSlot);
 
       const reveal = () => {
         // Ein Klick nach einer Wischgeste darf nicht ein zweites Mal aufdecken.
@@ -220,6 +258,7 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
         front.inert = true;
         back.inert = false;
         page.setDock(again, known);
+        if (!asksTerm) offerSpeech(speakSlot, term);
         onKey = (event) => {
           if (event.key === "ArrowRight") void rate("correct");
           else if (event.key === "ArrowLeft") void rate("incorrect");
@@ -242,7 +281,8 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
       );
       const uncover = h("button", { type: "button", onclick: reveal }, "Aufdecken");
       page.setDock(uncover);
-      show("cards", h("p", { class: "kind" }, "Karteikarte"), flash, problem);
+      show("cards", h("p", { class: "kind" }, "Karteikarte"), cardWithSpeaker, problem);
+      if (asksTerm) offerSpeech(speakSlot, term);
       onKey = (event) => {
         if ((event.key !== "Enter" && event.key !== " ") || handledByTarget(event)) return false;
         reveal();
@@ -257,6 +297,7 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
         { class: "question", tabindex: -1 },
         h("span", { class: "lang-tag" }, languageName(promptLanguage)),
         h("span", { class: "prompt", lang: promptLanguage }, faces.prompt),
+        speakSlot,
       );
       const feedback = h("p", { class: "feedback", "aria-live": "polite" });
       const after = h("div", null);
@@ -274,6 +315,7 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
         feedback.textContent = right
           ? "Richtig."
           : `Leider falsch. Richtig ist: ${question.options[question.correct]}`;
+        if (!asksTerm) offerSpeech(speakSlot, term);
         if (!(await save(right ? "correct" : "incorrect"))) return;
         const next = h("button", { type: "button", onclick: proceed }, "Weiter");
         after.replaceChildren(...details(entry));
@@ -323,6 +365,7 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
         problem,
       );
       const current = shown;
+      if (asksTerm) offerSpeech(speakSlot, term);
       onKey = (event) => {
         if ((event.key !== "Enter" && event.key !== " ") || handledByTarget(event)) return false;
         reveal();

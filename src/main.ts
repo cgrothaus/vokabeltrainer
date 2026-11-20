@@ -31,6 +31,7 @@ import { loadSampleSet } from "./app/sampleSet";
 import { loadLibraryStart } from "./app/library";
 import { beginPractice, currentPractice, quickStart, rememberedSetup } from "./app/practice";
 import { replaceRoute, type Router, startRouter } from "./app/router";
+import { loadSpeakAloud, saveSpeakAloud } from "./app/speech";
 import { applyTheme, loadTheme, saveTheme } from "./app/theme";
 import { backupView } from "./app/views/backup";
 import { editSetView } from "./app/views/editSet";
@@ -57,6 +58,7 @@ import { iosDeviceName, isInstalled, isIos } from "./platform/device";
 import { canInstall, install, onInstallChange, watchInstall } from "./platform/install";
 import { dismissInstallOffer, installOfferDismissed } from "./app/installOffer";
 import { persistenceState, requestPersistence } from "./platform/persistence";
+import { preloadVoices, speakerFor } from "./platform/speech";
 import type { EntryForm } from "./domain/entryForm";
 import type { StoredSet } from "./domain/model";
 import type { PracticeSetup } from "./domain/practiceSetup";
@@ -182,6 +184,9 @@ async function start(): Promise<void> {
     applyTheme(chosen);
   };
   showTheme(theme);
+  // „Automatisch vorlesen“ (TDD 12.11); die Stimmen früh laden, iOS liefert sie verzögert.
+  let speakAloud = await loadSpeakAloud(db);
+  preloadVoices();
   // Meldung nach Import oder Löschen für die Bibliothek; lebt nur bis zum nächsten Anzeigen.
   let message: string | null = null;
   const takeMessage = () => {
@@ -259,6 +264,7 @@ async function start(): Promise<void> {
         replaceRoute("#/");
       },
       takeMessage,
+      speaker: speakerFor,
     });
   const editPage = (signal: AbortSignal, id: string) =>
     editSetView(
@@ -335,7 +341,8 @@ async function start(): Promise<void> {
       },
       id,
     );
-  const practicePage = (signal: AbortSignal) => practiceView(currentPractice(), signal);
+  const practicePage = (signal: AbortSignal) =>
+    practiceView(currentPractice(), signal, { speaker: speakerFor, auto: () => speakAloud });
   const backupPage = () =>
     backupView({
       prepareBackup: () => prepareBackup(db, __APP_VERSION__),
@@ -348,6 +355,7 @@ async function start(): Promise<void> {
         if (outcome.ok) {
           // Das Backup bringt seine Darstellung mit.
           showTheme(await loadTheme(db));
+          speakAloud = await loadSpeakAloud(db);
           // Typischer Weg in die frisch installierte App auf iOS, die einen eigenen Speicher hat.
           void askOnceAfterSave();
         }
@@ -362,10 +370,21 @@ async function start(): Promise<void> {
           showTheme(chosen);
           return saveTheme(db, chosen);
         },
+        speakAloud,
+        chooseSpeakAloud: (on) => {
+          speakAloud = on;
+          return saveSpeakAloud(db, on);
+        },
+        hasVoice: async () => {
+          const languages = new Set((await listSets(db)).map((set) => set.termLanguage));
+          for (const lang of languages) if (await speakerFor(lang)) return true;
+          return false;
+        },
         dataScope: () => dataScope(db),
         removeAllData: () => removeAllData(db),
         onRemoved: (removed) => {
           showTheme("system");
+          speakAloud = false;
           message = removed;
           replaceRoute("#/");
         },

@@ -9,10 +9,12 @@ import { frame } from "../components/frame";
 import { learnButton } from "../components/learnButton";
 import { track } from "../components/learningStatus";
 import { openSheet } from "../components/sheet";
+import { speakButton } from "../components/speakButton";
 import type { DeleteOutcome, DeletionScope } from "../deleteSet";
 import { type Child, focusSoon, h } from "../dom";
 import { icon } from "../icons";
 import { languageName } from "../languages";
+import type { Say } from "../../platform/speech";
 
 export interface SetContext {
   /** `undefined`, wenn es das Set nicht gibt. */
@@ -24,6 +26,8 @@ export interface SetContext {
   onRemoved: (message: string) => void;
   /** Meldung nach einer Übernahme aus einer Datei (TDD 9.7); nur beim ersten Anzeigen. */
   takeMessage: () => string | null;
+  /** Vorlesen der Lernsprache (TDD 12.11); `null` ohne passende Stimme. */
+  speaker: (lang: string) => Promise<Say | null>;
 }
 
 const NOT_LOADED = "Das Vokabelset konnte nicht geladen werden. Lade die Seite neu.";
@@ -124,6 +128,11 @@ function content(set: StoredSet, context: SetContext, message: Child, errors: No
   const sectionLines = new Map(
     set.sections.map((section) => [section.id, h("span", { class: "stats" })]),
   );
+  // Lautsprecher je Wort (TDD 12.11); erst, wenn feststeht, dass das Gerät eine Stimme hat.
+  const speakSlots: [HTMLElement, string][] = [];
+  void context.speaker(set.termLanguage).then((say) => {
+    if (say) for (const [slot, text] of speakSlots) slot.replaceChildren(speakButton(text, say));
+  });
   void context.loadOverview(set).then(
     (stats) => {
       const now = new Date();
@@ -162,7 +171,9 @@ function content(set: StoredSet, context: SetContext, message: Child, errors: No
       h("h2", { id: "contents" }, "Sektionen"),
       set.sections.length === 0
         ? h("p", null, "Dieses Set hat noch keine Sektionen.")
-        : set.sections.map((section) => sectionView(section, set, sectionLines.get(section.id)!)),
+        : set.sections.map((section) =>
+            sectionView(section, set, sectionLines.get(section.id)!, speakSlots),
+          ),
     ]),
     about(set),
   ];
@@ -235,7 +246,12 @@ function describeSection(overview: Overview, now: Date): Child[] {
   return [text, percent !== null && track(percent)];
 }
 
-function sectionView(section: StoredSection, set: StoredSet, stats: HTMLElement): Node {
+function sectionView(
+  section: StoredSection,
+  set: StoredSet,
+  stats: HTMLElement,
+  speakSlots: [HTMLElement, string][],
+): Node {
   return h(
     "details",
     // Mit `id`, damit ein Neuzeichnen (TDD 3.4) sie aufgeklappt lässt.
@@ -255,7 +271,7 @@ function sectionView(section: StoredSection, set: StoredSet, stats: HTMLElement)
       : h(
           "ul",
           { class: "entries" },
-          section.entries.map((entry) => entryView(entry, set)),
+          section.entries.map((entry) => entryView(entry, set, speakSlots)),
         ),
   );
 }
@@ -271,24 +287,31 @@ function answer(value: Answer, lang: string, className: string): Node {
   );
 }
 
-function entryView(entry: StoredEntry, set: StoredSet): Node {
+function entryView(entry: StoredEntry, set: StoredSet, speakSlots: [HTMLElement, string][]): Node {
   const meanings = entry.meanings.flatMap((meaning, index) => [
     index > 0 && "; ",
     answer(meaning, set.meaningLanguage, "meaning"),
   ]);
+  const speak = h("span", { class: "speak-slot" });
+  speakSlots.push([speak, entry.term.text]);
   return h(
     "li",
     null,
     h(
-      "p",
-      { class: "pair" },
-      answer(entry.term, set.termLanguage, "term"),
-      " – ",
-      meanings,
-      // Als Text, nicht nur als Farbe (TDD 13.4).
-      entry.reviewStatus === "unchecked" && [" ", h("span", { class: "badge" }, "ungeprüft")],
+      "div",
+      { class: "entry-text" },
+      h(
+        "p",
+        { class: "pair" },
+        answer(entry.term, set.termLanguage, "term"),
+        " – ",
+        meanings,
+        // Als Text, nicht nur als Farbe (TDD 13.4).
+        entry.reviewStatus === "unchecked" && [" ", h("span", { class: "badge" }, "ungeprüft")],
+      ),
+      entryDetails(entry, set),
     ),
-    entryDetails(entry, set),
+    speak,
   );
 }
 

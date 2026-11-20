@@ -571,6 +571,28 @@ button.textbtn {
   cursor: pointer;
 }
 
+/* Vorlesen (TDD 12.11): Der Lautsprecher steht oben rechts auf der Karte, gegenüber der Sprachkennung,
+   gehört aber nicht zur Karte, die den Zeiger fürs Wischen einfängt. */
+.card-wrap {
+  position: relative;
+}
+
+.card-wrap > .speak-slot,
+.practice .question > .speak-slot {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+  z-index: 1;
+}
+
+.speak-slot:empty {
+  display: none;
+}
+
+.iconbtn.speak {
+  color: var(--accent);
+}
+
 .flash-inner {
   display: grid;
   transform-style: preserve-3d;
@@ -1300,8 +1322,17 @@ details.about .details {
 }
 
 .entries > li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 0.5rem;
+  align-items: start;
   padding: 0.5rem 0;
   border-top: 1px solid var(--line);
+}
+
+/* Der Lautsprecher ragt in den Abstand der Zeile, damit sie nicht höher wird. */
+.entries .speak-slot {
+  margin: -0.5rem -0.625rem -0.5rem 0;
 }
 
 .entries p {
@@ -2000,6 +2031,30 @@ button.textbtn.add svg.icon {
   margin: 0;
 }
 
+/* Schalter „Automatisch vorlesen“ (TDD 13.6): Text links, Kästchen rechts, ganze Zeile tippbar. */
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 44px;
+}
+
+.switch-row > span {
+  display: grid;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.switch-row .label {
+  font-weight: 600;
+}
+
+.switch-row .muted {
+  color: var(--muted);
+  font-size: var(--text-s);
+}
+
 .backup .intro > * {
   margin: 0;
 }
@@ -2009,7 +2064,7 @@ button.textbtn.add svg.icon {
   color: var(--muted);
 }
 
-.settings > section {
+.settings > section:not([hidden]) {
   display: grid;
   gap: 0.75rem;
 }

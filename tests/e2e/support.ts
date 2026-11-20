@@ -306,3 +306,54 @@ export async function fakeInstallPrompt(
 /** Wie oft `prompt()` des gespielten Angebots aufgerufen wurde. */
 export const installPrompts = (page: Page) =>
   page.evaluate(() => (window as unknown as { __installPrompts: number }).__installPrompts);
+
+/**
+ * Ersetzt `speechSynthesis` (TDD 12.11, vor `goto`): Stimmen nach Sprachcode, alle auf dem Gerät außer
+ * `online`. Was gesprochen wird, zählt `spoken`. Ohne Stimmen gibt es keinen Knopf zum Vorlesen.
+ */
+export async function fakeSpeech(
+  page: Page,
+  voices: { lang: string; online?: boolean }[],
+): Promise<void> {
+  await page.addInitScript((voices) => {
+    const list = voices.map(({ lang, online }) => ({
+      lang,
+      name: `Testsprecher ${lang}`,
+      voiceURI: lang,
+      localService: !online,
+      default: false,
+    }));
+    const record = window as unknown as { __spoken: { text: string; lang: string }[] };
+    record.__spoken = [];
+    const engine = Object.assign(new EventTarget(), {
+      getVoices: () => list,
+      speak: (utterance: { text: string; lang: string }) =>
+        record.__spoken.push({ text: utterance.text, lang: utterance.lang }),
+      cancel: () => {},
+      pause: () => {},
+      resume: () => {},
+      speaking: false,
+      pending: false,
+      paused: false,
+      onvoiceschanged: null,
+    });
+    Object.defineProperty(window, "speechSynthesis", { value: engine, configurable: true });
+    Object.defineProperty(window, "SpeechSynthesisUtterance", {
+      configurable: true,
+      value: class {
+        text: string;
+        lang = "";
+        voice: unknown = null;
+        constructor(text: string) {
+          this.text = text;
+        }
+      },
+    });
+  }, voices);
+}
+
+/** Was das ersetzte `speechSynthesis` bisher gesprochen hat. */
+export const spoken = (page: Page) =>
+  page.evaluate(
+    () => (window as unknown as { __spoken: { text: string; lang: string }[] }).__spoken,
+  );
