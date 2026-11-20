@@ -6,10 +6,11 @@ const port = 4180;
 export default defineConfig({
   testDir: "tests/e2e",
   forbidOnly: !!process.env.CI,
-  // Empfehlung von Playwright für CI; keine Wiederholungen, damit instabile Tests auffallen.
-  // Lokal zwei statt der Standardzahl (halbe Kernzahl): Mehrere Läufe paralleler Sitzungen
-  // haben den Entwicklungsrechner überlastet.
-  workers: process.env.CI ? 1 : 2,
+  // Keine Wiederholungen, damit instabile Tests auffallen.
+  // Zwei Worker auch in der CI: Der Runner hat vier Kerne, und je Browser läuft ein eigener Job.
+  // Lokal ebenfalls zwei statt der Standardzahl (halbe Kernzahl): Mehrere Läufe paralleler
+  // Sitzungen haben den Entwicklungsrechner überlastet.
+  workers: 2,
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : [["list"]],
   use: { baseURL: `http://localhost:${port}/`, trace: "retain-on-failure" },
   projects: [

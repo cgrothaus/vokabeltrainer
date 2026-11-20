@@ -1,5 +1,5 @@
 # CI (TDD 4.5): dieselben Prüfungen wie lokal vor jedem Commit, plus E2E gegen das gebaute Artefakt.
-# Ein Push auf `production` deployt zusätzlich nach GitHub Pages, aber nur nach grünem `check` (TAK-14, D-21).
+# Ein Push auf `production` deployt zusätzlich nach GitHub Pages, aber nur nach grünem `check` und `e2e` (TAK-14, D-21).
 name: CI
 
 on:
@@ -42,30 +42,55 @@ jobs:
       - name: Build mit Prüfung der Ausgabe
         run: npm run build
 
+  # E2E je Browser in einem eigenen Job: halbiert die Laufzeit, jeder Job hat sein eigenes Zeitlimit (TDD 4.5).
+  e2e:
+    name: e2e (${{ matrix.project }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - project: mobile-chromium
+            browser: chromium
+          - project: mobile-webkit
+            browser: webkit
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - name: Abhängigkeiten installieren
+        run: npm ci
+
       # Nicht gecacht: Wiederherstellen dauert so lange wie der Download, Systempakete sind nicht cachebar.
       - name: Browser für E2E installieren
-        run: npx playwright install --with-deps chromium webkit
+        run: npx playwright install --with-deps ${{ matrix.browser }}
 
-      - name: E2E-Tests (Chromium, WebKit)
-        run: npm run test:e2e
+      - name: E2E-Tests (${{ matrix.browser }})
+        run: npm run test:e2e -- --project=${{ matrix.project }}
 
       - name: Playwright-Report hochladen
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.project }}
           path: playwright-report/
           retention-days: 14
 
       # Nach den E2E-Tests: Playwright baut selbst neu, ausgeliefert wird genau das getestete dist/.
+      # Der Build ist in beiden Jobs gleich, hochgeladen wird er nur einmal.
       - name: Build für GitHub Pages bereitstellen
-        if: github.event_name == 'push' && github.ref == 'refs/heads/production'
+        if: matrix.project == 'mobile-chromium' && github.event_name == 'push' && github.ref == 'refs/heads/production'
         uses: actions/upload-pages-artifact@v5
         with:
           path: dist/
 
   deploy:
-    needs: check
+    needs: [check, e2e]
     if: github.event_name == 'push' && github.ref == 'refs/heads/production'
     runs-on: ubuntu-latest
     timeout-minutes: 10
