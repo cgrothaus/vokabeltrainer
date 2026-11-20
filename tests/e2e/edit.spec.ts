@@ -149,3 +149,31 @@ test("E2E-07: Eintrag löschen mit Ankündigung", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(`${TITLE} bearbeiten`);
   await expect(entryLinks(page)).toHaveText(["rain – Regen", "autumn – Herbst"]);
 });
+
+test("E2E-07: Nach dem Formular steht man wieder an derselben Stelle", async ({ page }) => {
+  await page.goto("./");
+  await page.getByRole("button", { name: "Beispielset ausprobieren" }).click();
+  await setAction(page, "Bearbeiten");
+  const link = entryLinks(page).nth(10);
+  await link.evaluate((element) => element.scrollIntoView({ block: "center" }));
+  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(200);
+  const top = (await link.boundingBox())!.y;
+  const term = (await link.textContent())!.split(" – ")[0]!;
+
+  // Speichern und Verwerfen: Der Eintrag steht wieder dort und hat den Fokus.
+  for (const leave of ["Speichern", "Verwerfen"]) {
+    await link.click();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Eintrag bearbeiten");
+    await page.getByRole("button", { name: leave, exact: true }).click();
+    await expect(link).toBeFocused();
+    expect(Math.abs((await link.boundingBox())!.y - top)).toBeLessThan(2);
+  }
+
+  // Gelöscht: Den Fokus bekommt „Eintrag hinzufügen“ seiner Sektion.
+  await link.click();
+  await page.getByRole("button", { name: "Eintrag löschen" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Eintrag löschen" }).click();
+  await expect(entryLinks(page).filter({ hasText: `${term} –` })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /^Eintrag hinzufügen zu/ }).first()).toBeFocused();
+  expect(await page.evaluate(() => scrollY)).toBeGreaterThan(200);
+});

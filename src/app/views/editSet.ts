@@ -36,6 +36,12 @@ const SORTING = "sorting";
 /** Offene Sektionen je Set, solange die App läuft, damit man nach dem Formular dort weitermacht. */
 const openSections = new Map<string, Set<string>>();
 
+/**
+ * Wo man je Set ins Formular abgestiegen ist: Schlüssel des Links, Ersatz (falls der Eintrag gelöscht
+ * wurde) und sein Abstand zum oberen Fensterrand. Zurück steht der Link wieder dort und hat den Fokus.
+ */
+const returnPoints = new Map<string, { key: string; fallback: string; top: number }>();
+
 const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 const entries = (n: number) => count(n, "Eintrag", "Einträge");
 
@@ -141,6 +147,25 @@ function editor(
       movedMessage(entryId, sectionOf(entryId).id),
       [focus],
     );
+
+  const remember = (event: Event, key: string, fallback: string) => {
+    const top = (event.currentTarget as HTMLElement).getBoundingClientRect().top;
+    returnPoints.set(set.id, { key, fallback, top });
+  };
+
+  /**
+   * Zurück aus dem Formular: Der Link steht wieder an seiner Stelle im Fenster und hat den Fokus, statt
+   * dass die Überschrift ihn bekommt und die Seite nach oben springt.
+   */
+  const returnTo = () => {
+    const point = returnPoints.get(set.id);
+    returnPoints.delete(set.id);
+    if (!point || sorting) return;
+    const target = keyed(point.key) ?? keyed(point.fallback);
+    if (!target) return;
+    target.focus({ preventScroll: true });
+    scrollBy(0, target.getBoundingClientRect().top - point.top);
+  };
 
   // ---------- Normalmodus ----------
 
@@ -370,7 +395,12 @@ function editor(
                 null,
                 h(
                   "a",
-                  { href: `#/entry/${setPath}/${encodeURIComponent(entry.id)}` },
+                  {
+                    href: `#/entry/${setPath}/${encodeURIComponent(entry.id)}`,
+                    "data-key": `entry-${entry.id}`,
+                    onclick: (event: Event) =>
+                      remember(event, `entry-${entry.id}`, `add-${section.id}`),
+                  },
                   // Ein Element, sonst verschluckt der Flex-Container die Leerzeichen um den Strich.
                   h("span", null, pair(entry, set)),
                   icon("edit"),
@@ -386,6 +416,8 @@ function editor(
           {
             href: `#/new-entry/${setPath}/${encodeURIComponent(section.id)}`,
             class: "textbtn",
+            "data-key": `add-${section.id}`,
+            onclick: (event: Event) => remember(event, `add-${section.id}`, `add-${section.id}`),
             // Der sichtbare Text steckt im Namen, damit auch Sprachsteuerung ihn findet.
             "aria-label": `Eintrag hinzufügen zu „${section.title}“`,
           },
@@ -699,6 +731,7 @@ function editor(
   signal.addEventListener("abort", () => drawn.abort());
 
   render();
+  returnTo();
 }
 
 function iconButton(
