@@ -85,6 +85,8 @@ Einmalig pro Rechner: `npx playwright install chromium webkit` (Browser für E2E
 
 In parallelen Sitzungen einen eigenen Port nehmen (`npx vite preview --port 4175 --strictPort`), 4173 ist oft belegt. `npm run test:e2e` nutzt fest Port 4180: Läuft die Suite schon in einer anderen Sitzung, bricht sie mit „http://localhost:4180/ is already used“ ab. `playwright test --ui` hält den Port dauerhaft; dann nicht warten, sondern eine nicht eingecheckte Konfiguration mit anderem Port nutzen (`playwright.port.config.ts`: `import base from "./playwright.config"`, `use.baseURL` und `webServer` auf z. B. 4182 umstellen; `npx playwright test -c playwright.port.config.ts`) und vor dem Commit löschen. Auch dann teilen sich parallele Läufe die Ports des Update-Tests (ab 4280): Scheitert nur `update.spec.ts`, ihn einzeln wiederholen.
 
+**Systemlast:** Mehrere parallele Playwright-Läufe haben den Entwicklungsrechner überlastet; Gegenmaßnahmen: `workers` lokal 2, höchstens ein vollständiger Lauf gleichzeitig, vorher `uptime` ansehen.
+
 Nach UI-Änderungen das Verhalten mit `playwright-cli` gegen Dev-Server oder `vite preview` prüfen und die E2E-Smoke-Tests laufen lassen.
 
 **Messen unter Last (S-49):** Laufen parallel E2E-Tests anderer Sitzungen (`uptime` zeigt Load 20–60), schwanken `?perf`-Werte um das Mehrfache (Lesen 2–7 s statt 0,5 s). Dann eine Änderung nur relativ bewerten: dieselbe Messung direkt davor und danach ohne die Änderung, oder eine nicht eingecheckte Vitest-Datei mit `perfHistory` aus `src/dev/perfData.ts` und `--silent=false` (sonst fehlt `console.log`).
