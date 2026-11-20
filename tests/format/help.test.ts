@@ -1,16 +1,17 @@
-// Hilfe und Formatspezifikation (TDD 13.1, 15.7, D-35): Das Beispiel der App steht wörtlich in der
-// Spezifikation, die App verweist auf die Datei, die der Build veröffentlicht, und die Spezifikation
-// steht als ausgeliefertes Dokument für sich: ohne Vorlage und ohne Verweise auf Projektdokumente.
+// Hilfe und Formatspezifikation (TDD 13.1, 15.7, D-35, D-65): Das Beispiel der App steht wörtlich in
+// der Spezifikation, die Vorlagen enthalten dieselbe Datei, die der Build veröffentlicht, und die
+// Spezifikation steht als ausgeliefertes Dokument für sich: ohne Vorlage und ohne Verweise auf
+// Projektdokumente.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { PUBLISHED_DOCS } from "../../scripts/precache";
 import { validateSetFile } from "../../src/domain/validate";
 import {
-  CORRECTION_PROMPT,
+  CORRECTION_TASK,
+  correctionPrompt,
   FORMAT_EXAMPLE,
-  LINK_PLACEHOLDER,
-  NEW_SET_PROMPT,
-  SPEC_FILE,
+  NEW_SET_TASK,
+  newSetPrompt,
 } from "../../src/content/help";
 
 const spec = readFileSync(
@@ -36,13 +37,22 @@ describe("Hilfe", () => {
     expect(validateSetFile(JSON.parse(FORMAT_EXAMPLE))).toMatchObject({ ok: true, warnings: [] });
   });
 
-  it("die Vorlagen enthalten den Platzhalter für den Link genau einmal", () => {
-    expect(NEW_SET_PROMPT.split(LINK_PLACEHOLDER)).toHaveLength(2);
-    expect(CORRECTION_PROMPT.split(LINK_PLACEHOLDER)).toHaveLength(2);
+  it("die Vorlage für ein neues Set enthält die Spezifikation und endet mit dem Auftrag", () => {
+    const prompt = newSetPrompt();
+    expect(prompt.split(spec.trimEnd())).toHaveLength(2);
+    expect(prompt.endsWith(`\n\n${NEW_SET_TASK}`)).toBe(true);
   });
 
-  it("verweist auf die veröffentlichte Formatspezifikation", () => {
-    expect(PUBLISHED_DOCS[SPEC_FILE]).toBe("docs/Formatspezifikation_Vokabelset_v1.md");
+  it("die Korrekturvorlage enthält Spezifikation, Auftrag und zuletzt das Set", () => {
+    const prompt = correctionPrompt('{ "set": "Prüfset" }');
+    expect(prompt.split(spec.trimEnd())).toHaveLength(2);
+    expect(prompt.endsWith(`\n\n${CORRECTION_TASK}\n\n{ "set": "Prüfset" }`)).toBe(true);
+  });
+
+  it("die eingebettete Spezifikation ist die veröffentlichte Datei", () => {
+    expect(PUBLISHED_DOCS["formatspezifikation.md"]).toBe(
+      "docs/Formatspezifikation_Vokabelset_v1.md",
+    );
   });
 });
 
@@ -53,8 +63,7 @@ describe("Formatspezifikation", () => {
   });
 
   it("enthält keine Vorlage für den KI-Chat", () => {
-    expect(spec).not.toContain(LINK_PLACEHOLDER);
-    expect(spec).not.toContain(NEW_SET_PROMPT.split("\n")[1]);
-    expect(spec).not.toContain(CORRECTION_PROMPT.split("\n")[1]);
+    expect(spec).not.toContain(NEW_SET_TASK);
+    expect(spec).not.toContain(CORRECTION_TASK);
   });
 });

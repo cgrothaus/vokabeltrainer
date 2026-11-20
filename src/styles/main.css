@@ -2998,6 +2998,12 @@ a.textbtn {
   margin: 0;
 }
 
+/* Platz für die Vorlage im Feld, wenn das Kopieren scheitert; leer ohne Abstand im Raster. */
+.help section > div:empty,
+.export .correction > div:empty {
+  display: none;
+}
+
 .help section h2,
 .export .correction h2 {
   color: var(--muted);

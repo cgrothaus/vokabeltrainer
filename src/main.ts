@@ -24,7 +24,6 @@ import {
   saveSetInfo,
 } from "./app/editSet";
 import { deliverExport, prepareExport } from "./app/exportSet";
-import { correctionPrompt, loadSpec, newSetPrompt, shareSpec } from "./app/help";
 import { forgetAllOverviews, loadOverview } from "./app/overview";
 import { previewImport, saveImport, saveKnownImport } from "./app/importText";
 import { loadSampleSet } from "./app/sampleSet";
@@ -302,7 +301,6 @@ async function start(): Promise<void> {
         prepareExport,
         deliverExport,
         copyText,
-        correctionPrompt: correctionPrompt(),
       },
       id,
     );
@@ -412,14 +410,7 @@ async function start(): Promise<void> {
       },
       signal,
     );
-  const helpPage = () =>
-    helpView({
-      prompt: newSetPrompt(),
-      correctionPrompt: correctionPrompt(),
-      copyText,
-      loadSpec,
-      shareSpec,
-    });
+  const helpPage = () => helpView({ copyText });
   router = startRouter(
     root!,
     {

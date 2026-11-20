@@ -2,7 +2,7 @@
 
 **Formatkennung:** `vokabeltrainer-set`  
 **Formatversion:** 1  
-**Dokumentstand:** 18. November 2026
+**Dokumentstand:** 20. November 2026
 
 ## Wozu diese Beschreibung dient
 
@@ -396,11 +396,10 @@ Diese Punkte fassen zusammen, was eine Datei braucht, damit die App sie ohne Nac
 
 ## 11. So wird diese Beschreibung genutzt
 
-Die App veröffentlicht dieses Dokument als `formatspezifikation.md` neben sich selbst, unter https://vokabeltrainer.cgrothaus.de/formatspezifikation.md, und das JSON Schema daneben als `vokabeltrainer-set.schema.json`. Ihre Hilfe „Wie bekomme ich ein Vokabelset?“ führt durch die Wege aus der Einleitung:
+Die App veröffentlicht dieses Dokument als `formatspezifikation.md` neben sich selbst und das JSON Schema daneben als `vokabeltrainer-set.schema.json`. Ihre Hilfe „Wie bekomme ich ein Vokabelset?“ führt durch die Wege aus der Einleitung. Für den KI-Chat kopiert die App dieses Dokument vollständig zusammen mit einem kurzen Begleittext, sodass der Chat es nicht erst abrufen muss:
 
-- **Neues Set:** Lernende fotografieren die Vokabelseiten einer Lektion und geben die Fotos zusammen mit dem Link auf dieses Dokument in einen KI-Chat; die App bietet dafür einen kurzen Begleittext zum Kopieren an. Statt Fotos kann es auch eine abgetippte Wortliste sein. Erwartet wird eine Antwort mit dem Set als JSON-Codeblock, die sich direkt in der App einfügen lässt (Kapitel 1 bis 5 und 10).
-- **Prüfen und korrigieren:** Ein aus der App exportiertes Set wird zusammen mit diesem Dokument in einen KI-Chat gegeben oder von Hand bearbeitet. Erwartet wird die vollständige, korrigierte Datei mit unveränderten IDs (Kapitel 6 bis 9).
-- Kann ein Chat keine Links öffnen, wird dieses Dokument als Datei angehängt; die App bietet dafür „Formatbeschreibung teilen“ an.
+- **Neues Set:** Lernende fotografieren die Vokabelseiten einer Lektion, fügen den kopierten Text in einen KI-Chat ein und hängen die Fotos an. Statt Fotos kann es auch eine abgetippte Wortliste sein. Erwartet wird eine Antwort mit dem Set als JSON-Codeblock, die sich direkt in der App einfügen lässt (Kapitel 1 bis 5 und 10).
+- **Prüfen und korrigieren:** In der Ansicht „Exportieren“ kopiert die App dieses Dokument zusammen mit dem exportierten Set, ganz oder mit den ausgewählten Sektionen; das Set steht am Ende des Textes. Ein exportiertes Set lässt sich auch von Hand bearbeiten. Erwartet wird die vollständige, korrigierte Datei mit unveränderten IDs (Kapitel 6 bis 9).
 
 ---
 
@@ -424,3 +423,4 @@ Die App veröffentlicht dieses Dokument als `formatspezifikation.md` neben sich 
 | 29. Oktober 2026 | Eigenständig und mit Kontext, Formatversion bleibt 1: Einleitung zu Zweck und Ablauf; Zuschnitt von Set (3.1) und Sektionen (4); Bedeutung der Felder in der App (2, 3.2, 5.1) und Zuordnung typischer Angaben (5.6); Beispiele als Lektion (1, 9); Hinweise für erzeugte Dateien beschreibend statt als Anweisungen (10); Kapitel 11 beschreibt den Ablauf, die Vorlagen stehen nur noch in der App; keine Verweise auf interne Projektdokumente. Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer. |
 | 29. Oktober 2026 | Erste Auslieferung: Formatversion 1 ist verbindlich und ändert sich nur noch so, wie Kapitel 12 es beschreibt; feste Adresse der App (11), das JSON Schema trägt sie als `$id`. Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer. |
 | 18. November 2026 | Name der Ansicht in der App: „Vokabelset hinzufügen“ statt „Vokabelset importieren“ (Einleitung). Formatversion bleibt 1. Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer. |
+| 20. November 2026 | Die App kopiert dieses Dokument vollständig mit einem Begleittext in den KI-Chat, beim Korrigieren zusammen mit dem exportierten Set, statt auf seine Adresse zu verweisen; der Weg über das Teilen als Datei entfällt (11). Formatversion bleibt 1. Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer. |

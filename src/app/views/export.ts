@@ -1,6 +1,7 @@
 // Set exportieren (TDD 11.1, FR-18, D-42, D-54): ganzes Set oder einzelne Sektionen (Segmentschalter
 // und Chips) als Datei über das Teilen-Menü bzw. als Download oder als Text in die Zwischenablage, z. B.
 // für einen Chat; beides in der Aktionsleiste. Darunter die Korrektur mit dem KI-Chat als Karte (D-44).
+import { CORRECTION_SHOWN, correctionPrompt } from "../../content/help";
 import type { ExportScope } from "../../domain/exportSet";
 import type { StoredSet } from "../../domain/model";
 import type { Delivery } from "../../platform/deliverFile";
@@ -19,8 +20,6 @@ export interface ExportContext {
   deliverExport: (prepared: PreparedExport) => Promise<Delivery>;
   /** Muss direkt im Klick aufgerufen werden (Nutzergeste). */
   copyText: (text: string) => Promise<boolean>;
-  /** Mit eingesetztem Link auf die Formatspezifikation. */
-  correctionPrompt: string;
 }
 
 const NOT_LOADED = "Das Vokabelset konnte nicht geladen werden. Lade die Seite neu.";
@@ -208,17 +207,17 @@ function content(set: StoredSet, context: ExportContext, page: Frame): Child[] {
       sections.length === 0
         ? "Wähle mindestens eine Sektion."
         : `${whole ? "Ganzes Set" : "Ausgewählt"}: ${count(sections.length, "Sektion", "Sektionen")} mit ${count(entries, "Eintrag", "Einträgen")}.`;
-    save.disabled = copy.disabled = sections.length === 0;
+    save.disabled = copy.disabled = correctionCopy.disabled = sections.length === 0;
   };
-  update();
 
-  page.setDock(copy, save);
-
-  const correction = promptBox(
+  // Die Vorlage enthält Spezifikation, Auftrag und die gewählte Auswahl, damit nichts angehängt
+  // werden muss (D-65); gebaut im Klick wie „Text kopieren“.
+  const { element: correction, button: correctionCopy } = promptBox(
     {
       id: "export-correction",
       heading: "Mit KI-Chat korrigieren",
-      prompt: context.correctionPrompt,
+      shown: CORRECTION_SHOWN,
+      text: () => correctionPrompt(context.prepareExport(set, scope()).text),
       label: "Korrekturvorlage kopieren",
       copyText: context.copyText,
     },
@@ -232,21 +231,14 @@ function content(set: StoredSet, context: ExportContext, page: Frame): Child[] {
         h(
           "span",
           null,
-          h("strong", null, "Datei speichern"),
-          " oder ",
-          h("strong", null, "Text kopieren"),
-          " (unten).",
+          h("strong", null, "Korrekturvorlage kopieren"),
+          " – sie enthält dein Set in der Auswahl oben.",
         ),
       ),
       h(
         "li",
         null,
-        h(
-          "span",
-          null,
-          h("strong", null, "Vorlage kopieren"),
-          ", in den KI-Chat einfügen und die Datei anhängen – oder den Text darunter einfügen.",
-        ),
+        h("span", null, "In den ", h("strong", null, "KI-Chat"), " einfügen und abschicken."),
       ),
       h(
         "li",
@@ -270,6 +262,9 @@ function content(set: StoredSet, context: ExportContext, page: Frame): Child[] {
       h("span", null, "Antwort einfügen"),
     ),
   );
+  update();
+
+  page.setDock(copy, save);
 
   return [
     h("p", { class: "lead" }, set.title),

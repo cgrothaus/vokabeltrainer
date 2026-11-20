@@ -1,4 +1,4 @@
-// E2E-16 (TDD 15.4): Empty State und Hilfe mit Schritten, Vorlage und Formatbeschreibung – AK-14, FR-20, FR-28, D-26.
+// E2E-16 (TDD 15.4): Empty State und Hilfe mit Schritten und Vorlage samt Formatbeschreibung – AK-14, FR-20, FR-28, D-26, D-65.
 import { readFileSync } from "node:fs";
 import { expect, type Page, test } from "@playwright/test";
 import { collectErrors, importSet } from "./support";
@@ -8,16 +8,13 @@ const spec = readFileSync(
   "utf8",
 );
 
-type Recorded = {
-  copied: string | null;
-  shared: { name: string; type: string; text: string } | null;
-};
+type Recorded = { copied: string | null };
 
-/** Zwischenablage und Teilen-Menü als Attrappen: Chromium und WebKit bieten sie je nach System an. */
+/** Zwischenablage als Attrappe: Chromium und WebKit bieten sie je nach System an. */
 const withStubs = (page: Page, copy: "ok" | "fail") =>
   page.addInitScript((copy) => {
     const w = window as unknown as { recorded: Recorded };
-    w.recorded = { copied: null, shared: null };
+    w.recorded = { copied: null };
     Object.defineProperty(navigator, "clipboard", {
       value: {
         writeText: async (text: string) => {
@@ -26,22 +23,15 @@ const withStubs = (page: Page, copy: "ok" | "fail") =>
         },
       },
     });
-    Object.defineProperty(Navigator.prototype, "canShare", { value: () => true });
-    Object.defineProperty(Navigator.prototype, "share", {
-      value: async ({ files }: { files: File[] }) => {
-        const file = files[0]!;
-        w.recorded.shared = { name: file.name, type: file.type, text: await file.text() };
-      },
-    });
   }, copy);
+
+/** Die Vorlage, wie sie im Chat landet: Begleittext, ganze Spezifikation, Auftrag (D-65). */
+const NEW_SET_PROMPT = `Hier ist die Formatbeschreibung für meinen Vokabeltrainer:\n\n${spec.trimEnd()}\n\nMach aus den Vokabeln auf den angehängten Fotos ein Vokabelset in diesem Format.`;
 
 const recorded = (page: Page) =>
   page.evaluate(() => (window as unknown as { recorded: Recorded }).recorded);
 
-test("E2E-16 Empty State → Hilfe → Vorlage kopieren und Formatbeschreibung teilen", async ({
-  page,
-  baseURL,
-}) => {
+test("E2E-16 Empty State → Hilfe → Vorlage mit Formatbeschreibung kopieren", async ({ page }) => {
   const errors = collectErrors(page);
   await withStubs(page, "ok");
   await page.goto("./");
@@ -58,31 +48,20 @@ test("E2E-16 Empty State → Hilfe → Vorlage kopieren und Formatbeschreibung t
   await expect(
     page.getByRole("heading", { name: "Wie bekomme ich ein Vokabelset?" }),
   ).toBeVisible();
-  const link = new URL("formatspezifikation.md", baseURL).href;
+  // Die Vorlage zeigt Begleittext und Auftrag, kopiert wird sie mit der ganzen Formatbeschreibung.
   const prompt = page.locator("#help-prompt");
-  await expect(prompt).toContainText(link);
-  await expect(prompt).not.toContainText("[Link zur Formatbeschreibung]");
+  await expect(prompt).toContainText("Formatbeschreibung der App – wird mitkopiert");
+  await expect(prompt).not.toContainText("formatspezifikation.md");
 
   await page.getByRole("button", { name: "Vorlage kopieren", exact: true }).click();
   await expect(page.getByText("Vorlage kopiert.", { exact: true })).toBeVisible();
-  expect((await recorded(page)).copied).toBe(await prompt.textContent());
+  expect((await recorded(page)).copied).toBe(NEW_SET_PROMPT);
 
-  // Zugeklappt darunter die Korrekturvorlage mit demselben Link (D-44, D-53).
+  // Zugeklappt darunter der Weg zur Korrektur über „Exportieren“ (D-44, D-53, D-65), ohne Vorlage.
   await page.getByText("Ein Set korrigieren").click();
-  const correction = page.locator("#help-correction-prompt");
-  await expect(correction).toContainText(link);
-  await page.getByRole("button", { name: "Korrekturvorlage kopieren" }).click();
-  await expect(page.getByText("Korrekturvorlage kopiert.", { exact: true })).toBeVisible();
-  expect((await recorded(page)).copied).toBe(await correction.textContent());
-
-  await page.getByText("Kann der Chat den Link nicht öffnen?").click();
-  await page.getByRole("button", { name: "Formatbeschreibung teilen" }).click();
-  await expect(page.getByText("Formatbeschreibung geteilt.", { exact: true })).toBeVisible();
-  expect((await recorded(page)).shared).toEqual({
-    name: "Formatbeschreibung-Vokabeltrainer.txt",
-    type: "text/plain",
-    text: spec,
-  });
+  await expect(page.getByText(/im Menü „Exportieren“/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Korrekturvorlage kopieren" })).toHaveCount(0);
+  await expect(page.getByText("Kann der Chat den Link nicht öffnen?")).toHaveCount(0);
 
   await page.getByText("So sieht ein Vokabelset aus").click();
   await expect(page.getByText('"format": "vokabeltrainer-set"')).toBeVisible();
@@ -95,13 +74,19 @@ test("E2E-16 Empty State → Hilfe → Vorlage kopieren und Formatbeschreibung t
   expect(errors, "Fehler in der Konsole").toEqual([]);
 });
 
-test("Kopieren scheitert → Hinweis, Vorlage ist markiert", async ({ page }) => {
+test("Kopieren scheitert → Hinweis, ganze Vorlage steht markiert im Feld", async ({ page }) => {
   await withStubs(page, "fail");
   await page.goto("./#/help");
   await page.getByRole("button", { name: "Vorlage kopieren", exact: true }).click();
-  await expect(page.getByText("Kopieren hat nicht geklappt.")).toBeVisible();
-  const selected = await page.evaluate(() => getSelection()?.toString());
-  expect(selected).toBe(await page.locator("#help-prompt").textContent());
+  await expect(page.getByText(/^Kopieren hat nicht geklappt\./)).toBeVisible();
+  const area = page.getByRole("textbox", { name: "Vorlage zum Kopieren" });
+  await expect(area).toBeFocused();
+  expect(await area.inputValue()).toBe(NEW_SET_PROMPT);
+  expect(
+    await area.evaluate(
+      (element: HTMLTextAreaElement) => element.selectionEnd - element.selectionStart,
+    ),
+  ).toBe(NEW_SET_PROMPT.length);
 });
 
 test("Formatbeschreibung liegt neben der App, auch offline und im Browser mit der App", async ({
@@ -117,9 +102,6 @@ test("Formatbeschreibung liegt neben der App, auch offline und im Browser mit de
   expect(await page.locator("body").textContent()).toBe(spec);
 
   await context.setOffline(true);
-  await page.goto("./#/help");
-  await page.getByText("Kann der Chat den Link nicht öffnen?").click();
-  await expect(page.getByRole("button", { name: "Formatbeschreibung teilen" })).toBeEnabled();
   await page.goto("./formatspezifikation.md");
   expect(await page.locator("body").textContent()).toBe(spec);
 });

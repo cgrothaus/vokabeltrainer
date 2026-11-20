@@ -137,6 +137,7 @@ test("Einzelne Sektion als Download und als kopierter Text", async ({ page }) =>
   await expect(page.getByText("Wähle mindestens eine Sektion.")).toBeVisible();
   await expect(page.getByRole("button", { name: "Datei speichern" })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Text kopieren" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Korrekturvorlage kopieren" })).toBeDisabled();
   await expect(page.getByText(/nicht als neues Set importieren/)).toBeVisible();
   await page.getByRole("checkbox", { name: /Einkaufen/ }).check();
   await expect(page.getByText("Ausgewählt: 1 Sektion mit 2 Einträgen.")).toBeVisible();
@@ -163,11 +164,22 @@ test("Einzelne Sektion als Download und als kopierter Text", async ({ page }) =>
   const { exportedAt: __, ...fromFile } = file;
   expect(content).toEqual(fromFile);
 
-  // Darunter die Korrekturvorlage mit dem Link auf die Formatbeschreibung (D-44).
+  // Darunter die Korrekturvorlage: ganze Formatbeschreibung, Auftrag und die gewählte Sektion, damit
+  // im Chat nichts angehängt werden muss (D-44, D-65).
   await page.getByRole("button", { name: "Korrekturvorlage kopieren" }).click();
   await expect(page.getByText("Korrekturvorlage kopiert.", { exact: true })).toBeVisible();
   const prompt = await page.evaluate(() => (window as unknown as { copied: string }).copied);
-  expect(prompt).toMatch(/formatspezifikation\.md\n.*korrigiere/);
+  const spec = await readFile(
+    new URL("../../docs/Formatspezifikation_Vokabelset_v1.md", import.meta.url),
+    "utf8",
+  );
+  const task = "Prüf das Vokabelset unten aus der App und korrigiere die Fehler.\n\n";
+  const [head, setText] = prompt.split(task);
+  expect(head).toBe(
+    `Hier ist die Formatbeschreibung für meinen Vokabeltrainer:\n\n${spec.trimEnd()}\n\n`,
+  );
+  const { exportedAt: ___, ...inPrompt } = JSON.parse(setText!) as ExportedFile;
+  expect(inPrompt).toEqual(fromFile);
   expect(errors, "Fehler in der Konsole").toEqual([]);
 });
 

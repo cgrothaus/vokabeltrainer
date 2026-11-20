@@ -1,23 +1,40 @@
 // Inhalte der Hilfe „Wie bekomme ich ein Vokabelset?“ (TDD 13.1). Das Beispiel steht auch in der
 // Formatspezifikation (Kapitel 1), tests/format/help.test.ts hält beide gleich. Die Vorlage gehört nur
 // der App: Die Spezifikation beschreibt den Ablauf, enthält aber keine Vorlage (D-35).
+//
+// Die Vorlagen enthalten die ganze Spezifikation statt eines Links (D-65): Manche Chats öffnen keine
+// Links oder lesen sie nur oberflächlich. Eingebettet ist dieselbe Datei, die der Build neben der App
+// veröffentlicht (D-26); so liegt sie beim Tippen schon vor, und die Nutzergeste bleibt frisch.
+import spec from "../../docs/Formatspezifikation_Vokabelset_v1.md?raw";
 
-/** Unter diesem Namen liegt die Formatspezifikation neben der App (D-26, `scripts/precache.ts`). */
-export const SPEC_FILE = "formatspezifikation.md";
+const INTRO = "Hier ist die Formatbeschreibung für meinen Vokabeltrainer:";
 
-/** Platzhalter in der Vorlage; die App setzt die Adresse der veröffentlichten Spezifikation ein. */
-export const LINK_PLACEHOLDER = "[Link zur Formatbeschreibung]";
-
-/** Vorlage für ein neues Set aus Fotos. */
-export const NEW_SET_PROMPT = `Hier ist die Formatbeschreibung für meinen Vokabeltrainer: ${LINK_PLACEHOLDER}
-Mach aus den Vokabeln auf den angehängten Fotos ein Vokabelset in diesem Format.`;
+/** Auftrag am Ende der Vorlage für ein neues Set aus Fotos. */
+export const NEW_SET_TASK =
+  "Mach aus den Vokabeln auf den angehängten Fotos ein Vokabelset in diesem Format.";
 
 /**
- * Vorlage zum Korrigieren eines exportierten Sets (D-42, D-44). Kurz wie die erste: Was eine Korrektur
- * erhalten muss (IDs, Prüfwerte, Umfang), erklärt die Spezifikation selbst (D-35).
+ * Auftrag der Korrekturvorlage (D-42, D-44). Kurz wie der erste: Was eine Korrektur erhalten muss
+ * (IDs, Prüfwerte, Umfang), erklärt die Spezifikation selbst (D-35). Das Set folgt darunter.
  */
-export const CORRECTION_PROMPT = `Hier ist die Formatbeschreibung für meinen Vokabeltrainer: ${LINK_PLACEHOLDER}
-Prüf das angehängte Vokabelset aus der App und korrigiere die Fehler.`;
+export const CORRECTION_TASK = "Prüf das Vokabelset unten aus der App und korrigiere die Fehler.";
+
+/** Was die Oberfläche statt der Spezifikation und des Sets zeigt; kopiert wird der volle Text. */
+export const SPEC_SHOWN = "[Formatbeschreibung der App – wird mitkopiert]";
+export const SET_SHOWN = "[Dein Vokabelset – wird mitkopiert]";
+
+export function newSetPrompt(): string {
+  return `${INTRO}\n\n${spec.trimEnd()}\n\n${NEW_SET_TASK}`;
+}
+
+export const NEW_SET_SHOWN = `${INTRO}\n${SPEC_SHOWN}\n${NEW_SET_TASK}`;
+
+/** `setText`: das exportierte Set bzw. die gewählten Sektionen, wie „Text kopieren“ sie liefert. */
+export function correctionPrompt(setText: string): string {
+  return `${INTRO}\n\n${spec.trimEnd()}\n\n${CORRECTION_TASK}\n\n${setText}`;
+}
+
+export const CORRECTION_SHOWN = `${INTRO}\n${SPEC_SHOWN}\n${CORRECTION_TASK}\n${SET_SHOWN}`;
 
 /** Formatspezifikation Kapitel 1. */
 export const FORMAT_EXAMPLE = `{
