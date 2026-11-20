@@ -22,6 +22,9 @@ const CARDS = "practice-cards";
 
 const SVG = "http://www.w3.org/2000/svg";
 
+/** Pause vor den Antworten bei Multiple Choice in Millisekunden (TDD 12.3, D-60). */
+const CHOICE_DELAY = 3000;
+
 /** Tasten, die ein Eingabefeld oder eine fokussierte Schaltfläche selbst behandelt. */
 const handledByTarget = (event: KeyboardEvent) =>
   event.target instanceof Element &&
@@ -191,7 +194,8 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
         { type: "button", class: "face front" },
         h("span", { class: "lang-tag" }, languageName(promptLanguage)),
         h("span", { class: "prompt", lang: promptLanguage }, faces.prompt),
-        h("span", { class: "small" }, "Tippen zum Aufdecken"),
+        // Lädt ein, sich vor dem Aufdecken festzulegen (FR-09, D-60).
+        h("span", { class: "small" }, "Sag es laut, dann tipp zum Aufdecken"),
       );
       const back = h(
         "div",
@@ -288,16 +292,43 @@ export function practiceView(started: PracticeSession | null, signal: AbortSigna
           option,
         ),
       );
-      page.setDock();
+      // Erst erinnern, dann wählen (FR-09, D-60): Die Antworten folgen nach einer Pause oder sofort auf
+      // „Antworten zeigen“. Der Zwischenstand hält die Pause an; danach beginnt sie neu.
+      const choices = h("div", { class: "options", hidden: true }, options);
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const reveal = () => {
+        clearTimeout(timer);
+        if (!choices.hidden) return;
+        choices.hidden = false;
+        onKey = null;
+        page.setDock();
+      };
+      // „Weiterlernen“ zeichnet die Karte neu und beginnt damit eine neue Pause.
+      const wait = () => {
+        timer = setTimeout(() => {
+          if (screen === "cards" && current === shown) reveal();
+        }, CHOICE_DELAY);
+      };
+      signal.addEventListener("abort", () => clearTimeout(timer));
+      page.setDock(
+        h("button", { type: "button", class: "secondary", onclick: reveal }, "Antworten zeigen"),
+      );
       show(
         "cards",
         h("p", { class: "kind" }, "Multiple Choice"),
         prompt,
         feedback,
         after,
-        h("div", { class: "options" }, options),
+        choices,
         problem,
       );
+      const current = shown;
+      onKey = (event) => {
+        if ((event.key !== "Enter" && event.key !== " ") || handledByTarget(event)) return false;
+        reveal();
+        return true;
+      };
+      wait();
       focusSoon(prompt);
     };
 

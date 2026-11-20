@@ -48,7 +48,7 @@ async function learnSection(page: Page, only: string, ratings: ("Nochmal" | "Gew
   await page.getByRole("slider", { name: "Multiple Choice" }).fill("0");
   await page.getByRole("button", { name: /^\d+ Vokabeln? lernen$/ }).click();
   for (const rating of ratings) {
-    await page.getByRole("button", { name: /Tippen zum Aufdecken/ }).click();
+    await page.getByRole("button", { name: /tipp zum Aufdecken/ }).click();
     await page.getByRole("button", { name: rating }).click();
   }
   await expect(page.getByRole("heading", { name: "Geschafft" })).toBeVisible();
@@ -80,8 +80,8 @@ test("Set-Ansicht zeigt den Lernstand für Set und Sektionen, auch nach dem Neul
   await expect(sectionLine(page, "Wetter")).toHaveText("noch nicht gelernt");
   await expect(sectionLine(page, "Tiere")).toHaveText("noch nicht gelernt");
 
-  // Die erste Karte kommt als letzte wieder: zwei von drei beim ersten Mal gewusst.
-  await learnSection(page, "Wetter", ["Nochmal", "Gewusst", "Gewusst", "Gewusst"]);
+  // Die erste Karte kommt als letzte wieder, zweimal (FR-10): zwei von drei beim ersten Mal gewusst.
+  await learnSection(page, "Wetter", ["Nochmal", "Gewusst", "Gewusst", "Gewusst", "Gewusst"]);
   await openSet();
   await expectTiles(
     page,

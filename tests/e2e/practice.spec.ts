@@ -41,18 +41,21 @@ test("E2E-01 Import (Text) → Lernen → Neuladen → Daten da", async ({ page 
   const errors = collectErrors(page);
   await startPractice(page, "Englisch – Wetter");
 
-  // Die erste Karte kommt wieder, weil die Warteschlange kürzer als vier ist, als letzte.
+  // Die erste Karte kommt wieder, weil die Warteschlange kürzer als sechs ist, als letzte; nach dem
+  // Fehler muss sie zweimal gewusst werden (FR-10, D-60).
   await rate(page, "Nochmal");
   await expect(page.getByText("0 von 3 geschafft")).toBeVisible();
   await rate(page, "Gewusst");
   await expect(page.getByText("1 von 3 geschafft")).toBeVisible();
   await rate(page, "Gewusst");
   await rate(page, "Gewusst");
+  await expect(page.getByText("2 von 3 geschafft")).toBeVisible();
+  await rate(page, "Gewusst");
   await expect(page.getByRole("heading", { name: "Geschafft" })).toBeVisible();
   await expect(page.getByText("2 von 3 beim ersten Mal gewusst.")).toBeVisible();
 
   const answers = await events(page);
-  expect(answers).toHaveLength(4);
+  expect(answers).toHaveLength(5);
   expect(answers.filter((event) => event.firstAttempt)).toHaveLength(3);
   expect(new Set(answers.map((event) => event.entryId)).size).toBe(3);
   for (const event of answers) {
@@ -62,7 +65,7 @@ test("E2E-01 Import (Text) → Lernen → Neuladen → Daten da", async ({ page 
   }
   const missed = answers.find((event) => event.result === "incorrect")!;
   expect(missed.firstAttempt).toBe(true);
-  expect(answers.filter((event) => event.entryId === missed.entryId)).toHaveLength(2);
+  expect(answers.filter((event) => event.entryId === missed.entryId)).toHaveLength(3);
   await expect.poll(async () => (await sessions(page)).map((s) => s.status)).toEqual(["completed"]);
 
   await page.getByRole("link", { name: "Zur Bibliothek" }).click();
@@ -104,14 +107,13 @@ test("Beenden zeigt den Zwischenstand als Blatt; Weiterlernen setzt dieselbe Sit
   await pause(page).getByRole("button", { name: "Weiterlernen (2 offen)" }).click();
   await expect(pause(page)).toHaveCount(0);
   await expect(page.getByText("1 von 3 geschafft")).toBeVisible();
-  await rate(page, "Gewusst");
-  await rate(page, "Gewusst");
+  for (let i = 0; i < 3; i++) await rate(page, "Gewusst");
   await expect(page.getByRole("heading", { name: "Geschafft" })).toBeVisible();
   await expect(page.getByText("2 von 3 beim ersten Mal gewusst.")).toBeVisible();
   await expect(mistakes(page)).toHaveText([`${missed} – ${MEANINGS[missed]}`]);
   await expect(mistakes(page).locator("span").first()).toHaveAttribute("lang", "en");
   await expect.poll(() => statuses(page)).toEqual(["completed"]);
-  expect(await events(page)).toHaveLength(4);
+  expect(await events(page)).toHaveLength(5);
   expect(errors, "Fehler in der Konsole").toEqual([]);
 });
 
@@ -172,7 +174,7 @@ test("Nur Fehler üben: nur die Fehler, eigene Sitzung mit Verweis, Einrichtung 
   await startPractice(page, "Englisch – Fehler");
   const missed = (await promptText(page).textContent())!;
   await rate(page, "Nochmal");
-  for (let i = 0; i < 3; i++) await rate(page, "Gewusst");
+  for (let i = 0; i < 4; i++) await rate(page, "Gewusst");
   await expect(page.getByRole("heading", { name: "Geschafft" })).toBeVisible();
   const settings = await readStore(page, "settings");
 

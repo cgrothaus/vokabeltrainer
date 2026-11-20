@@ -83,7 +83,7 @@ test("E2E-02 Backup → frisches Gerät → Wiederherstellen ergibt denselben Be
   await withoutShare(page);
   await importSet(page, "Englisch – Wetter");
   await startLearning(page, "Englisch – Wetter");
-  await page.getByRole("button", { name: /Tippen zum Aufdecken/ }).click();
+  await page.getByRole("button", { name: /tipp zum Aufdecken/ }).click();
   await page.getByRole("button", { name: "Gewusst" }).click();
   await expect(page.getByText("1 von 3 geschafft")).toBeVisible();
   await endPractice(page);
@@ -146,7 +146,7 @@ test("E2E-21 Vorhandene Daten: Warnung mit Umfang, vorher Backup speichern, dann
   await withShare(page, "share");
   await importSet(page, "Englisch – Vorher");
   await startLearning(page, "Englisch – Vorher");
-  await page.getByRole("button", { name: /Tippen zum Aufdecken/ }).click();
+  await page.getByRole("button", { name: /tipp zum Aufdecken/ }).click();
   await page.getByRole("button", { name: "Gewusst" }).click();
   await expect(page.getByText("1 von 3 geschafft")).toBeVisible();
   await endPractice(page);

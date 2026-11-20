@@ -1,6 +1,7 @@
 // Ablauf einer Lernsitzung (TDD 12.2, 12.3), übernommen aus dem Prototyp: gemischte Warteschlange,
-// falsche Karten kommen nach drei anderen wieder, „Nur Fehler üben“ stellt die Fehler erneut (D-29).
-// Der Zustand liegt nur im Arbeitsspeicher. Dazu die Auswahl der Antworten für Multiple Choice (D-18).
+// falsche Karten kommen erst nach sechs anderen wieder und müssen danach zweimal gewusst werden
+// (FR-10, D-60), „Nur Fehler üben“ stellt die Fehler erneut (D-29). Der Zustand liegt nur im
+// Arbeitsspeicher. Dazu die Auswahl plausibler Antworten für Multiple Choice (D-18, FR-09).
 import type { Direction, StoredEntry } from "./model";
 
 export type Mode = "flashcard" | "multipleChoice";
@@ -12,6 +13,8 @@ export interface Card {
   readonly mode: Mode;
   /** Nur die erste Antwort zu einem Eintrag in der Sitzung zählt als Erstversuch. */
   readonly firstAttempt: boolean;
+  /** Wie oft die Karte noch gewusst werden muss; ohne Angabe einmal, nach einem Fehler zweimal. */
+  readonly needed?: number;
 }
 
 export interface PracticeState {
@@ -32,8 +35,10 @@ export interface RecordedAnswer extends Card {
   readonly result: Result;
 }
 
-/** Falsch beantwortete Karten werden an Position 4 wieder eingefügt (Index 3). */
-const REINSERT_AT = 3;
+/** Mindestens so viele andere Karten liegen vor einer falschen oder erst einmal bestätigten Karte. */
+export const RETRY_GAP = 6;
+/** So oft muss eine Karte nach einem Fehler gewusst werden. */
+export const CONFIRMATIONS = 2;
 
 /** Fisher-Yates; `random` liefert Werte in `[0, 1)`, z. B. `Math.random`. Die Eingabe bleibt unverändert. */
 export function shuffle<T>(items: readonly T[], random: () => number): T[] {
@@ -98,7 +103,9 @@ const fresh = (queue: readonly Card[]): PracticeState => ({
 
 /** „Nur Fehler üben“ (D-29): jede Karte in Richtung und Form wie beim Fehler, neu gemischt. */
 export function repeatMistakes(missed: readonly Card[], random: () => number): PracticeState {
-  return fresh(shuffle(missed, random).map((card) => ({ ...card, firstAttempt: true })));
+  return fresh(
+    shuffle(missed, random).map(({ needed: _, ...card }) => ({ ...card, firstAttempt: true })),
+  );
 }
 
 export function currentCard(state: PracticeState): Card | undefined {
@@ -111,15 +118,21 @@ export function answer(
 ): { state: PracticeState; recorded: RecordedAnswer } {
   const [card, ...rest] = state.queue;
   if (!card) throw new Error("Die Sitzung hat keine Karte mehr");
+  // Ein Fehler verlangt wieder zwei richtige Antworten; jede kommt erst nach `RETRY_GAP` anderen Karten.
+  const needed = result === "correct" ? (card.needed ?? 1) - 1 : CONFIRMATIONS;
   const queue =
-    result === "correct"
+    needed === 0
       ? rest
-      : rest.toSpliced(Math.min(REINSERT_AT, rest.length), 0, { ...card, firstAttempt: false });
+      : rest.toSpliced(Math.min(RETRY_GAP, rest.length), 0, {
+          ...card,
+          firstAttempt: false,
+          needed,
+        });
   return {
     state: {
       queue,
       total: state.total,
-      done: state.done + (result === "correct" ? 1 : 0),
+      done: state.done + (needed === 0 ? 1 : 0),
       firstAttempts: state.firstAttempts + (card.firstAttempt ? 1 : 0),
       firstCorrect: state.firstCorrect + (card.firstAttempt && result === "correct" ? 1 : 0),
       missed: card.firstAttempt && result === "incorrect" ? [...state.missed, card] : state.missed,
@@ -181,10 +194,61 @@ function* candidates(
   }
 }
 
+const partOfSpeech = (entry: StoredEntry) =>
+  entry.grammar?.partOfSpeech?.trim().toLowerCase() || undefined;
+
+/** Grobe Form einer Antwort, unabhängig von der Sprache: Wortzahl, kurzes erstes Wort, Großschreibung. */
+function shape(text: string): string {
+  const trimmed = text.normalize("NFC").trim();
+  const words = trimmed.split(/\s+/);
+  // Fängt „to …“, „der …“, „la …“: ein kurzes erstes Wort vor weiteren.
+  const lead = words.length > 1 && words[0]!.length <= 3 ? words[0]!.toLowerCase() : "";
+  const first = trimmed.charAt(0);
+  return `${words.length}|${lead}|${first !== first.toLowerCase()}`;
+}
+
+/**
+ * Wie plausibel ein Kandidat als falsche Antwort ist (TDD 12.3, D-60), kleiner ist besser: zuerst die
+ * Wortart (gleich, unbekannt, andere), dann die Herkunft (Sektionen der Sitzung vor dem übrigen Set),
+ * dann eine ähnliche Form. Nennt der Eintrag keine Wortart, zählt nur der Rest.
+ */
+export function plausibility(
+  entry: StoredEntry,
+  candidate: StoredEntry,
+  side: Side,
+  inSession: boolean,
+): number {
+  const own = partOfSpeech(entry);
+  const other = partOfSpeech(candidate);
+  const kind = !own || other === own ? 0 : other === undefined ? 1 : 2;
+  const similar = shape(sideText(candidate, side)) === shape(sideText(entry, side));
+  return kind * 4 + (inSession ? 0 : 2) + (similar ? 0 : 1);
+}
+
+/** Der Pool nach Plausibilität geordnet; innerhalb einer Stufe bleibt die gegebene Reihenfolge. */
+function ranked(
+  entry: StoredEntry,
+  direction: Direction,
+  preferred: readonly StoredEntry[],
+  rest: readonly StoredEntry[],
+): StoredEntry[] {
+  const side = answerSide(direction);
+  const scored = [
+    ...preferred.map((candidate) => ({ candidate, inSession: true })),
+    ...rest.map((candidate) => ({ candidate, inSession: false })),
+  ].map(({ candidate, inSession }) => ({
+    candidate,
+    score: plausibility(entry, candidate, side, inSession),
+  }));
+  // `sort` ist stabil: Gleich plausible behalten ihre (gemischte) Reihenfolge.
+  return scored.sort((a, b) => a.score - b.score).map(({ candidate }) => candidate);
+}
+
 /**
  * Alle geeigneten falschen Antworten: aus demselben Set, auf der Sprachseite der Antwort, ohne
- * gemeinsame akzeptierte Antwort mit dem Eintrag und ohne doppelte Anzeige. Einträge aus den Sektionen
- * der Sitzung (`preferred`) stehen vor dem übrigen Set (`rest`).
+ * gemeinsame akzeptierte Antwort mit dem Eintrag und ohne doppelte Anzeige, die plausibelsten zuerst
+ * (`plausibility`): Einträge aus den Sektionen der Sitzung (`preferred`) stehen bei gleicher Wortart vor
+ * dem übrigen Set (`rest`).
  */
 export function distractors(
   entry: StoredEntry,
@@ -192,7 +256,7 @@ export function distractors(
   preferred: readonly StoredEntry[],
   rest: readonly StoredEntry[],
 ): StoredEntry[] {
-  return [...candidates(entry, direction, [...preferred, ...rest])];
+  return [...candidates(entry, direction, ranked(entry, direction, preferred, rest))];
 }
 
 export const CHOICE_COUNT = 4;
@@ -222,7 +286,7 @@ export function multipleChoice(
   random: () => number,
 ): { options: string[]; correct: number } | null {
   const side = answerSide(direction);
-  const pool = [...shuffle(preferred, random), ...shuffle(rest, random)];
+  const pool = ranked(entry, direction, shuffle(preferred, random), shuffle(rest, random));
   const wrong: string[] = [];
   for (const candidate of candidates(entry, direction, pool)) {
     wrong.push(sideText(candidate, side));

@@ -101,7 +101,9 @@ test("E2E-05 Empty State → Beispielset → Sitzung mit Multiple Choice", async
 
   const options = page.locator(".options button");
   let missed: string | undefined;
-  for (let question = 0; question < 11; question++) {
+  // Zehn Fragen und die falsche noch zweimal (FR-10); die Antworten erst nach der Pause (FR-09).
+  for (let question = 0; question < 12; question++) {
+    await page.getByRole("button", { name: "Antworten zeigen" }).click();
     await expect(options).toHaveCount(4);
     const prompt = page.locator(".flash .front .prompt, .question .prompt");
     await expect(prompt).toHaveAttribute("lang", "en");
@@ -141,11 +143,11 @@ test("E2E-05 Empty State → Beispielset → Sitzung mit Multiple Choice", async
   await expect(page.getByText("9 von 10 beim ersten Mal gewusst.")).toBeVisible();
 
   const answers = await readStore<ReviewEvent>(page, "reviewEvents");
-  expect(answers).toHaveLength(11);
+  expect(answers).toHaveLength(12);
   expect(answers.every((event) => event.mode === "multipleChoice")).toBe(true);
-  // Die falsch beantwortete Frage kam als Multiple Choice wieder.
+  // Die falsch beantwortete Frage kam als Multiple Choice wieder, bis sie zweimal gewusst war.
   const again = answers.filter((event) => event.entryId === byTerm.get(missed!)!.id);
-  expect(again.map((event) => event.result).sort()).toEqual(["correct", "incorrect"]);
+  expect(again.map((event) => event.result).sort()).toEqual(["correct", "correct", "incorrect"]);
   const [session] = await readStore<Session>(page, "sessions");
   expect(session!.config).toMatchObject({ count: 10, mcShare: 100 });
 
@@ -155,6 +157,11 @@ test("E2E-05 Empty State → Beispielset → Sitzung mit Multiple Choice", async
   await page.getByRole("button", { name: "Nur Fehler üben (1)" }).click();
   await expect(page.getByText("0 von 1 geschafft")).toBeVisible();
   await expect(page.locator(".flash .front .prompt, .question .prompt")).toHaveText(missed!);
+  // Ohne Tippen erscheinen die Antworten erst nach der Pause zum Erinnern (TDD 12.3).
+  await expect(options.first()).toBeHidden();
+  await expect(page.getByRole("button", { name: "Antworten zeigen" })).toBeVisible();
+  await expect(options.first()).toBeVisible({ timeout: 6000 });
+  await expect(page.getByRole("button", { name: "Antworten zeigen" })).toHaveCount(0);
   await expect(options).toHaveCount(4);
   await options.nth((await options.allTextContents()).indexOf(shown(wrongEntry))).click();
   await page.getByRole("button", { name: "Weiter" }).click();

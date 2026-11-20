@@ -683,10 +683,19 @@ button.textbtn {
 }
 
 /* Antworten bei Multiple Choice unten in der Daumenzone, in voller Breite. */
-.options {
+.options:not([hidden]) {
   display: grid;
   gap: 0.625rem;
   margin-top: auto;
+  /* Nach der Pause zum Erinnern (TDD 12.3) blenden sie sanft ein. */
+  animation: options-in 0.25s ease-out;
+}
+
+@keyframes options-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
 }
 
 .options .option {
@@ -866,6 +875,10 @@ button.textbtn {
   .progress > span,
   .ring .fg {
     transition: none;
+  }
+
+  .options:not([hidden]) {
+    animation: none;
   }
 }
 

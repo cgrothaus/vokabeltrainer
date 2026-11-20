@@ -89,7 +89,7 @@ test("E2E-28 Karten mit Lernstand, Lernen-Knopf als Schnellstart, Weiterlernen, 
   await page.getByRole("button", { name: `${WEATHER} lernen` }).click();
   await expect(page).toHaveURL(/#\/learn\//);
   await page.getByRole("button", { name: "3 Vokabeln lernen" }).click();
-  await page.getByRole("button", { name: /Tippen zum Aufdecken/ }).click();
+  await page.getByRole("button", { name: /tipp zum Aufdecken/ }).click();
   await page.getByRole("button", { name: "Gewusst" }).click();
   await expect(page.getByText("1 von 3 geschafft")).toBeVisible();
   await endPractice(page);
@@ -188,7 +188,7 @@ test("Set löschen kündigt den Umfang an und löscht den Lernstand mit", async 
   await importSet(page, "Englisch – Wetter");
   // Eine Antwort, dann beenden: ein Set mit Lernstand.
   await startLearning(page, "Englisch – Wetter");
-  await page.getByRole("button", { name: /Tippen zum Aufdecken/ }).click();
+  await page.getByRole("button", { name: /tipp zum Aufdecken/ }).click();
   await page.getByRole("button", { name: "Gewusst" }).click();
   await expect(page.getByText("1 von 3 geschafft")).toBeVisible();
   await endPractice(page);

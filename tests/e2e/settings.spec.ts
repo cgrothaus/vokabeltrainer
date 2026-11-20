@@ -169,7 +169,7 @@ test("E2E-18 Alle Daten löschen: Ankündigung, Abbrechen, danach leere Biblioth
   const errors = collectErrors(page);
   await importSet(page, "Englisch – Wetter");
   await startLearning(page, "Englisch – Wetter");
-  await page.getByRole("button", { name: /Tippen zum Aufdecken/ }).click();
+  await page.getByRole("button", { name: /tipp zum Aufdecken/ }).click();
   await page.getByRole("button", { name: "Gewusst" }).click();
   await expect(page.getByText("1 von 3 geschafft")).toBeVisible();
   await endPractice(page);

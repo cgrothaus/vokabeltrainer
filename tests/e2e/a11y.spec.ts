@@ -305,9 +305,15 @@ test("Beispielset: Set-Ansicht mit Lernstand, Multiple Choice mit Rückmeldung",
     .click();
   await page.getByRole("slider", { name: "Multiple Choice" }).fill("100");
   await page.getByRole("radio", { name: "10", exact: true }).check();
+  // Angehaltene Uhr: Die Antworten erscheinen sonst nach 3 s mitten in der Prüfung (TDD 12.3).
+  await page.clock.install();
   await page.getByRole("button", { name: "10 Vokabeln lernen" }).click();
   const options = page.locator(".options button");
+  await expect(page.getByRole("button", { name: "Antworten zeigen" })).toBeVisible();
+  findings.push(...(await audit(page, "Multiple Choice vor den Antworten")));
+  await page.getByRole("button", { name: "Antworten zeigen" }).click();
   await expect(options).toHaveCount(4);
+  await expect(options.first()).toBeVisible();
   findings.push(...(await audit(page, "Multiple Choice")));
   await options.first().click();
   await expect(page.getByRole("button", { name: "Weiter" })).toBeVisible();

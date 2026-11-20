@@ -22,7 +22,7 @@ const notice = (page: Page) => page.locator("#storage-notice");
 const alert = (page: Page) => page.getByRole("main").getByRole("alert");
 
 async function answerKnown(page: Page, done: number): Promise<void> {
-  await page.getByRole("button", { name: /Tippen zum Aufdecken/ }).click();
+  await page.getByRole("button", { name: /tipp zum Aufdecken/ }).click();
   await page.getByRole("button", { name: "Gewusst" }).click();
   await expect(page.getByText(`${done} von 3 geschafft`)).toBeVisible();
 }
@@ -106,7 +106,7 @@ test("E2E-19 Antwort nicht gespeichert: Sitzung läuft weiter, Ergebnis nennt es
   await failWrites(page, null);
   await answerKnown(page, 2);
   await expect(alert(page)).toBeEmpty();
-  await page.getByRole("button", { name: /Tippen zum Aufdecken/ }).click();
+  await page.getByRole("button", { name: /tipp zum Aufdecken/ }).click();
   await page.getByRole("button", { name: "Gewusst" }).click();
 
   await expect(page.getByRole("heading", { name: "Geschafft" })).toBeVisible();
@@ -142,7 +142,7 @@ test("E2E-19 Ende der Sitzung nicht gespeichert: Speicherhinweis bis zum nächst
   await answerKnown(page, 2);
 
   await failWrites(page, FULL, "sessions");
-  await page.getByRole("button", { name: /Tippen zum Aufdecken/ }).click();
+  await page.getByRole("button", { name: /tipp zum Aufdecken/ }).click();
   await page.getByRole("button", { name: "Gewusst" }).click();
   await expect(page.getByRole("heading", { name: "Geschafft" })).toBeVisible();
   // Geschrieben wird erst im Erfolgsrückruf des Lesens; der Browser bricht dann mit eigenem Fehler ab.

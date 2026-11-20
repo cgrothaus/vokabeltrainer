@@ -105,7 +105,7 @@ test("E2E-14 Während einer Lernsitzung erscheint der Hinweis erst danach", asyn
 
     for (const done of ["1 von 3", "2 von 3"]) {
       await expect(notice).toBeEmpty();
-      await page.getByRole("button", { name: /Tippen zum Aufdecken/ }).click();
+      await page.getByRole("button", { name: /tipp zum Aufdecken/ }).click();
       await page.getByRole("button", { name: "Gewusst" }).click();
       await expect(page.getByText(`${done} geschafft`)).toBeVisible();
     }
@@ -114,7 +114,7 @@ test("E2E-14 Während einer Lernsitzung erscheint der Hinweis erst danach", asyn
     await expect(page.getByRole("heading", { name: "Zwischenstand" })).toBeVisible();
     await expect(notice).toBeEmpty();
     await page.getByRole("button", { name: "Weiterlernen (1 offen)" }).click();
-    await page.getByRole("button", { name: /Tippen zum Aufdecken/ }).click();
+    await page.getByRole("button", { name: /tipp zum Aufdecken/ }).click();
     await page.getByRole("button", { name: "Gewusst" }).click();
     await expect(page.getByRole("heading", { name: "Geschafft" })).toBeVisible();
     await expect(notice).toContainText("Neue Version verfügbar");

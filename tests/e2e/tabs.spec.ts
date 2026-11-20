@@ -78,7 +78,7 @@ test("E2E-26 Gelernt in einem Tab: Der andere zeigt den neuen Lernstand beim nä
 
   const other = await secondTab(page, "#/");
   await startLearning(other, TITLE);
-  await other.getByRole("button", { name: /Tippen zum Aufdecken/ }).click();
+  await other.getByRole("button", { name: /tipp zum Aufdecken/ }).click();
   await other.getByRole("button", { name: "Gewusst" }).click();
   await expect(other.getByText("1 von 3 geschafft")).toBeVisible();
   await endPractice(other);
@@ -116,7 +116,7 @@ test("E2E-26 Set in einem anderen Tab gelöscht: Die Sitzung endet, ohne etwas z
   await goToSetup(page, TITLE);
   await page.getByRole("slider", { name: "Multiple Choice" }).fill("0");
   await page.getByRole("button", { name: /^\d+ Vokabeln? lernen$/ }).click();
-  await page.getByRole("button", { name: /Tippen zum Aufdecken/ }).click();
+  await page.getByRole("button", { name: /tipp zum Aufdecken/ }).click();
   await page.getByRole("button", { name: "Gewusst" }).click();
   await expect(page.getByText("1 von 3 geschafft")).toBeVisible();
 
@@ -128,7 +128,7 @@ test("E2E-26 Set in einem anderen Tab gelöscht: Die Sitzung endet, ohne etwas z
     other.getByRole("heading", { name: "Lerne Vokabeln mit Karteikarten" }),
   ).toBeVisible();
 
-  await page.getByRole("button", { name: /Tippen zum Aufdecken/ }).click();
+  await page.getByRole("button", { name: /tipp zum Aufdecken/ }).click();
   await page.getByRole("button", { name: "Gewusst" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Lernsitzung beendet");
   await expect(page.getByText(/Dieses Set gibt es nicht mehr/)).toBeVisible();

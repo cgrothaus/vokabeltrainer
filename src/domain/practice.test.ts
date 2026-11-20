@@ -128,7 +128,7 @@ describe("startPractice mit Multiple Choice", () => {
     );
     const { state: next, recorded } = answer(state, "incorrect");
     expect(recorded.mode).toBe("multipleChoice");
-    expect(next.queue[3]).toMatchObject({ entryId: recorded.entryId, mode: "multipleChoice" });
+    expect(next.queue[6]).toMatchObject({ entryId: recorded.entryId, mode: "multipleChoice" });
   });
 });
 
@@ -144,13 +144,49 @@ describe("answer", () => {
     expect(next.done).toBe(1);
   });
 
-  it("fügt eine falsche Karte an Position 4 wieder ein", () => {
-    const state = start();
+  it("fügt eine falsche Karte erst nach sechs anderen wieder ein", () => {
+    let state = startPractice(
+      ["a", "b", "c", "d", "e", "f", "g", "h"],
+      { direction: "termToMeaning" },
+      sequence(0.99),
+    );
     const [first, ...rest] = ids(state);
-    const next = reply(state, "incorrect");
-    expect(ids(next)).toEqual([...rest.slice(0, 3), first, ...rest.slice(3)]);
-    expect(next.queue[3]!.firstAttempt).toBe(false);
-    expect(next.done).toBe(0);
+    state = reply(state, "incorrect");
+    expect(ids(state)).toEqual([...rest.slice(0, 6), first, ...rest.slice(6)]);
+    expect(state.queue[6]).toMatchObject({ firstAttempt: false, needed: 2 });
+    expect(state.done).toBe(0);
+  });
+
+  it("verlangt nach einem Fehler zwei richtige Antworten mit Abstand", () => {
+    const entries = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n"];
+    let state = startPractice(entries, { direction: "termToMeaning" }, sequence(0.99));
+    const first = ids(state)[0]!;
+    state = reply(state, "incorrect");
+    for (let i = 0; i < 6; i++) state = reply(state, "correct");
+    expect(ids(state)[0]).toBe(first);
+    state = reply(state, "correct");
+    // Einmal gewusst: Sie kommt noch einmal, wieder nach sechs anderen, und zählt noch nicht.
+    expect(ids(state)[6]).toBe(first);
+    expect(state.queue[6]).toMatchObject({ needed: 1 });
+    expect(state.done).toBe(6);
+    for (let i = 0; i < 6; i++) state = reply(state, "correct");
+    state = reply(state, "correct");
+    expect(ids(state)).not.toContain(first);
+    expect(state.done).toBe(13);
+  });
+
+  it("setzt bei einem erneuten Fehler wieder auf zwei richtige Antworten", () => {
+    let state = startPractice(["a", "b"], { direction: "termToMeaning" }, sequence(0.99));
+    const first = ids(state)[0]!;
+    state = reply(state, "incorrect"); // b, a(2)
+    state = reply(state, "correct"); // a(2)
+    state = reply(state, "correct"); // a(1)
+    expect(state.queue).toMatchObject([{ entryId: first, needed: 1 }]);
+    state = reply(state, "incorrect");
+    expect(state.queue).toMatchObject([{ entryId: first, needed: 2 }]);
+    state = reply(reply(state, "correct"), "correct");
+    expect(currentCard(state)).toBeUndefined();
+    expect(state.done).toBe(2);
   });
 
   it("fügt ans Ende ein, wenn die Warteschlange kürzer ist", () => {
@@ -180,7 +216,9 @@ describe("answer", () => {
     state = reply(state, "correct");
     const again = answer(state, "correct");
     expect(again.recorded).toMatchObject({ entryId: first.recorded.entryId, firstAttempt: false });
-    expect(again.state).toMatchObject({ firstAttempts: 2, firstCorrect: 1, done: 2, total: 2 });
+    const last = answer(again.state, "correct");
+    expect(last.recorded).toMatchObject({ entryId: first.recorded.entryId, firstAttempt: false });
+    expect(last.state).toMatchObject({ firstAttempts: 2, firstCorrect: 1, done: 2, total: 2 });
   });
 
   it("ist fertig, wenn alle Karten gewusst sind", () => {
@@ -215,6 +253,7 @@ describe("answer", () => {
     let state = startPractice(["a"], { direction: "termToMeaning" }, sequence(0.99));
     state = reply(reply(reply(state, "incorrect"), "incorrect"), "correct");
     expect(state.missed.map((card) => card.entryId)).toEqual(["a"]);
+    expect(state.missed[0]).not.toHaveProperty("needed");
   });
 });
 
@@ -233,9 +272,9 @@ describe("repeatMistakes", () => {
     expect(state.missed).toEqual([]);
   });
 
-  it("zählt jede Karte wieder als Erstversuch", () => {
-    const state = repeatMistakes([{ ...missed[0]!, firstAttempt: false }], sequence(0));
-    expect(state.queue[0]!.firstAttempt).toBe(true);
+  it("zählt jede Karte wieder als Erstversuch, einmal gewusst genügt", () => {
+    const state = repeatMistakes([{ ...missed[0]!, firstAttempt: false, needed: 2 }], sequence(0));
+    expect(state.queue[0]).toEqual(missed[0]);
   });
 
   it("ändert die Eingabe nicht und kommt mit einer leeren Liste aus", () => {
@@ -308,7 +347,7 @@ describe("distractors", () => {
   it("nimmt von mehreren Kandidaten mit gleicher Anzeige nur einen", () => {
     const pool = [
       entry("a", "bank", "Ufer"),
-      entry("b", "shore", "ufer"),
+      entry("b", "shore", "UFER"),
       entry("c", "coast", "Küste"),
     ];
     expect(distractors(big, "termToMeaning", pool, []).map((c) => c.id)).toEqual(["a", "c"]);
@@ -377,5 +416,62 @@ describe("multipleChoice", () => {
     expect(multipleChoice(big, "termToMeaning", enough, [], sequence(0.5))).not.toBeNull();
     expect(hasChoices(big, "termToMeaning", few)).toBe(false);
     expect(hasChoices(big, "termToMeaning", enough)).toBe(true);
+  });
+});
+
+describe("plausible Kandidaten", () => {
+  const as = (partOfSpeech: string, value: StoredEntry): StoredEntry => ({
+    ...value,
+    grammar: { partOfSpeech },
+  });
+  const go = as("verb", entry("go", "to go", "gehen"));
+
+  it("bevorzugt dieselbe Wortart, dann unbekannte, dann andere – vor den Sektionen", () => {
+    const preferred = [
+      as("noun", entry("n", "house", "Haus")),
+      entry("u", "quickly", "schnell"),
+      as("adjective", entry("j", "tall", "groß")),
+    ];
+    const rest = [
+      as("Verb", entry("v", "to run", "laufen")),
+      as("verb", entry("w", "to eat", "essen")),
+    ];
+    const order = distractors(go, "termToMeaning", preferred, rest).map((c) => c.id);
+    expect(order).toEqual(["v", "w", "u", "j", "n"]);
+  });
+
+  it("stellt bei gleicher Wortart die Sektionen der Sitzung vor das übrige Set", () => {
+    const preferred = [as("verb", entry("p", "to sleep", "schlafen"))];
+    const rest = [as("verb", entry("r", "to read", "lesen"))];
+    expect(distractors(go, "termToMeaning", preferred, rest).map((c) => c.id)).toEqual(["p", "r"]);
+  });
+
+  it("bevorzugt eine ähnliche Form, wenn die Wortart fehlt", () => {
+    const pool = [entry("a", "house", "Haus"), entry("b", "to swim", "schwimmen")];
+    const plain = entry("g", "to go", "gehen");
+    expect(distractors(plain, "meaningToTerm", pool, []).map((c) => c.id)).toEqual(["b", "a"]);
+    // Auf der Bedeutungsseite: Kleinschreibung wie „gehen“ vor dem großgeschriebenen Nomen.
+    expect(distractors(plain, "termToMeaning", pool, []).map((c) => c.id)).toEqual(["b", "a"]);
+  });
+
+  it("wählt für Multiple Choice die drei plausibelsten", () => {
+    const preferred = [
+      go,
+      as("verb", entry("a", "to run", "laufen")),
+      as("verb", entry("b", "to eat", "essen")),
+      as("noun", entry("c", "house", "Haus")),
+      as("noun", entry("d", "tree", "Baum")),
+    ];
+    const rest = [as("verb", entry("e", "to read", "lesen"))];
+    for (const seed of [0.05, 0.5, 0.95]) {
+      const choice = multipleChoice(go, "termToMeaning", preferred, rest, sequence(seed))!;
+      const wrong = choice.options.filter((_, index) => index !== choice.correct);
+      expect(wrong.toSorted()).toEqual(["essen", "laufen", "lesen"]);
+    }
+  });
+
+  it("schließt Gleichbedeutende trotz gleicher Wortart aus", () => {
+    const pool = [as("verb", entry("s", "to walk", "gehen|laufen"))];
+    expect(distractors(go, "termToMeaning", pool, [])).toEqual([]);
   });
 });
