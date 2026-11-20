@@ -11,7 +11,7 @@ export function learningHelpView(): Node {
     h(
       "p",
       { class: "lead" },
-      "Die App merkt sich für jede Vokabel, wie sicher du sie kannst, und fragt sie genau dann wieder ab, wenn es sich lohnt.",
+      "Die App merkt sich für jede Vokabel, wie gut du sie kannst, und plant, wann sie wieder drankommt: nicht zu früh, damit du dich anstrengen musst, und nicht zu spät, damit du sie nicht vergisst.",
     ),
     h(
       "section",
@@ -20,76 +20,81 @@ export function learningHelpView(): Node {
       h(
         "p",
         null,
-        "Stell dir einen Karteikasten mit fünf Fächern vor. Jede Vokabel beginnt vorn. Weißt du sie, rückt sie ein Fach weiter, weißt du sie nicht, geht sie zurück ins erste Fach.",
+        "Stell dir einen Karteikasten mit fünf Fächern vor. Beim ersten Abfragen kommt jede Vokabel ins erste Fach. Weißt du sie, wenn sie wieder dran ist, rückt sie ein Fach weiter. Weißt du sie nicht, geht sie zurück ins erste Fach.",
       ),
       h(
         "p",
         null,
-        "Je weiter hinten, desto länger darfst du sie in Ruhe lassen: nach 1, 3, 7, 14 und 30 Tagen kommt sie wieder dran. Dass du dich nach ein paar Tagen erst wieder anstrengen musst, sie dir einzufallen, ist gewollt: So prägt sie sich am besten ein.",
+        "Je weiter hinten eine Vokabel steht, desto länger hat sie Pause: Aus dem ersten Fach ist sie nach einem Tag wieder dran, aus den nächsten nach 3, 7, 14 und 30 Tagen. Dann ist sie „fällig“.",
+      ),
+      h(
+        "p",
+        null,
+        "Nach ein paar Tagen Pause fällt dir eine Vokabel oft erst nach kurzem Nachdenken wieder ein. Das ist gewollt: Gerade dieses Erinnern hilft dir, sie dauerhaft zu behalten.",
       ),
     ),
     h(
       "section",
       { "aria-labelledby": "plan-stages" },
-      h("h2", { id: "plan-stages" }, "neu, im Aufbau, sicher"),
+      h("h2", { id: "plan-stages" }, "Neu, im Aufbau, sicher"),
       h(
         "ul",
         null,
         h("li", null, h("b", null, "neu"), ": Du hast diese Vokabel noch nie beantwortet."),
-        h(
-          "li",
-          null,
-          h("b", null, "im Aufbau"),
-          ": Du hast sie schon geübt, sie ist aber noch in den ersten Fächern.",
-        ),
+        h("li", null, h("b", null, "im Aufbau"), ": Sie liegt in einem der ersten drei Fächer."),
         h(
           "li",
           null,
           h("b", null, "sicher"),
-          ": Du hast sie an mehreren Tagen hintereinander gewusst, zuletzt nach einer längeren Pause.",
+          ": Sie liegt im vierten oder fünften Fach. Du hast sie also an mehreren Tagen mit wachsendem Abstand gewusst, zuletzt nach mindestens einer Woche Pause.",
         ),
       ),
       h(
         "p",
         null,
-        "Eine Vokabel wird deshalb nicht an einem Tag „sicher“, auch wenn du sie zehnmal richtig hast: Pro Tag zählt die erste Antwort, und weiter geht es erst nach dem Abstand. Das ist kein Fehler der App, sondern der Weg, auf dem man sich Vokabeln dauerhaft merkt.",
+        "Deshalb wird eine Vokabel nicht an einem Tag „sicher“, auch wenn du sie zehnmal richtig beantwortest: Pro Tag zählt nur die erste Antwort, und ins nächste Fach rückt sie erst, wenn ihre Pause vorbei ist. Das ist kein Fehler der App, sondern der Weg, auf dem man sich Vokabeln dauerhaft merkt.",
       ),
       h(
         "p",
         null,
-        "Englisch → Deutsch und Deutsch → Englisch zählen getrennt. Die Gegenrichtung kommt dazu, sobald die erste sitzt.",
+        "Bei Multiple Choice erkennst du die Antwort nur wieder. Das bringt eine Vokabel höchstens ins dritte Fach. Weiter kommt sie, wenn du sie ohne Auswahl selbst weißt.",
+      ),
+      h(
+        "p",
+        null,
+        "Beide Richtungen zählen getrennt, zum Beispiel Englisch → Deutsch und Deutsch → Englisch. Im Plan lernst du neue Vokabeln zuerst von der Fremdsprache in deine Sprache. Die Gegenrichtung kommt dazu, sobald die Vokabel im zweiten Fach liegt, du sie also nach einem Tag Pause noch wusstest.",
       ),
     ),
     h(
       "section",
       { "aria-labelledby": "plan-ways" },
-      h("h2", { id: "plan-ways" }, "Wiederholen, Neues, Selbst auswählen"),
+      h("h2", { id: "plan-ways" }, "Drei Wege zum Lernen"),
       h(
         "ul",
         null,
         h(
           "li",
           null,
-          h("b", null, "Wiederholen (12)"),
-          ": Die App stellt dir die Vokabeln zusammen, die heute dran sind, die am längsten überfälligen zuerst.",
+          h("b", null, "Wiederholen"),
+          ": Die App stellt dir die Vokabeln zusammen, die heute fällig sind, höchstens 30, die am längsten überfälligen zuerst. Ist noch Platz, kommen ein paar neue dazu. Die Zahl auf dem Knopf sagt, wie viele fällig sind.",
         ),
         h(
           "li",
           null,
           h("b", null, "Neue Vokabeln lernen"),
-          ": Ist nichts fällig, nimmt die App neue aus dem Set.",
+          ": Ist nichts fällig, nimmt die App zehn neue aus dem Set, der Reihe nach.",
         ),
         h(
           "li",
           null,
           h("b", null, "Selbst auswählen"),
-          ": Du bestimmst Sektionen, Richtung und Anzahl, zum Beispiel vor einer Klassenarbeit. Auch das zählt für den Lernstand, aber Vokabeln, die noch nicht fällig sind, rücken dadurch nicht weiter.",
+          ": Du bestimmst Sektionen, Richtung und Anzahl, zum Beispiel vor einer Klassenarbeit. Auch das zählt für den Lernstand: Weißt du eine Vokabel nicht, geht sie zurück ins erste Fach. Weißt du eine, die noch nicht fällig ist, rückt sie dadurch aber nicht weiter.",
         ),
       ),
       h(
         "p",
         null,
-        "Ändert sich ein Eintrag im Set, zum Beispiel durch eine Korrektur, ist er sofort wieder fällig.",
+        "Änderst du eine Vokabel, zum Beispiel weil sie falsch eingetragen war, ist sie sofort wieder fällig. Ihr Fach behält sie.",
       ),
     ),
   );
