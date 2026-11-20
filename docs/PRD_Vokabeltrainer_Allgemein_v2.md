@@ -2,8 +2,8 @@
 
 ## Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.7 – M5: Oberfläche als App, Lernen im Mittelpunkt  
-**Stand:** 17. November 2026  
+**Version:** 2.8 – M6: Lernen mit Plan  
+**Stand:** 20. November 2026  
 **Status:** Entwurf für die nächste Entwicklungsiteration  
 **Ausgangspunkt:** Bestehender HTML-Prototyp „Vokabeltrainer Englisch“  
 **Entstehung und Autorenschaft:** siehe Kapitel 13 (Änderungshistorie)
@@ -174,6 +174,7 @@ Die Liste fasst den Umfang zusammen; verbindlich sind die jeweils referenzierten
 - Bereitstellung über statisches Hosting als installierbare, offline nutzbare Web-App (NFR-01–05).
 - Weiterarbeiten mit dem vorhandenen lokalen Bestand nach jedem App-Update (FR-33, DF-11).
 - Eine Oberfläche, die sich wie eine App bedient, mit Lernen im Mittelpunkt und einem Angebot zur Installation (FR-34, FR-35).
+- Lernen mit Plan: Lernstand pro Vokabel und Richtung, Wiederholen fälliger Vokabeln mit einem empfohlenen Einstieg, Vorbereitung auf einen Test, Lernen über mehrere Sets, Vorlesen der Lernsprache und Schreiben ohne Tastatur (FR-36–FR-41).
 
 ### 5.2 Bewusst nicht Teil dieser Version
 
@@ -181,7 +182,7 @@ Die Liste fasst den Umfang zusammen; verbindlich sind die jeweils referenzierten
 - Benutzerprofile oder Cloud-Accounts.
 - Integrierte OCR- oder LLM-Verarbeitung.
 - Freie Texteingabe als Bewertungsmodus (LATER, siehe Kapitel 11, Priorität 2). Das Datenformat bereitet sie über Antwortvarianten bereits vor.
-- Verpflichtende Aussprache- oder Spracheingabefunktionen.
+- Spracheingabe und verpflichtende Aussprachefunktionen; das Vorlesen der Lernsprache (FR-40) bleibt ein Angebot.
 - Start der App direkt aus einer lokal gespeicherten Datei (`file://`); dieser Startmodus wird nicht unterstützt.
 - Zusammenführen eines Backups mit vorhandenen Daten; eine Wiederherstellung ersetzt immer den gesamten lokalen Bestand.
 
@@ -199,6 +200,7 @@ Diese Tabelle legt nur Inhalt und Reihenfolge fest. Arbeitspakete und Umsetzungs
 | **M3 – Inhalte pflegen und teilen** | Vokabeleditor, leeres Set anlegen, Sektionen anlegen, umbenennen, umsortieren und löschen, Export von Sets und Sektionen | FR-02 (Leeres Set anlegen), FR-03 (Bearbeiten), FR-04, FR-18 |
 | **M4 – Korrigieren und aktualisieren** | Erkennen bekannter Sets, Aktualisieren und Ersetzen (auch einzelner Sektionen), Warnung bei lokalen Änderungen seit dem Export | FR-14, FR-15, FR-17, FR-29 |
 | **M5 – Oberfläche als App, Lernen im Mittelpunkt** | Eigene, kindgerechte Gestaltung mit App-Rahmen; Lernen als hervorgehobene Hauptaktion mit Lernstand in der Bibliothek und Schnellstart; Lernsitzung in Daumenreichweite; Installation und lokale Datenhaltung verständlich erklärt, Backup-Erinnerung später und ruhiger; Hinzufügen per Einfügen zuerst; aufgeräumte Pflege; eigenes Layout für Tablets. Grundlage ist eine UX/UI-Durchsicht nach M4 mit klickbarem Entwurf. Keine Änderung am gespeicherten Datenmodell | FR-08, FR-11, FR-24, FR-27, FR-28, FR-31, FR-34, FR-35 |
+| **M6 – Lernen mit Plan** | Grundlage ist eine Recherche zur Didaktik des Vokabellernens nach M4. Zuerst die Sitzung nach Erkenntnissen zum Abrufüben: Fehler kommen später und mehrfach wieder, Multiple Choice erst nach einem eigenen Erinnerungsversuch und mit plausibleren falschen Antworten, Einladung zum lauten Sprechen. Dann Vorlesen der Lernsprache. Danach als gemeinsame Grundlage ein Lernstand pro Vokabel und Richtung in Phasen eines Karteikastens; darauf bauen fällige Wiederholungen mit empfohlenem Einstieg, die Abfrageform nach Lernstand und die Vorbereitung auf einen Test mit Termin auf. Zuletzt Lernen über mehrere Sets und Schreiben in der Lernsprache ohne Tastatur. Erste Änderung am gespeicherten Datenmodell seit der Auslieferung, gebündelt in einem Schritt (FR-33) | FR-07–FR-11, FR-33, FR-36–FR-41 |
 
 FR-06 (Schutz vor Datenverlust) und FR-16 (Vorschau und Validierung) gelten in jedem Meilenstein für die dort hinzukommenden Aktionen. FR-33 gilt ab der ersten Auslieferung an Nutzende: Ab dann muss jede weitere Version den vorhandenen Bestand übernehmen. Das provisorische Deployment aus M0 dient nur Tests; die endgültige Adresse (eigene Domain) wird vor der ersten Auslieferung an Nutzende festgelegt, weil lokal gespeicherte Daten an die Adresse der App gebunden sind.
 
@@ -237,10 +239,10 @@ Löschungen und ersetzende Änderungen müssen vor der Übernahme verständlich 
 ### 6.3 Lernen
 
 **FR-07 – Auswahl des Lernstoffs (MUST)**  
-Lernende können ein Vokabelset, einzelne Sektionen oder mehrere Sektionen auswählen. Die verfügbaren Vokabelzahlen richten sich nach der Auswahl. Eine Auswahl aller oder keiner Sektion ist möglich.
+Lernende können ein Vokabelset, einzelne Sektionen oder mehrere Sektionen auswählen. Die verfügbaren Vokabelzahlen richten sich nach der Auswahl. Eine Auswahl aller oder keiner Sektion ist möglich. Mehrere Sets mit demselben Sprachpaar lassen sich zusammen lernen (FR-39).
 
 **FR-08 – Konfiguration einer Sitzung (MUST)**  
-Die Abfragerichtung lässt sich auf die beiden Sprachrichtungen oder gemischte Richtungen stellen. Die Anzahl der Vokabeln und der Anteil verschiedener Abfrageformen lassen sich festlegen. Der konkrete Standardwert für den Multiple-Choice-Anteil bleibt konfigurierbar. Wer ein Set schon gelernt hat, startet eine neue Sitzung mit der zuletzt genutzten Einrichtung in einem Schritt, ohne sie erneut durchgehen zu müssen.
+Die Abfragerichtung lässt sich auf die beiden Sprachrichtungen oder gemischte Richtungen stellen. Die Anzahl der Vokabeln und der Anteil verschiedener Abfrageformen lassen sich festlegen. Der konkrete Standardwert für den Multiple-Choice-Anteil bleibt konfigurierbar. Wer ein Set schon gelernt hat, startet eine neue Sitzung mit der zuletzt genutzten Einrichtung in einem Schritt, ohne sie erneut durchgehen zu müssen. Sobald es einen Wiederholungsplan gibt (FR-37), ist der empfohlene Einstieg eine Sitzung, deren Auswahl und Abfrageformen die App aus dem Lernstand bestimmt; die freie Einrichtung bleibt als zweiter Weg.
 
 **FR-09 – Abfrageformen und Bedienung (MUST)**  
 Die bestehende Kombination aus Karteikarten und Multiple Choice bleibt erhalten. Karteikarten können aufgedeckt und als „gewusst“ oder „nochmal“ bewertet werden.
@@ -251,18 +253,43 @@ Für die Bedienwege gilt:
 - Eine Eingabe (Tippen, Wischen, Taste) löst genau eine Aktion aus; Doppelauslösungen, etwa Aufdecken und Bewerten durch dieselbe Geste, sind ausgeschlossen.
 - Eine Bewertung per Wischgeste ist erst nach dem Aufdecken möglich. Ob Wischen vor dem Aufdecken die Karte aufdeckt oder ignoriert wird, wird bewusst festgelegt und einheitlich umgesetzt.
 
-Für Multiple Choice gilt: Die falschen Antwortmöglichkeiten stammen aus demselben Set und von derselben Sprachseite wie die richtige Antwort. Sie dürfen weder mit der richtigen Antwort noch mit einer ihrer akzeptierten Varianten übereinstimmen. Enthält die Auswahl zu wenige geeignete Einträge, wird die Frage als Karteikarte gestellt.
+Für Multiple Choice gilt: Die falschen Antwortmöglichkeiten stammen aus demselben Set (bei mehreren Sets aus den Sets der Sitzung, FR-39) und von derselben Sprachseite wie die richtige Antwort. Sie dürfen weder mit der richtigen Antwort noch mit einer ihrer akzeptierten Varianten übereinstimmen. Enthält die Auswahl zu wenige geeignete Einträge, wird die Frage als Karteikarte gestellt.
+
+Damit die Abfrage das Erinnern übt und nicht nur das Wiedererkennen, gilt außerdem:
+
+- Bei Multiple Choice erscheinen die Antwortmöglichkeiten erst nach einem kurzen Moment, in dem Lernende sich selbst an die Antwort erinnern können. Wer schneller ist, kann sie früher aufrufen.
+- Die falschen Antwortmöglichkeiten sind möglichst plausibel, z. B. von derselben Wortart, aber nie gleichbedeutend mit der richtigen.
+- Die Karteikarte lädt dazu ein, die Antwort vor dem Aufdecken laut zu sagen; das macht die Selbstbewertung verbindlicher.
+- Für die Richtung in die Lernsprache kommt eine Abfrageform hinzu, bei der Lernende das Wort ohne Tastatur aus Buchstaben zusammensetzen (FR-41).
 
 **FR-10 – Fehlerwiederholung in der Sitzung (MUST)**  
-Falsch beantwortete Vokabeln können innerhalb derselben Sitzung erneut abgefragt werden. Am Sitzungsende werden mindestens die Erstversuchsquote und die beim ersten Versuch falsch beantworteten Vokabeln angezeigt. Fehler können erneut geübt werden.
+Falsch beantwortete Vokabeln können innerhalb derselben Sitzung erneut abgefragt werden. Sie kommen erst nach mehreren anderen Karten wieder und gelten erst als geschafft, wenn sie danach mehr als einmal gewusst wurden; ein zu kurzer Abstand und ein einziges Wiedererkennen täuschen ein Behalten vor, das am nächsten Tag fehlt. Am Sitzungsende werden mindestens die Erstversuchsquote und die beim ersten Versuch falsch beantworteten Vokabeln angezeigt. Fehler können erneut geübt werden.
 
 **FR-11 – Lernstand dauerhaft speichern (MUST)**  
-Die App speichert Lernresultate über Sitzungen hinweg als Protokoll **jeder einzelnen Antwort**. Pro Antwort werden mindestens gespeichert: der Eintrag, die Abfragerichtung, die Abfrageform (Karteikarte oder Multiple Choice), das Ergebnis, ob es der erste Versuch in der Sitzung war, die Sitzung und der Zeitpunkt. Dieses Protokoll ist die Grundlage für spätere Funktionen wie verteiltes Wiederholen (Kapitel 11) und darf deshalb nicht auf Zusammenfassungen verkürzt werden.
+Die App speichert Lernresultate über Sitzungen hinweg als Protokoll **jeder einzelnen Antwort**. Pro Antwort werden mindestens gespeichert: der Eintrag, die Abfragerichtung, die Abfrageform (Karteikarte oder Multiple Choice), das Ergebnis, ob es der erste Versuch in der Sitzung war, die Sitzung und der Zeitpunkt; mit M6 auch, wie lange die Antwort gedauert hat. Dieses Protokoll ist die Grundlage für den Lernstand pro Vokabel und das verteilte Wiederholen (FR-36, FR-37) und darf deshalb nicht auf Zusammenfassungen verkürzt werden.
 
 Ein einfacher Überblick über bisherige Lernergebnisse muss möglich sein. Er zeigt mindestens pro Set und Sektion die Zahl der Sitzungen, das Datum der letzten Sitzung und die Erstversuchsquote der letzten Sitzungen. Schon die Bibliothek zeigt pro Set, wann zuletzt gelernt wurde und wie gut, damit Lernende ohne weiteren Schritt sehen, was als Nächstes dran ist. Der Lernstand darf nicht ausschließlich im flüchtigen Arbeitsspeicher existieren.
 
 **FR-12 – Sitzung unterbrechen und fortsetzen (MUST)**  
 Eine vorzeitig beendete Sitzung zeigt einen verständlichen Zwischenstand und erlaubt, die Sitzung fortzusetzen. Der aktuelle Sitzungszustand muss bei einem versehentlichen Neuladen nicht zwingend erhalten bleiben; abgeschlossene Lernergebnisse müssen aber dauerhaft gespeichert sein.
+
+**FR-36 – Lernstand pro Vokabel (MUST)**  
+Die App kennt für jede Vokabel und jede Abfragerichtung getrennt, wie sicher sie sitzt: Wer „bank → Bank“ erkennt, kann deshalb noch nicht „Bank → bank“. Der Lernstand folgt dem Bild eines Karteikastens mit wenigen, benannten Phasen von „neu“ bis „sicher“: Wer eine Vokabel an einem Tag weiß, rückt eine Phase vor, wer sie nicht weiß, fängt vorn wieder an. Er wird aus dem Antwortprotokoll (FR-11) berechnet, nicht getrennt gespeichert, und gilt deshalb auch rückwirkend für alles, was schon gelernt wurde. Wiedererkennen aus Auswahlmöglichkeiten bringt eine Vokabel nicht bis „sicher“. Wie eine inhaltliche Änderung an einer Vokabel ihren Lernstand beeinflusst, wird festgelegt (R-04). Set-Ansicht und Bibliothek zeigen, wie viele Vokabeln neu, im Aufbau und sicher sind, je Richtung.
+
+**FR-37 – Wiederholen nach Plan (MUST)**  
+Aus dem Lernstand ergibt sich, wann eine Vokabel wieder dran ist; die Abstände wachsen mit jeder Phase von einem Tag auf einige Wochen. Bibliothek und Set-Ansicht zeigen, wie viele Vokabeln heute fällig sind. Der empfohlene Einstieg („Jetzt wiederholen“) stellt die fälligen Vokabeln zusammen, ergänzt um wenige neue, und bestimmt die Abfrageform nach dem Lernstand: neue und unsichere Vokabeln eher als Multiple Choice, sicherere als Karteikarte oder zum Schreiben (FR-41). Ohne Fälliges bietet er neue Vokabeln an oder sagt, wann wieder etwas dran ist. Der Plan blockiert nichts: Wer frei lernen will, nutzt die Einrichtung wie bisher, und auch diese Antworten zählen für den Lernstand. Benachrichtigungen außerhalb der App gibt es nicht; was fällig ist, sieht man beim Öffnen.
+
+**FR-38 – Vorbereitung auf einen Test (SHOULD)**  
+Lernende können für ein Set (mit FR-39 auch für mehrere) den Termin eines Tests eintragen. Bis dahin verteilt der Plan das Wiederholen auf wenige Lerntage vor dem Termin, mit Schwerpunkt auf der Richtung in die Lernsprache, wie sie Vokabeltests meist abfragen. Der Termin lässt sich ändern und entfernen; nach dem Termin gilt wieder der normale Plan.
+
+**FR-39 – Lernen über mehrere Sets (SHOULD)**  
+Mehrere Sets mit demselben Sprachpaar, etwa mehrere Lektionen vor einer Klassenarbeit, lassen sich zu einer Sitzung zusammenfassen – in der freien Einrichtung, beim Wiederholen und bei der Vorbereitung auf einen Test. Lernstand und Überblick bleiben pro Set richtig; das Löschen eines Sets lässt die Lerndaten der anderen unberührt.
+
+**FR-40 – Vorlesen der Lernsprache (SHOULD)**  
+Vokabeln in der Lernsprache lassen sich vorlesen, in der Lernsitzung und in der Set-Ansicht. Die Stimme richtet sich nach der Lernsprache des Sets und kommt vom Gerät; die App nutzt keinen externen Dienst. Gibt es auf dem Gerät keine passende Stimme, bietet die App das Vorlesen nicht an, statt es scheitern zu lassen. Ob in der Sitzung automatisch vorgelesen wird, lässt sich einstellen.
+
+**FR-41 – Schreiben ohne Tastatur (SHOULD)**  
+Für die Richtung in die Lernsprache gibt es eine Abfrageform, bei der Lernende das Wort aus angebotenen Buchstaben bzw. Wortteilen zusammensetzen, statt es mit der Bildschirmtastatur zu tippen. Sie übt die Schreibweise, wie sie Vokabeltests verlangen, und wertet nur aus, was eindeutig richtig oder falsch ist; akzeptierte Varianten zählen als richtig.
 
 ### 6.4 Import, Aktualisierung und Export
 
@@ -454,11 +481,18 @@ Die nächste Version gilt als fachlich erfolgreich, wenn mindestens die folgende
 - **AK-27 – Bedienung wie eine App** (FR-24, FR-34): In der installierten App ohne Browserleiste führt aus jeder Ansicht ein sichtbarer Weg oben zurück. Auf einem Smartphone liegen Lernen in der Bibliothek, das Bewerten einer Karte und Speichern bzw. Importieren unten in Daumenreichweite; jede Ansicht hat höchstens eine hervorgehobene Hauptaktion. Die Bibliothek zeigt pro Set, wann zuletzt gelernt wurde, und ein gelerntes Set lässt sich mit der letzten Einrichtung in einem Schritt üben.
 - **AK-28 – Installation anbieten** (FR-31, FR-35): In Chrome auf Android lässt sich die App aus den Einstellungen und einmal aus der Bibliothek heraus installieren; danach sind dieselben Sets und derselbe Lernstand in der installierten App vorhanden. Auf iOS erscheint die Anleitung zum Home-Bildschirm schon im Empty State.
 - **AK-21 – Installation und Offline-Start** (NFR-03, NFR-06): Die App kann auf iOS und Android zum Home-Bildschirm hinzugefügt werden und startet nach dem ersten Laden auch im Flugmodus mit allen Daten.
-- **AK-22 – Multiple Choice** (FR-09): In einer Bibliothek mit Sets in mindestens zwei Lernsprachen stammen alle falschen Antwortmöglichkeiten aus dem Set und von der Sprachseite der jeweiligen Frage; keine falsche Antwort entspricht einer akzeptierten Variante der richtigen.
+- **AK-22 – Multiple Choice** (FR-09): In einer Bibliothek mit Sets in mindestens zwei Lernsprachen stammen alle falschen Antwortmöglichkeiten aus dem Set (bzw. den Sets der Sitzung) und von der Sprachseite der jeweiligen Frage; keine falsche Antwort entspricht einer akzeptierten Variante der richtigen.
 - **AK-23 – Beispielset** (FR-05, FR-32, DF-05): Das Beispielset lässt sich aus dem Empty State laden und üben; Einträge mit Varianten und mehreren Bedeutungen sind korrekt abgebildet. Herkunft und Lizenz sind dokumentiert, und Sektionsnamen und -zuschnitt stammen nicht aus dem Prototyp oder einem Lehrwerk.
 - **AK-24 – App-Update** (FR-33, DF-01, DF-11, NFR-05, NFR-19): Ein Bestand mit Sets, Antwortprotokoll und Einstellungen, der mit Version N angelegt wurde, ist nach dem Update auf Version N+1 vollständig und unverändert nutzbar. Ein mit Version N erstelltes Backup lässt sich in Version N+1 wiederherstellen. Eine absichtlich fehlschlagende Migration lässt den bisherigen Bestand unverändert und bietet den Backup-Export an.
 - **AK-25 – Sets und Sektionen verwalten** (FR-02, FR-03, FR-06): Ein leeres Set kann angelegt, Sektionen können erstellt, umbenannt, umsortiert und gelöscht werden; die Reihenfolge bleibt nach Neustart, Export und Reimport erhalten. Das Löschen eines Sets oder einer Sektion mit Einträgen wird vorab mit seinem Umfang angekündigt.
 - **AK-26 – Speicherfehler** (FR-23, NFR-16): Kann der Browser nicht speichern (z. B. bei vollem Speicher), zeigt die App eine verständliche Meldung und meldet die betroffene Änderung nicht als gespeichert.
+- **AK-29 – Abrufüben in der Sitzung** (FR-09, FR-10): Eine falsch beantwortete Karte kommt nicht unmittelbar nach wenigen Karten wieder und gilt erst nach mehr als einer richtigen Antwort als geschafft. Bei Multiple Choice erscheinen die Antworten erst nach einem kurzen Moment oder auf Tippen; die falschen Antworten haben, wo das Set Wortarten nennt, dieselbe Wortart wie die richtige.
+- **AK-30 – Lernstand pro Vokabel** (FR-36): Nach Antworten an mehreren Tagen zeigt die Set-Ansicht für beide Richtungen getrennt, wie viele Vokabeln neu, im Aufbau und sicher sind; mehrere richtige Antworten am selben Tag rücken eine Vokabel nur eine Phase vor, nur durch Multiple Choice wird keine Vokabel „sicher“. Ein Backup mit Antworten aus der Zeit vor M6 ergibt nach dem Wiederherstellen denselben Lernstand.
+- **AK-31 – Wiederholen nach Plan** (FR-37): Mit einer festen Uhr gespielt, sind Vokabeln nach den Abständen ihrer Phase fällig; Bibliothek und Set-Ansicht zeigen die Zahl, „Jetzt wiederholen“ fragt genau die fälligen und wenige neue ab. Die freie Einrichtung bleibt erreichbar, ihre Antworten verändern den Lernstand.
+- **AK-32 – Vorbereitung auf einen Test** (FR-38): Mit einem Termin in fünf Tagen schlägt die App bis dahin mehrere Lerntage vor, fragt überwiegend in die Lernsprache ab und kehrt nach dem Termin zum normalen Plan zurück.
+- **AK-33 – Mehrere Sets** (FR-39): Zwei Sets mit demselben Sprachpaar lassen sich in einer Sitzung lernen, Sets mit anderem Sprachpaar nicht; danach zeigt jedes Set seinen eigenen, richtigen Lernstand, und das Löschen des einen lässt die Lerndaten des anderen vollständig.
+- **AK-34 – Vorlesen** (FR-40): Auf iPhone, iPad und dem Android-Testgerät liest die App englische Vokabeln mit einer englischen Stimme vor, auch offline und als installierte App; ohne passende Stimme erscheint kein Knopf zum Vorlesen.
+- **AK-35 – Schreiben ohne Tastatur** (FR-41): In der Richtung in die Lernsprache lässt sich ein Wort aus angebotenen Buchstaben zusammensetzen, ohne dass die Bildschirmtastatur erscheint; richtige Schreibweisen und akzeptierte Varianten zählen als richtig, die Antwort steht im Protokoll mit dieser Abfrageform.
 
 ### 9.1 Produktindikatoren für spätere Evaluation
 
@@ -467,6 +501,7 @@ Die nächste Version gilt als fachlich erfolgreich, wenn mindestens die folgende
 - **PI-03:** Die Erstversuchsquote für wiederholt geübte Sektionen entwickelt sich über mehrere Sitzungen nachvollziehbar.
 - **PI-04:** Nutzende können den externen Korrekturworkflow durchführen, ohne versehentlich andere Sektionen oder ihren Lernfortschritt zu verlieren.
 - **PI-05:** Neue Nutzende finden beim ersten Aufruf aus dem Empty State heraus den Import ihres ersten Vokabelsets; potenzielle Missverständnisse bei Import und Wiederherstellung werden durch kurze kontextbezogene Erklärungen reduziert.
+- **PI-06:** Vokabeln, die nach Plan wiederholt werden, sind an späteren Tagen häufiger beim ersten Versuch gewusst als Vokabeln, die nur in einzelnen Sitzungen kurz vor einem Termin gelernt wurden; Lernende nutzen überwiegend den empfohlenen Einstieg.
 
 Diese Indikatoren sind Ziele für eine spätere Evaluation und keine bereits nachgewiesenen Ergebnisse.
 
@@ -477,7 +512,7 @@ Diese Indikatoren sind Ziele für eine spätere Evaluation und keine bereits nac
 - **R-01 – Datenlöschung durch den Browser:** Browser können lokal gespeicherte Daten entfernen – insbesondere Safari auf iOS/iPadOS bei Websites, die einige Tage nicht genutzt wurden und nicht zum Home-Bildschirm hinzugefügt sind. Verhalten mit und ohne Installation sowie mit und ohne gewährten dauerhaften Speicher muss auf den Zielgeräten praktisch geprüft und dokumentiert werden. Backup-Erinnerung und Installationsempfehlung (FR-31) sind die wichtigsten Gegenmaßnahmen.
 - **R-02 – Identität nach externer Bearbeitung:** Entfernte oder geänderte IDs erschweren ein sicheres Update. Das Format muss die Erhaltung von IDs für Korrekturen klar erklären; mehrdeutige Fälle benötigen eine sichere, verständliche Behandlung.
 - **R-03 – Replace und Teil-Exporte:** Der Umfang einer Ersetzung muss in der Datei erkennbar sein, damit nicht versehentlich das gesamte Set ersetzt wird.
-- **R-04 – Lernfortschritt bei inhaltlichen Änderungen:** Es muss festgelegt werden, wann die Historie erhalten bleibt und wann eine Änderung so wesentlich ist, dass ein bisheriger Beherrschungsstatus zurückgesetzt oder als überprüfungsbedürftig markiert wird.
+- **R-04 – Lernfortschritt bei inhaltlichen Änderungen:** Es muss festgelegt werden, wann die Historie erhalten bleibt und wann eine Änderung so wesentlich ist, dass ein bisheriger Beherrschungsstatus zurückgesetzt oder als überprüfungsbedürftig markiert wird. Mit dem Lernstand pro Vokabel (FR-36) in M6 festzulegen.
 - **R-05 – Datenmigration:** Für FR-33, DF-11 und NFR-19 ist festzulegen, wie Datenbank- und Formatversionen gezählt, Migrationen ausgeführt und getestet werden und wie eine ältere, parallel laufende App-Version einen neueren Bestand erkennt.
 - **R-06 – Importqualität:** Das Format muss ausdrucksstark genug für verschiedene Sprachen sein, dabei aber für manuelle und LLM-gestützte Erstellung einfach bleiben.
 - **R-07 – Backup-Wiederherstellung:** Das Produkt muss klar zwischen dem Import von Lerninhalten und dem Ersetzen des vollständigen persönlichen Datenbestands unterscheiden.
@@ -493,6 +528,8 @@ Diese Punkte sind im TDD zu konkretisieren; sie sollen nicht durch unklare Annah
 ## 11. Ausblick und Prioritäten späterer Iterationen
 
 ### Priorität 1: Didaktik und Lernwirksamkeit verbessern
+
+In M6 aufgenommen (FR-09, FR-10, FR-36–FR-39). Offen bleiben danach ein Planverfahren, das sich aus der eigenen Lernhistorie anpasst, Abfragen im Satzzusammenhang (z. B. Lückensätze aus Beispielsätzen) und Fortschrittsübersichten über längere Zeiträume.
 
 - Verteiltes Wiederholen: Vokabeln abhängig vom individuellen Lernstand zu sinnvollen Zeitpunkten erneut abfragen.
 - Lernplanung, die neue Vokabeln, fällige Wiederholungen und gezieltes Nachlernen sinnvoll kombiniert.
@@ -510,6 +547,8 @@ Diese Punkte sind im TDD zu konkretisieren; sie sollen nicht durch unklare Annah
 
 ### Priorität 3: Sprachausgabe
 
+Für die Lernsprache in M6 aufgenommen (FR-40), auf Wunsch von Nutzenden vor dem Wiederholungsplan.
+
 - Vokabeln und gegebenenfalls Antworten können vorgelesen werden.
 - Die Stimme richtet sich nach der Sprache des Eintrags.
 - Verfügbarkeit und Qualität der Stimmen hängen vom Gerät und Browser ab; externe Dienste dürfen nicht stillschweigend vorausgesetzt werden.
@@ -526,7 +565,7 @@ Diese Punkte sind im TDD zu konkretisieren; sie sollen nicht durch unklare Annah
 - Optionale geräteübergreifende Synchronisierung, falls später ein geeigneter, datenschutzbewusster Mechanismus gewünscht ist.
 - Zusätzliche Sprachen, grammatische Merkmale und spezifische Lernmodi.
 - Komfortfunktionen zur Unterstützung der externen Erstellung und Qualitätskontrolle von Lernmaterial, ohne die lokale und einfache Grundarchitektur aufzugeben.
-- Lernen über mehrere Sets hinweg, z. B. mehrere Lektionen vor einer Klassenarbeit, und eine übersichtlichere Bibliothek bei vielen Sets in Lektionsgröße, etwa gruppiert nach Lehrwerk.
+- Eine übersichtlichere Bibliothek bei vielen Sets in Lektionsgröße, etwa gruppiert nach Lehrwerk. Das Lernen über mehrere Sets hinweg ist in M6 aufgenommen (FR-39).
 
 ---
 
@@ -549,3 +588,4 @@ Das TDD muss insbesondere sicherstellen, dass die zentrale Produktanforderung er
 | 2.5 | 29. Oktober 2026 | Zuschnitt: Ein Set entspricht einer größeren Lerneinheit wie einer Lektion, nicht einem ganzen Lehrwerk; Sektionen folgen den größeren Zwischenüberschriften (4, 4.3). Formatspezifikation eigenständig und ausgeliefert, mit Zweck, Ablauf und Bedeutung der Felder statt Anweisungen; Prompt-Vorlage nur in der App (5.1, FR-20, AK-13). R-09 an den Zuschnitt angepasst; Lernen über mehrere Sets als mögliche Ausbaustufe (11) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.6 | 29. Oktober 2026 | Backup-Erinnerung (FR-31, AK-20): erst bei Lernstand, den noch kein Backup enthält; Sets allein und Zeiten ohne Lernen lösen keine Erinnerung aus | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.7 | 17. November 2026 | Meilenstein M5 nach einer UX/UI-Durchsicht mit klickbarem Entwurf (5.1, 5.3): neu FR-34 (Bedienung wie eine App) und FR-35 (Installation anbieten, auch einmal in der Bibliothek, mit Umzug, wo die installierte App einen eigenen Speicher hat) mit AK-27 und AK-28; Lernstand schon in der Bibliothek (FR-11), Schnellstart mit der letzten Einrichtung (FR-08), Empty State nennt die lokale Datenhaltung positiv (FR-28); Backup-Erinnerung erst ab drei Lerntagen oder einer 7 Tage alten ersten Antwort, als ruhige Zeile unter den Sets, Backup erklärt sich selbst (FR-31, AK-20) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.8 | 20. November 2026 | Meilenstein M6 „Lernen mit Plan“ nach einer Recherche zur Didaktik des Vokabellernens und einem Brainstorm mit dem Nutzer (5.1, 5.3): Abrufüben in der Sitzung – Fehler später und mehrfach, Multiple Choice erst nach eigenem Erinnern, plausiblere falsche Antworten, lautes Sprechen (FR-09, FR-10, AK-29); neu FR-36 (Lernstand pro Vokabel und Richtung in Phasen eines Karteikastens), FR-37 (Wiederholen nach Plan mit empfohlenem Einstieg, freie Einrichtung bleibt), FR-38 (Vorbereitung auf einen Test), FR-39 (Lernen über mehrere Sets), FR-40 (Vorlesen der Lernsprache), FR-41 (Schreiben ohne Tastatur) mit AK-30 bis AK-35; Antwortdauer im Protokoll (FR-11), empfohlener Einstieg (FR-08), mehrere Sets (FR-07, AK-22), PI-06, R-04 mit FR-36; Ausblick (11) und Abgrenzung (5.2) angepasst | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
