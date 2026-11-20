@@ -275,6 +275,21 @@ export function changeDevice(page: Page, change: Partial<FakeDevice>): Promise<v
   );
 }
 
+/**
+ * Wartet, bis sich die neue Karte aufdecken lässt (Sperre von 0,5 s, TDD 12.3). Klicks warten von
+ * selbst (`aria-disabled`), Tasten und Wischen nicht.
+ */
+export async function cardReady(page: Page): Promise<void> {
+  await expect(page.locator(".practice, .dock").locator('[aria-disabled="true"]')).toHaveCount(0);
+}
+
+/** Hält die Uhr der Seite an; Timer laufen erst mit `page.clock.runFor`. `install` allein lässt sie laufen. */
+export async function stopClock(page: Page): Promise<void> {
+  const now = Date.now();
+  await page.clock.install({ time: now });
+  await page.clock.pauseAt(now + 1000);
+}
+
 /** Wischt waagerecht über die Mitte des Elements (Pointer-Events wie mit der Maus). */
 export async function swipe(page: Page, target: Locator, dx: number): Promise<void> {
   const box = (await target.boundingBox())!;

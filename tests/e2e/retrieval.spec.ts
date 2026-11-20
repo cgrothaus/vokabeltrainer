@@ -3,7 +3,7 @@
 // und zeigt sie erst nach einer Pause zum Erinnern (FR-09, TDD 12.2, 12.3, D-60).
 import { expect, type Page, test } from "@playwright/test";
 import type { ReviewEvent } from "../../src/domain/model";
-import { collectErrors, goToSetup, importText, readStore } from "./support";
+import { cardReady, collectErrors, goToSetup, importText, readStore, stopClock } from "./support";
 
 const TITLE = "Englisch – Verben und Nomen";
 const VERBS: Record<string, string> = {
@@ -95,9 +95,11 @@ test("E2E-30 Multiple Choice: Antworten nach einer Pause oder auf Tippen, falsch
   for (let question = 0; question < 8; question++) {
     if (question > 0) {
       await expect(options.first()).toBeHidden();
-      // Die Eingabetaste zeigt sie wie „Antworten zeigen“ sofort.
-      if (question % 2) await page.keyboard.press("Enter");
-      else await show.click();
+      // Die Eingabetaste zeigt sie wie „Antworten zeigen“ sofort, nach der kurzen Sperre.
+      if (question % 2) {
+        await cardReady(page);
+        await page.keyboard.press("Enter");
+      } else await show.click();
     }
     await expect(options).toHaveCount(4);
     const term = (await prompt(page).textContent())!;
@@ -108,5 +110,56 @@ test("E2E-30 Multiple Choice: Antworten nach einer Pause oder auf Tippen, falsch
     await page.getByRole("button", { name: "Weiter" }).click();
   }
   await expect(page.getByRole("heading", { name: "Geschafft" })).toBeVisible();
+  expect(errors, "Fehler in der Konsole").toEqual([]);
+});
+
+test("E2E-30 Kurze Sperre: Die Karteikarte lässt sich erst nach einer halben Sekunde aufdecken", async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  await importWords(page);
+  await goToSetup(page, TITLE);
+  await page.getByRole("slider", { name: "Multiple Choice" }).fill("0");
+  await page.getByRole("radio", { name: /^alle/ }).check();
+  // Angehaltene Uhr: Die Sperre läuft erst mit `runFor` ab (TDD 12.3).
+  await stopClock(page);
+  await page.getByRole("button", { name: "8 Vokabeln lernen" }).click();
+
+  const front = page.getByRole("button", { name: /tipp zum Aufdecken/ });
+  const uncover = page.getByRole("button", { name: "Aufdecken", exact: true });
+  const flipped = page.locator(".flash.flipped");
+  await expect(front).toBeFocused();
+  await expect(uncover).toHaveAttribute("aria-disabled", "true");
+  // Tippen, Enter und „Aufdecken“ wirken noch nicht.
+  await front.click({ force: true });
+  await page.keyboard.press("Enter");
+  await uncover.click({ force: true });
+  await expect(flipped).toHaveCount(0);
+  await page.clock.runFor(500);
+  await expect(uncover).not.toHaveAttribute("aria-disabled");
+  await page.keyboard.press("Enter");
+  await expect(flipped).toHaveCount(1);
+  expect(errors, "Fehler in der Konsole").toEqual([]);
+});
+
+test("E2E-30 Kurze Sperre vor „Antworten zeigen“", async ({ page }) => {
+  const errors = collectErrors(page);
+  await importWords(page);
+  await goToSetup(page, TITLE);
+  await page.getByRole("slider", { name: "Multiple Choice" }).fill("100");
+  await page.getByRole("radio", { name: /^alle/ }).check();
+  await stopClock(page);
+  await page.getByRole("button", { name: "8 Vokabeln lernen" }).click();
+
+  const show = page.getByRole("button", { name: "Antworten zeigen" });
+  const options = page.locator(".options button");
+  await expect(page.locator(".question")).toBeFocused();
+  await expect(show).toHaveAttribute("aria-disabled", "true");
+  await show.click({ force: true });
+  await page.keyboard.press("Enter");
+  await expect(options.first()).toBeHidden();
+  await page.clock.runFor(500);
+  await show.click();
+  await expect(options.first()).toBeVisible();
   expect(errors, "Fehler in der Konsole").toEqual([]);
 });

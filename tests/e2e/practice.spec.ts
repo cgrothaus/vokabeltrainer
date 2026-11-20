@@ -3,6 +3,7 @@
 import { expect, type Page, test } from "@playwright/test";
 import type { ReviewEvent, Session } from "../../src/domain/model";
 import {
+  cardReady,
   collectErrors,
   goToSetup,
   importSet,
@@ -11,6 +12,7 @@ import {
   MEANINGS,
   readStore,
   startLearning,
+  stopClock,
   swipe,
 } from "./support";
 
@@ -250,6 +252,7 @@ test("Tastatur: Enter deckt auf, Pfeile bewerten erst danach, gehaltene Tasten n
   await startPractice(page, "Englisch – Tastatur");
 
   // Vor dem Aufdecken bewerten Pfeile nicht.
+  await cardReady(page);
   await page.keyboard.press("ArrowRight");
   await page.keyboard.press("ArrowLeft");
   await expect(card(page)).toBeVisible();
@@ -265,6 +268,7 @@ test("Tastatur: Enter deckt auf, Pfeile bewerten erst danach, gehaltene Tasten n
   await page.keyboard.up("ArrowRight");
   await expect(card(page)).toBeVisible();
 
+  await cardReady(page);
   await page.keyboard.press(" ");
   await expect(answerText(page)).toBeVisible();
   await page.keyboard.press("ArrowLeft");
@@ -281,6 +285,7 @@ test("Wischen: vor dem Aufdecken nur aufdecken, danach bewerten", async ({ page 
   const errors = collectErrors(page);
   await startPractice(page, "Englisch – Wischen");
 
+  await cardReady(page);
   await swipe(page, card(page), 120);
   await expect(answerText(page)).toBeVisible();
   await expect(page.getByRole("button", { name: "Gewusst" })).toBeVisible();
@@ -300,6 +305,47 @@ test("Wischen: vor dem Aufdecken nur aufdecken, danach bewerten", async ({ page 
     // Nach zufälliger ID gespeichert, also ohne Reihenfolge.
     .poll(async () => (await events(page)).map((event) => event.result).sort())
     .toEqual(["correct", "incorrect"]);
+  expect(errors, "Fehler in der Konsole").toEqual([]);
+});
+
+test("Bewerten schiebt die Karte zur Seite: „Gewusst“ nach rechts, „Nochmal“ nach links", async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  await startPractice(page, "Englisch – Schieben");
+  // Angehaltene Uhr: Die alte Karte bleibt stehen, bis `runFor` das Wegschieben beendet.
+  await stopClock(page);
+  /** Ziele der Animationen auf der Karte samt Lautsprecher. */
+  const targets = () =>
+    page
+      .locator(".card-wrap")
+      .evaluate((wrap) =>
+        wrap
+          .getAnimations()
+          .map(
+            (animation) => (animation.effect as KeyframeEffect).getKeyframes().at(-1)?.transform,
+          ),
+      );
+
+  for (const [button, transform] of [
+    ["Gewusst", "translateX(110%) rotate(10deg)"],
+    ["Nochmal", "translateX(-110%) rotate(-10deg)"],
+  ] as const) {
+    await page.clock.runFor(500);
+    await card(page).click();
+    await page.getByRole("button", { name: button, exact: true }).click();
+    await expect.poll(targets).toContain(transform);
+    await page.clock.runFor(300);
+    await expect(card(page)).toBeVisible();
+  }
+
+  // Bei reduzierter Bewegung geht es ohne Animation sofort weiter.
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.clock.runFor(500);
+  await card(page).click();
+  await page.getByRole("button", { name: "Gewusst", exact: true }).click();
+  await expect(card(page)).toBeVisible();
+  expect(await targets()).toEqual([]);
   expect(errors, "Fehler in der Konsole").toEqual([]);
 });
 

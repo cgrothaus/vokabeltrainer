@@ -7,6 +7,7 @@ import { expect, type Page, test } from "@playwright/test";
 import {
   checkText,
   backButton,
+  cardReady,
   changeDevice,
   collectErrors,
   endPractice,
@@ -328,14 +329,15 @@ test("Beispielset: Set-Ansicht mit Lernstand, Multiple Choice mit Rückmeldung",
     .click();
   await page.getByRole("slider", { name: "Multiple Choice" }).fill("100");
   await page.getByRole("radio", { name: "10", exact: true }).check();
-  // Angehaltene Uhr: Die Antworten erscheinen sonst nach 3 s mitten in der Prüfung (TDD 12.3).
-  await page.clock.install();
   await page.getByRole("button", { name: "10 Vokabeln lernen" }).click();
   const options = page.locator(".options button");
   await expect(page.getByRole("button", { name: "Antworten zeigen" })).toBeVisible();
   await expect(page.getByRole("button", { name: /vorlesen$/ })).toBeVisible();
   findings.push(...(await audit(page, "Multiple Choice vor den Antworten, mit Lautsprecher")));
-  await page.getByRole("button", { name: "Antworten zeigen" }).click();
+  // Die Uhr läuft (mit angehaltener hinge axe): Unter Last erscheinen die Antworten nach 3 s schon während
+  // der Prüfung von selbst (TDD 12.3). Enter zeigt sie nach der kurzen Sperre, falls nicht, sonst nichts.
+  await cardReady(page);
+  await page.keyboard.press("Enter");
   await expect(options).toHaveCount(4);
   await expect(options.first()).toBeVisible();
   findings.push(...(await audit(page, "Multiple Choice")));

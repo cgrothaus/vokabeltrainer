@@ -49,9 +49,15 @@ button {
   cursor: pointer;
 }
 
-button:disabled {
+button:disabled,
+button[aria-disabled="true"] {
   opacity: 0.6;
   cursor: default;
+}
+
+/* Kurz gesperrt, z. B. „Aufdecken“ in der ersten halben Sekunde (TDD 12.3): wird sanft wieder kräftig. */
+.dock button {
+  transition: opacity 0.2s ease-out;
 }
 
 /* Zweitrangige Aktion, z. B. „Nochmal“ oder „Beenden“: unterscheidet sich auch durch den Rahmen. */
@@ -546,6 +552,12 @@ button.textbtn {
   overflow-wrap: anywhere;
 }
 
+/* Eine zur Seite geschobene Karte verbreitert die Seite nicht; `clip` statt `hidden`, damit die
+   App-Leiste mitläuft. */
+.screen:has(> main.practice) {
+  overflow-x: clip;
+}
+
 .practice > * {
   min-width: 0;
   margin: 0;
@@ -577,6 +589,19 @@ button.textbtn {
   position: relative;
 }
 
+/* Die nächste Karte kommt sanft herein, nachdem die vorige zur Seite geschoben ist. */
+.card-wrap,
+.practice .question {
+  animation: card-in 0.22s ease-out;
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem);
+  }
+}
+
 .card-wrap > .speak-slot,
 .practice .question > .speak-slot {
   position: absolute;
@@ -589,14 +614,49 @@ button.textbtn {
   display: none;
 }
 
+/* Dezent: kein Kreis, der nach dem Tippen stehen bleibt (Hover klebt auf Touchgeräten), nur ein kurzes
+   Eindrücken; gleich danach spricht die Stimme. */
 .iconbtn.speak {
   color: var(--accent);
+  transition:
+    transform 0.12s ease-out,
+    opacity 0.12s ease-out;
 }
 
+.iconbtn.speak:hover {
+  background: transparent;
+}
+
+.iconbtn.speak:active {
+  opacity: 0.7;
+  transform: scale(0.88);
+}
+
+/* Beim Wenden verschwindet der Lautsprecher und kehrt mit der Rückseite zurück, statt über der
+   kippenden Karte zu schweben. Dauer wie das Wenden. */
+.flash.flipped + .speak-slot {
+  animation: speak-turn 0.5s both;
+}
+
+@keyframes speak-turn {
+  0% {
+    opacity: 1;
+  }
+  15%,
+  80% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Sanfter An- und Auslauf, damit die Drehung nicht ruckartig beginnt. */
 .flash-inner {
   display: grid;
   transform-style: preserve-3d;
-  transition: transform 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
+  transition: transform 0.5s cubic-bezier(0.45, 0, 0.25, 1);
+  will-change: transform;
 }
 
 .flash.flipped .flash-inner {
@@ -904,7 +964,10 @@ button.textbtn {
     transition: none;
   }
 
-  .options:not([hidden]) {
+  .options:not([hidden]),
+  .card-wrap,
+  .practice .question,
+  .flash.flipped + .speak-slot {
     animation: none;
   }
 }

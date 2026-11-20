@@ -9,7 +9,7 @@ import { entryDetails, hasDetails } from "../components/entryDetails";
 import { frame } from "../components/frame";
 import { openSheet, type Sheet } from "../components/sheet";
 import { speakButton } from "../components/speakButton";
-import { onSwipe } from "../components/swipe";
+import { flyOut, onSwipe, type SwipeDirection } from "../components/swipe";
 import { setUpdateBlocked } from "../components/updateNotice";
 import { focusSoon, h } from "../dom";
 import { icon } from "../icons";
@@ -26,6 +26,9 @@ const SVG = "http://www.w3.org/2000/svg";
 
 /** Pause vor den Antworten bei Multiple Choice in Millisekunden (TDD 12.3, D-60). */
 const CHOICE_DELAY = 3000;
+
+/** Sperre, bevor eine Karte aufgedeckt werden kann, in Millisekunden: gegen Durchrasen (TDD 12.3). */
+const REVEAL_LOCK = 500;
 
 /** Tasten, die ein Eingabefeld oder eine fokussierte Schaltfläche selbst behandelt. */
 const handledByTarget = (event: KeyboardEvent) =>
@@ -207,11 +210,17 @@ export function practiceView(
     const showFlashcard = () => {
       let revealed = false;
       let rating = false;
+      // Wie beim Wischen: „Gewusst“ schiebt die Karte nach rechts, „Nochmal“ nach links, während die
+      // Antwort gespeichert wird. Inzwischen geöffneter Zwischenstand: nicht vorrücken.
       const rate = async (result: Result) => {
         if (!revealed || rating) return;
         rating = true;
         again.disabled = known.disabled = true;
-        if (await save(result)) proceed();
+        const direction: SwipeDirection = result === "correct" ? "right" : "left";
+        const gone = flyOut(cardWithSpeaker, direction);
+        const saved = save(result);
+        await gone;
+        if ((await saved) && screen === "cards") proceed();
       };
       const again = h(
         "button",
@@ -227,7 +236,7 @@ export function practiceView(
 
       const front = h(
         "button",
-        { type: "button", class: "face front" },
+        { type: "button", class: "face front", "aria-disabled": "true" },
         h("span", { class: "lang-tag" }, languageName(promptLanguage)),
         h("span", { class: "prompt", lang: promptLanguage }, faces.prompt),
         // Lädt ein, sich vor dem Aufdecken festzulegen (FR-09, D-60).
@@ -250,9 +259,19 @@ export function practiceView(
       // Neben der Karte, nicht darin: Die Karte fängt den Zeiger fürs Wischen ein.
       const cardWithSpeaker = h("div", { class: "card-wrap" }, flash, speakSlot);
 
+      // Erst nach einer kurzen Sperre lässt sich die Karte wenden (TDD 12.3); `aria-disabled` statt
+      // `disabled`, damit die Vorderseite den Fokus behält.
+      let ready = false;
+      const lock = setTimeout(() => {
+        ready = true;
+        front.removeAttribute("aria-disabled");
+        uncover.removeAttribute("aria-disabled");
+      }, REVEAL_LOCK);
+      signal.addEventListener("abort", () => clearTimeout(lock));
+
       const reveal = () => {
         // Ein Klick nach einer Wischgeste darf nicht ein zweites Mal aufdecken.
-        if (revealed) return;
+        if (revealed || !ready) return;
         revealed = true;
         flash.classList.add("flipped");
         front.inert = true;
@@ -278,8 +297,13 @@ export function practiceView(
           else void rate(direction === "right" ? "correct" : "incorrect");
         },
         () => revealed,
+        cardWithSpeaker,
       );
-      const uncover = h("button", { type: "button", onclick: reveal }, "Aufdecken");
+      const uncover = h(
+        "button",
+        { type: "button", "aria-disabled": "true", onclick: reveal },
+        "Aufdecken",
+      );
       page.setDock(uncover);
       show("cards", h("p", { class: "kind" }, "Karteikarte"), cardWithSpeaker, problem);
       if (asksTerm) offerSpeech(speakSlot, term);
@@ -345,16 +369,33 @@ export function practiceView(
         onKey = null;
         page.setDock();
       };
+      // Vorzeitig erst nach einer kurzen Sperre (TDD 12.3).
+      const showNow = h(
+        "button",
+        {
+          type: "button",
+          class: "secondary",
+          "aria-disabled": "true",
+          onclick: () => ready && reveal(),
+        },
+        "Antworten zeigen",
+      );
+      let ready = false;
+      const lock = setTimeout(() => {
+        ready = true;
+        showNow.removeAttribute("aria-disabled");
+      }, REVEAL_LOCK);
       // „Weiterlernen“ zeichnet die Karte neu und beginnt damit eine neue Pause.
       const wait = () => {
         timer = setTimeout(() => {
           if (screen === "cards" && current === shown) reveal();
         }, CHOICE_DELAY);
       };
-      signal.addEventListener("abort", () => clearTimeout(timer));
-      page.setDock(
-        h("button", { type: "button", class: "secondary", onclick: reveal }, "Antworten zeigen"),
-      );
+      signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        clearTimeout(lock);
+      });
+      page.setDock(showNow);
       show(
         "cards",
         h("p", { class: "kind" }, "Multiple Choice"),
@@ -368,7 +409,7 @@ export function practiceView(
       if (asksTerm) offerSpeech(speakSlot, term);
       onKey = (event) => {
         if ((event.key !== "Enter" && event.key !== " ") || handledByTarget(event)) return false;
-        reveal();
+        if (ready) reveal();
         return true;
       };
       wait();
