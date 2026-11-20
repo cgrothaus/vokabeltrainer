@@ -2,6 +2,7 @@
 // und Bibliothek je Richtung, wie viele Vokabeln sicher, im Aufbau und neu sind (TDD 12.7, FR-36,
 // AK-30, D-62). Das Backup hat das Format von vor M6; der Lernstand entsteht allein aus den Antworten.
 import { expect, test } from "@playwright/test";
+import { entryRev } from "../../src/domain/hash";
 import type { Direction, ReviewEvent, Session, StoredSet } from "../../src/domain/model";
 import { collectErrors } from "./support";
 
@@ -68,7 +69,7 @@ function backup(): string {
     sessionId: `session${String(day).padStart(5, "0")}`,
     setId: SET.id,
     entryId,
-    entryRev: "unknown",
+    entryRev: entryRev(SET.sections[0]!.entries.find((entry) => entry.id === entryId)!),
     occurredAt: at(day, i + 1),
     direction,
     mode,
@@ -119,7 +120,7 @@ test("E2E-32 Lernstand je Richtung aus einem Backup mit Antworten über mehrere 
       .filter({ has: page.getByRole("link", { name: SET.title, exact: true }) })
       .locator(".status"),
   ).toHaveText(
-    "zuletzt am 15. Nov. Lernstand Englisch nach Deutsch: 1 sicher, 2 im Aufbau; Deutsch nach Englisch: 1 im Aufbau, 2 neu",
+    "3 fällig zuletzt am 15. Nov. Lernstand Englisch nach Deutsch: 1 sicher, 2 im Aufbau; Deutsch nach Englisch: 1 im Aufbau, 2 neu",
   );
   expect(errors).toEqual([]);
 });

@@ -67,7 +67,7 @@ test("Bibliothek gruppiert nach Lernsprache und zeigt die Lernstufe", async ({ p
   expect(errors, "Fehler in der Konsole").toEqual([]);
 });
 
-test("E2E-28 Karten mit Lernstand, Lernen-Knopf als Schnellstart, Weiterlernen, Menü in der Set-Ansicht", async ({
+test("E2E-28 Karten mit Lernstand, Lernen-Knopf als empfohlener Einstieg, Weiterlernen, Menü in der Set-Ansicht", async ({
   page,
 }) => {
   const errors = collectErrors(page);
@@ -85,37 +85,32 @@ test("E2E-28 Karten mit Lernstand, Lernen-Knopf als Schnellstart, Weiterlernen, 
   await expect(status(ANIMALS)).toHaveText("Neu · noch nicht gelernt");
   await expect(dock).toBeHidden();
 
-  // Ohne gemerkte Einrichtung führt der Knopf zur Einrichtung (TDD 12.1).
+  // Ohne Gelerntes startet der Knopf gleich neue Vokabeln, ohne Einrichtung (D-63).
   await page.getByRole("button", { name: `${WEATHER} lernen` }).click();
-  await expect(page).toHaveURL(/#\/learn\//);
-  await page.getByRole("button", { name: "3 Vokabeln lernen" }).click();
+  await expect(page).toHaveURL(/#\/practice$/);
+  await expect(page.getByText("0 von 3 geschafft")).toBeVisible();
   await page.getByRole("button", { name: /tipp zum Aufdecken/ }).click();
   await page.getByRole("button", { name: "Gewusst" }).click();
   await expect(page.getByText("1 von 3 geschafft")).toBeVisible();
   await endPractice(page);
 
-  // Sichtbar nur der geteilte Balken; vorgelesen die Stufen je Richtung (D-62).
+  // Vorn, was der Plan anbietet; sichtbar sonst nur der geteilte Balken, vorgelesen die Stufen (D-62).
   await expect(status(WEATHER)).toHaveText(
-    "zuletzt heute Lernstand Englisch nach Deutsch: 1 im Aufbau, 2 neu; Deutsch nach Englisch: 3 neu",
+    "2 neu zuletzt heute Lernstand Englisch nach Deutsch: 1 im Aufbau, 2 neu; Deutsch nach Englisch: 3 neu",
   );
   await expect(status(ANIMALS)).toHaveText("Neu · noch nicht gelernt");
-  await expect(dock.getByRole("button")).toHaveText(`Weiterlernen ${WEATHER} · 3 Vokabeln`);
+  await expect(dock.getByRole("button")).toHaveText(`Weiterlernen ${WEATHER} · 2 neue Vokabeln`);
 
   // Eine angefangene Sitzung ohne Antwort ändert „Weiterlernen“ nicht (D-50).
   await page.getByRole("button", { name: `${ANIMALS} lernen` }).click();
-  await page.getByRole("button", { name: "3 Vokabeln lernen" }).click();
   await expect(page.getByText("0 von 3 geschafft")).toBeVisible();
   await page.goto("./#/");
-  await expect(dock.getByRole("button")).toHaveText(`Weiterlernen ${WEATHER} · 3 Vokabeln`);
+  await expect(dock.getByRole("button")).toHaveText(`Weiterlernen ${WEATHER} · 2 neue Vokabeln`);
 
-  // Mit gemerkter Einrichtung startet der Knopf sofort, ebenso „Weiterlernen“.
-  await page.getByRole("button", { name: `${ANIMALS} lernen` }).click();
-  await expect(page).toHaveURL(/#\/practice$/);
-  await expect(page.getByText("0 von 3 geschafft")).toBeVisible();
-  await page.goto("./#/");
+  // „Weiterlernen“ startet ebenso den empfohlenen Einstieg: die beiden übrigen neuen.
   await dock.getByRole("button", { name: /^Weiterlernen/ }).click();
   await expect(page).toHaveURL(/#\/practice$/);
-  await expect(page.getByText("0 von 3 geschafft")).toBeVisible();
+  await expect(page.getByText("0 von 2 geschafft")).toBeVisible();
   await page.goto("./#/");
 
   // Das Menü „···“ der Set-Ansicht schließt mit Escape, der Fokus kehrt zurück (TDD 13.7).

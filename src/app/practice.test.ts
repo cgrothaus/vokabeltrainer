@@ -1,0 +1,153 @@
+import "fake-indexeddb/auto";
+import { IDBFactory } from "fake-indexeddb";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { entryRev } from "../domain/hash";
+import type { Session, StoredSet } from "../domain/model";
+import { settingKey } from "../domain/practiceSetup";
+import { openDatabase } from "../storage/database";
+import { recordAnswer, startSession } from "../storage/sessions";
+import { addSet } from "../storage/sets";
+import { setSetting } from "../storage/settings";
+import { forgetAllOverviews } from "./overview";
+import { currentPractice, recommendedStart } from "./practice";
+
+let db: IDBDatabase;
+
+/** Ein Set mit `size` Einträgen in zwei Sektionen, die zweite ab dem fünften Eintrag. */
+function setWith(id: string, size: number): StoredSet {
+  const entries = Array.from({ length: size }, (_, index) => ({
+    id: `e${String(index).padStart(5, "0")}`,
+    term: { text: `word ${index}` },
+    meanings: [{ text: `Wort ${index}` }],
+  }));
+  return {
+    id,
+    editCount: 0,
+    createdAt: "2026-11-01T17:00:00.000Z",
+    updatedAt: "2026-11-01T17:00:00.000Z",
+    title: `Set ${id}`,
+    termLanguage: "en",
+    meaningLanguage: "de",
+    sections: [
+      { id: "q7h3kd", title: "Wetter", entries: entries.slice(0, 4) },
+      { id: "z2m8vt", title: "Tiere", entries: entries.slice(4) },
+    ],
+  };
+}
+
+const large = setWith("m4x8c2r9tw", 25);
+const small = setWith("k2n7w4b8qp", 3);
+
+let counter = 0;
+
+/** Richtige Antworten Lernsprache → Muttersprache zu den ersten `count` Einträgen am Tag `at`. */
+async function answered(set: StoredSet, count: number, at: string): Promise<void> {
+  const session: Session = {
+    id: `session${String(counter++).padStart(5, "0")}`,
+    setId: set.id,
+    sectionIds: set.sections.map((section) => section.id),
+    startedAt: at,
+    status: "completed",
+    config: { direction: "termToMeaning", count, mcShare: 0 },
+  };
+  await startSession(db, session);
+  const entries = set.sections.flatMap((section) => section.entries).slice(0, count);
+  for (const entry of entries) {
+    await recordAnswer(db, {
+      id: `event${String(counter++).padStart(7, "0")}`,
+      sessionId: session.id,
+      setId: set.id,
+      entryId: entry.id,
+      entryRev: entryRev(entry),
+      occurredAt: at,
+      direction: "termToMeaning",
+      mode: "flashcard",
+      result: "correct",
+      firstAttempt: true,
+    });
+  }
+  forgetAllOverviews();
+}
+
+function remember(set: StoredSet, mcShare: number): Promise<void> {
+  return setSetting(db, {
+    key: settingKey(set.id),
+    value: { sections: "all", direction: "termToMeaning", count: 10, mcShare },
+  });
+}
+
+const sessions = () =>
+  new Promise<Session[]>((resolve, reject) => {
+    const request = db.transaction("sessions").objectStore("sessions").getAll();
+    request.onsuccess = () => resolve(request.result as Session[]);
+    request.onerror = () => reject(request.error);
+  });
+
+const queued = () => currentPractice()!.state.queue;
+
+beforeEach(async () => {
+  // Nur die Uhr: Die Rückrufe von fake-indexeddb laufen weiter.
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-11-20T08:00:00.000Z"));
+  indexedDB = new IDBFactory();
+  forgetAllOverviews();
+  const result = await openDatabase({ appVersion: "test" });
+  if (!result.ok) throw new Error(result.reason);
+  db = result.db;
+  for (const set of [large, small]) await addSet(db, set);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+describe("recommendedStart", () => {
+  it("startet ohne Gelerntes zehn neue Vokabeln, ohne die Einrichtung zu merken", async () => {
+    await remember(large, 0);
+    expect(await recommendedStart(db, large)).toBe("started");
+    expect(queued()).toHaveLength(10);
+    expect(new Set(queued().map((card) => card.direction))).toEqual(new Set(["termToMeaning"]));
+    expect(
+      queued()
+        .map((card) => card.entryId)
+        .sort(),
+    ).toEqual(
+      large.sections
+        .flatMap((section) => section.entries)
+        .slice(0, 10)
+        .map((entry) => entry.id),
+    );
+    const [session] = await sessions();
+    expect(session).toMatchObject({
+      sectionIds: ["q7h3kd", "z2m8vt"],
+      config: { direction: "mixed", count: 10, mcShare: 0 },
+    });
+  });
+
+  it("wiederholt Fälliges von gestern und füllt mit fünf neuen auf", async () => {
+    await remember(large, 0);
+    await answered(large, 3, "2026-11-19T08:00:00.000Z");
+    expect(await recommendedStart(db, large)).toBe("started");
+    expect(
+      queued()
+        .map((card) => card.entryId)
+        .sort(),
+    ).toEqual(["e00000", "e00001", "e00002", "e00003", "e00004", "e00005", "e00006", "e00007"]);
+  });
+
+  it("nimmt den Anteil an Multiple Choice aus der gemerkten Einrichtung, sonst 25 %, und speichert den tatsächlichen", async () => {
+    expect(await recommendedStart(db, large)).toBe("started");
+    const choices = queued().filter((card) => card.mode === "multipleChoice");
+    expect(choices).toHaveLength(3);
+    expect((await sessions())[0]!.config.mcShare).toBe(30);
+  });
+
+  it("startet ohne Fälliges und ohne Neues wie bisher den Schnellstart", async () => {
+    await answered(small, 3, "2026-11-20T07:00:00.000Z");
+    expect(await recommendedStart(db, small)).toBe("setup");
+    await remember(small, 0);
+    expect(await recommendedStart(db, small)).toBe("started");
+    // Die gemerkte Einrichtung: alle drei Einträge in ihrer Richtung.
+    expect(queued()).toHaveLength(3);
+  });
+});

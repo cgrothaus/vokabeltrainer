@@ -11,6 +11,7 @@ import {
   type PracticeState,
   repeatMistakes,
   sideText,
+  startPlannedPractice,
   startPractice,
 } from "./practice";
 
@@ -60,6 +61,39 @@ describe("startPractice", () => {
   it("stellt ohne Anteil nur Karteikarten", () => {
     const state = startPractice(["a", "b", "c"], { direction: "termToMeaning" }, sequence(0));
     expect(state.queue.every((card) => card.mode === "flashcard")).toBe(true);
+  });
+});
+
+describe("startPlannedPractice", () => {
+  const planned = [
+    { entryId: "a", direction: "termToMeaning" as const },
+    { entryId: "b", direction: "meaningToTerm" as const },
+    { entryId: "c", direction: "meaningToTerm" as const },
+    { entryId: "d", direction: "termToMeaning" as const },
+  ];
+
+  it("mischt die Karten und behält die Richtung jeder Karte", () => {
+    const state = startPlannedPractice(planned, {}, sequence(0));
+    expect(ids(state)).toEqual(["b", "c", "d", "a"]);
+    expect(Object.fromEntries(state.queue.map((card) => [card.entryId, card.direction]))).toEqual({
+      a: "termToMeaning",
+      b: "meaningToTerm",
+      c: "meaningToTerm",
+      d: "termToMeaning",
+    });
+    expect(state.total).toBe(4);
+    expect(state.queue.every((card) => card.mode === "flashcard" && card.firstAttempt)).toBe(true);
+  });
+
+  it("stellt den Anteil an Multiple Choice wie beim freien Start, nur mit geeigneten Karten", () => {
+    const state = startPlannedPractice(
+      planned,
+      { mcShare: 50, canChoose: (id) => id !== "a" },
+      sequence(0.7, 0.1, 0.4),
+    );
+    const choices = state.queue.filter((card) => card.mode === "multipleChoice");
+    expect(choices).toHaveLength(2);
+    expect(choices.map((card) => card.entryId)).not.toContain("a");
   });
 });
 

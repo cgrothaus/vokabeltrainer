@@ -696,6 +696,11 @@ button.textbtn {
 }
 
 /* Bewertung in der Aktionsleiste: „Gewusst“ grün mit Haken, nie nur über die Farbe. */
+/* „Wiederholen (12)“ (TDD 12.8): bei großer Schrift „Wie-derholen“ statt „Wiederhole-n“. */
+.dock .bar > button.plan {
+  hyphens: auto;
+}
+
 .dock button.right {
   display: inline-flex;
   align-items: center;
@@ -1071,6 +1076,12 @@ button.play svg.icon {
   background: var(--accent-mid);
 }
 
+/* Was der Plan anbietet (TDD 12.8): „12 fällig“ hervorgehoben vor „zuletzt …“. */
+.status .plan {
+  color: var(--accent);
+  font-weight: 650;
+}
+
 .status .new {
   color: var(--accent);
   font-weight: 650;
@@ -1208,6 +1219,13 @@ button.continue small {
 
 .overview p {
   margin: 0;
+}
+
+.overview .plan {
+  margin-bottom: 0.75rem;
+  color: var(--accent);
+  font-size: var(--text-l);
+  font-weight: 700;
 }
 
 /* Drei Kacheln (D-50); bei großer Schrift rutschen sie untereinander. */

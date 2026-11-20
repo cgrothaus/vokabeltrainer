@@ -74,13 +74,22 @@ export async function checkText(page: Page, text: string): Promise<void> {
 
 /** „<Titel> lernen“ in Bibliothek oder Set-Ansicht, dann Start mit der vorbelegten Einrichtung. */
 /**
- * Öffnet die Einrichtung über „Lernen“ in der Set-Ansicht, aus der Bibliothek erst zum Set: Der runde
- * Knopf der Bibliothek startet mit gemerkter Einrichtung sofort (D-50).
+ * Weg zur Einrichtung in der Set-Ansicht: „Frei lernen“ neben der Hauptaktion nach Plan, ohne Fälliges
+ * und Neues „Lernen“ (D-63). Beide führen zur Einrichtung.
+ */
+export const setupLink = (page: Page, title: string) =>
+  page.getByRole("link", {
+    name: new RegExp(`^${title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} (frei )?lernen$`),
+  });
+
+/**
+ * Öffnet die Einrichtung aus der Set-Ansicht, aus der Bibliothek erst zum Set: Der runde Knopf der
+ * Bibliothek startet den empfohlenen Einstieg sofort (D-63).
  */
 export async function goToSetup(page: Page, title: string): Promise<void> {
   if (!new URL(page.url()).hash.startsWith("#/set/"))
     await page.getByRole("link", { name: title, exact: true }).click();
-  await page.getByRole("link", { name: `${title} lernen` }).click();
+  await setupLink(page, title).click();
 }
 
 export async function startLearning(page: Page, title: string): Promise<void> {

@@ -1,16 +1,19 @@
 // Set-Ansicht (TDD 13.1, FR-02, FR-03): Titel und Sprachpaar, Lernstand als Kacheln (12.6, D-50),
 // Sektionen als Karten zum Aufklappen mit allen Angaben der Einträge, „Über dieses Set“ am Ende.
 // „Lernen“ unten; Bearbeiten (D-41), Exportieren (D-42) und Löschen im Menü „···“ (13.7).
+import { dayNumber } from "../../domain/learningState";
 import { setSize } from "../../domain/library";
 import type { Answer, StoredEntry, StoredSection, StoredSet } from "../../domain/model";
+import { type PlanSummary, planSummary } from "../../domain/plan";
 import { describeDay, firstAttemptRate, type Overview, type SetStats } from "../../domain/stats";
 import { entryDetails } from "../components/entryDetails";
 import { frame } from "../components/frame";
-import { learnButton } from "../components/learnButton";
+import { learnActions, learnButton } from "../components/learnButton";
 import {
   describeStages,
   type DirectionStages,
   directionStages,
+  planText,
   splitTrack,
   track,
 } from "../components/learningStatus";
@@ -20,6 +23,7 @@ import type { DeleteOutcome, DeletionScope } from "../deleteSet";
 import { type Child, focusSoon, h } from "../dom";
 import { icon } from "../icons";
 import { languageName } from "../languages";
+import { failureMessage } from "../storageMessages";
 import type { Say } from "../../platform/speech";
 
 export interface SetContext {
@@ -34,7 +38,11 @@ export interface SetContext {
   takeMessage: () => string | null;
   /** Vorlesen der Lernsprache (TDD 12.11); `null` ohne passende Stimme. */
   speaker: (lang: string) => Promise<Say | null>;
+  /** „Jetzt wiederholen“ bzw. „Neue Vokabeln lernen“ (TDD 12.8); wechselt bei Erfolg zur Sitzung. */
+  startPlanned: (set: StoredSet) => Promise<void>;
 }
+
+const NOT_STARTED = "Die Lernsitzung wurde nicht gestartet.";
 
 const NOT_LOADED = "Das Vokabelset konnte nicht geladen werden. Lade die Seite neu.";
 const NO_OVERVIEW = "Der Lernstand konnte nicht geladen werden.";
@@ -63,7 +71,26 @@ export function setView(context: SetContext): Node {
       if (set) {
         page.setTitle(set.title);
         const errors = h("p", { role: "alert", class: "problem" });
-        main.replaceChildren(...h("div", null, content(set, context, message, errors)).childNodes);
+        // Die Aktionsleiste folgt dem Plan, sobald der Lernstand da ist (D-63); bis dahin „Lernen“.
+        const showPlan = (plan: PlanSummary) => {
+          const start = async (button: HTMLButtonElement) => {
+            button.disabled = true;
+            errors.replaceChildren();
+            try {
+              await context.startPlanned(set);
+            } catch (error) {
+              console.error("Lernsitzung nicht gestartet", error);
+              errors.textContent = failureMessage(error, NOT_STARTED);
+              focusSoon(errors);
+            } finally {
+              button.disabled = false;
+            }
+          };
+          if (setSize(set).entries > 0) page.setDock(...learnActions(set, plan, start));
+        };
+        main.replaceChildren(
+          ...h("div", null, content(set, context, message, errors, showPlan)).childNodes,
+        );
         const remove = deletion(set, context, page.element, menuButton, errors);
         menuButton.onclick = () => openMenu(set, page.element, menuButton, remove);
         menuButton.hidden = false;
@@ -127,7 +154,13 @@ function openMenu(set: StoredSet, within: Element, opener: HTMLElement, remove: 
   });
 }
 
-function content(set: StoredSet, context: SetContext, message: Child, errors: Node): Child[] {
+function content(
+  set: StoredSet,
+  context: SetContext,
+  message: Child,
+  errors: Node,
+  showPlan: (plan: PlanSummary) => void,
+): Child[] {
   const { entries } = setSize(set);
   const overview = h("div", { class: "overview" });
   // Je Sektion eine Zeile im Titel, auch zugeklappt sichtbar; gefüllt, sobald der Lernstand da ist.
@@ -143,8 +176,10 @@ function content(set: StoredSet, context: SetContext, message: Child, errors: No
     (stats) => {
       const now = new Date();
       const directions = directionStages(set, stats.cards);
+      const plan = planSummary(set, stats.cards, dayNumber(now));
+      showPlan(plan);
       overview.replaceChildren(
-        ...h("div", null, describeSet(stats.set, directions, now)).childNodes,
+        ...h("div", null, describeSet(stats.set, directions, plan, now)).childNodes,
       );
       for (const [id, line] of sectionLines) {
         const section = stats.sections.get(id);
@@ -217,7 +252,12 @@ function about(set: StoredSet): Node | null {
  * Lernstand des ganzen Sets als drei Kacheln (TDD 12.6, AK-17, D-50), darunter je Richtung, wie viele
  * Vokabeln sicher, im Aufbau und neu sind (12.7, AK-30, D-62).
  */
-function describeSet(overview: Overview, directions: DirectionStages[], now: Date): Child[] {
+function describeSet(
+  overview: Overview,
+  directions: DirectionStages[],
+  plan: PlanSummary,
+  now: Date,
+): Child[] {
   if (overview.sessions === 0 || !overview.lastAt) {
     return [h("p", null, "Mit diesem Set hast du noch nicht gelernt.")];
   }
@@ -226,7 +266,10 @@ function describeSet(overview: Overview, directions: DirectionStages[], now: Dat
   // `dt` vor `dd`, wie HTML es verlangt; das CSS stellt die Zahl darüber.
   const tile = (label: string, value: string) =>
     h("div", null, h("dt", null, label), h("dd", null, value));
+  // Was der Plan heute anbietet, wie in der Bibliothek (TDD 12.8).
+  const next = planText(plan);
   return [
+    next && h("p", { class: "plan" }, next),
     h(
       "dl",
       { class: "tiles" },

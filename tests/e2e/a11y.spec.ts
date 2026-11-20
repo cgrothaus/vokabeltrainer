@@ -17,6 +17,7 @@ import {
   libraryMessage,
   setAction,
   setFile,
+  setupLink,
   startLearning,
 } from "./support";
 
@@ -164,7 +165,7 @@ test("Mit Set: Bibliothek, Set-Ansicht, Löschen, Einrichtung, Karteikarten, Zwi
   findings.push(...(await audit(page, "Set löschen, Ankündigung")));
   await page.getByRole("button", { name: "Abbrechen" }).click();
 
-  await page.getByRole("link", { name: "Wetter lernen" }).click();
+  await setupLink(page, "Wetter").click();
   const start = page.getByRole("button", { name: "3 Vokabeln lernen" });
   await expect(start).toBeVisible();
   findings.push(...(await audit(page, "Einrichtung")));
@@ -205,9 +206,19 @@ test("Mit Set: Bibliothek, Set-Ansicht, Löschen, Einrichtung, Karteikarten, Zwi
   // Mit den Zeilen je Richtung (TDD 12.7).
   await expect(page.locator(".stages li")).toHaveCount(2);
   findings.push(...(await audit(page, "Set-Ansicht mit Lernstand")));
-  await page.getByRole("link", { name: "Wetter lernen" }).click();
+  await setupLink(page, "Wetter").click();
   await expect(page.getByRole("region", { name: "Wie beim letzten Mal" })).toBeVisible();
   findings.push(...(await audit(page, "Einrichtung wie beim letzten Mal")));
+
+  // Zwei Tage später ist das Gelernte fällig (TDD 12.8): „Jetzt wiederholen“ und „Frei lernen“.
+  await page.clock.setFixedTime(new Date(Date.now() + 2 * 86_400_000));
+  await page.goto("./");
+  await expect(page.locator(".setcard .status .plan")).toContainText("fällig");
+  await expect(page.locator(".hints")).not.toHaveAttribute("aria-busy");
+  findings.push(...(await audit(page, "Bibliothek mit Fälligem")));
+  await page.getByRole("link", { name: "Wetter", exact: true }).click();
+  await expect(page.getByRole("button", { name: /^Wiederholen/ })).toBeVisible();
+  findings.push(...(await audit(page, "Set-Ansicht mit Fälligem")));
 
   await page.goto("./#/backup");
   await page.getByLabel("Backup-Datei auswählen").setInputFiles({
@@ -350,7 +361,9 @@ test("Tablet: Set-Ansicht, Bibliothek und Karteikarte bei 768 px (TDD 13.7)", as
   await expect(page.locator(".hints")).not.toHaveAttribute("aria-busy");
   findings.push(...(await audit(page, "Bibliothek Tablet")));
 
-  await page.getByRole("button", { name: /lernen$/ }).click();
+  // Über die Einrichtung, damit es Karteikarten werden; der runde Knopf startete neue Vokabeln (D-63).
+  await page.locator(".setcard a.title").first().click();
+  await page.getByRole("link", { name: /frei lernen$/ }).click();
   await page.getByRole("slider", { name: "Multiple Choice" }).fill("0");
   await page.getByRole("button", { name: "20 Vokabeln lernen" }).click();
   await page.locator(".flash .front").click();
@@ -543,9 +556,8 @@ test("Nach einem Seitenwechsel: Fokus auf der Überschrift, Seitentitel nennt di
 
   // Die Sitzung fokussiert die Karte selbst.
   await page.goto("./");
-  // Ohne gemerkte Einrichtung führt der Knopf der Bibliothek zur Einrichtung (D-50).
+  // Ohne Gelerntes startet der Knopf der Bibliothek gleich neue Vokabeln (D-63).
   await page.getByRole("button", { name: "Wetter lernen" }).click();
-  await page.getByRole("button", { name: "3 Vokabeln lernen" }).click();
   await expect(page.locator(".flash .front")).toBeFocused();
 
   await page.goto("./#/gibt-es-nicht");

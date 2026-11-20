@@ -1,10 +1,12 @@
 // Ablauf einer Lernsitzung (TDD 12.2–12.5): Die Warteschlange liegt in domain/practice.ts, das
 // Speichern in storage/sessions.ts. Hier werden beide verbunden. Die laufende Sitzung lebt nur im
 // Arbeitsspeicher; nach einem Neuladen ist sie beendet, gespeicherte Antworten bleiben. „Nur Fehler
-// üben“ startet eine neue Sitzung mit Verweis auf die vorige (D-29).
+// üben“ startet eine neue Sitzung mit Verweis auf die vorige (D-29). „Jetzt wiederholen“ wählt die
+// Karten nach Plan (TDD 12.8, D-63).
 import { entryRev } from "../domain/hash";
 import { createId, ID_LENGTH } from "../domain/ids";
-import type { ReviewEvent, Session, StoredEntry, StoredSet } from "../domain/model";
+import { dayNumber } from "../domain/learningState";
+import type { Direction, ReviewEvent, Session, StoredEntry, StoredSet } from "../domain/model";
 import {
   answer,
   currentCard,
@@ -13,9 +15,12 @@ import {
   type PracticeState,
   repeatMistakes,
   type Result,
+  startPlannedPractice,
   startPractice,
 } from "../domain/practice";
+import { planSelection } from "../domain/plan";
 import {
+  DEFAULT_MC_SHARE,
   type PracticeSetup,
   pickEntries,
   restoreSetup,
@@ -27,7 +32,7 @@ import { isSetMissing } from "../storage/errors";
 import { finishSession, recordAnswer, startSession } from "../storage/sessions";
 import { getSetting } from "../storage/settings";
 import { reportStorageProblem } from "./components/storageNotice";
-import { forgetOverview } from "./overview";
+import { forgetOverview, loadOverview } from "./overview";
 import { failureMessage, SET_MISSING } from "./storageMessages";
 
 /** Wie die aktuelle Karte gestellt wird (TDD 12.3). */
@@ -102,6 +107,86 @@ export async function quickStart(db: IDBDatabase, set: StoredSet): Promise<"star
 }
 
 /**
+ * Empfohlener Einstieg für den Lernen-Knopf der Bibliothek und „Weiterlernen“ (TDD 12.1, 12.8, D-63):
+ * Fälliges wiederholen, sonst neue Vokabeln, sonst der Schnellstart.
+ */
+export async function recommendedStart(
+  db: IDBDatabase,
+  set: StoredSet,
+): Promise<"started" | "setup"> {
+  if (await beginPlanned(db, set)) return "started";
+  return quickStart(db, set);
+}
+
+/**
+ * „Jetzt wiederholen“ bzw. „Neue Vokabeln lernen“ (TDD 12.8): Auswahl nach Plan, Anteil an Multiple
+ * Choice aus der gemerkten Einrichtung (bis S-51). Die Einrichtung bleibt unverändert. `false`, wenn
+ * weder etwas fällig noch etwas neu ist.
+ */
+export async function beginPlanned(db: IDBDatabase, set: StoredSet): Promise<boolean> {
+  const stats = await loadOverview(db, set);
+  const selection = planSelection(set, stats.cards, dayNumber(new Date()));
+  if (selection.kind === null) return false;
+  const remembered = await rememberedSetup(db, set);
+  const chosen = new Set(selection.cards.map((card) => card.entryId));
+  const sectionIds = set.sections
+    .filter((section) => section.entries.some((entry) => chosen.has(entry.id)))
+    .map((section) => section.id);
+  const material = gather(set, chosen, sectionIds);
+  const state = startPlannedPractice(
+    selection.cards,
+    {
+      mcShare: remembered?.mcShare ?? DEFAULT_MC_SHARE,
+      canChoose: canChoose(material),
+    },
+    Math.random,
+  );
+  const choices = state.queue.filter((card) => card.mode === "multipleChoice").length;
+  const session: Session = {
+    id: createId(ID_LENGTH.session, randomBytes),
+    setId: set.id,
+    sectionIds,
+    startedAt: new Date().toISOString(),
+    status: "active",
+    // Bis S-53 eine gewöhnliche Sitzung; der Anteil ist der tatsächliche (TDD 12.8).
+    config: {
+      direction: "mixed",
+      count: state.total,
+      mcShare: Math.round((choices * 100) / state.total),
+    },
+  };
+  await startSession(db, session);
+  current = run(db, material, session, state);
+  return true;
+}
+
+/** Einträge der Sitzung und Kandidaten für falsche Antworten (TDD 12.3). */
+function gather(
+  set: StoredSet,
+  chosen: ReadonlySet<string>,
+  sectionIds: readonly string[],
+): Material {
+  const entries = new Map(
+    set.sections
+      .flatMap((section) => section.entries)
+      .filter((entry) => chosen.has(entry.id))
+      .map((entry) => [entry.id, entry]),
+  );
+  // Falsche Antworten bevorzugt aus den Sektionen der Sitzung, dann aus dem übrigen Set.
+  const inSession = new Set(sectionIds);
+  const preferred = set.sections.filter((s) => inSession.has(s.id)).flatMap((s) => s.entries);
+  const rest = set.sections.filter((s) => !inSession.has(s.id)).flatMap((s) => s.entries);
+  // Einmal pro Eintrag: Der Inhalt ändert sich während der Sitzung nicht.
+  const revs = new Map([...entries].map(([id, entry]) => [id, entryRev(entry)]));
+  return { set, entries, revs, preferred, rest };
+}
+
+const canChoose = ({ entries, preferred, rest }: Material) => {
+  const everything = [...preferred, ...rest];
+  return (id: string, direction: Direction) => hasChoices(entries.get(id)!, direction, everything);
+};
+
+/**
  * Legt die Sitzung an und merkt die Einrichtung in derselben Transaktion; scheitert das Speichern,
  * gibt es keine Sitzung.
  */
@@ -110,25 +195,10 @@ export async function beginPractice(
   set: StoredSet,
   setup: PracticeSetup,
 ): Promise<void> {
-  const chosen = new Set(pickEntries(set, setup, Math.random));
-  const entries = new Map(
-    set.sections
-      .flatMap((section) => section.entries)
-      .filter((entry) => chosen.has(entry.id))
-      .map((entry) => [entry.id, entry]),
-  );
-  // Falsche Antworten bevorzugt aus den Sektionen der Sitzung, dann aus dem übrigen Set (TDD 12.3).
-  const inSession = new Set(setup.sectionIds);
-  const preferred = set.sections.filter((s) => inSession.has(s.id)).flatMap((s) => s.entries);
-  const rest = set.sections.filter((s) => !inSession.has(s.id)).flatMap((s) => s.entries);
-  const everything = [...preferred, ...rest];
+  const material = gather(set, new Set(pickEntries(set, setup, Math.random)), setup.sectionIds);
   const state = startPractice(
-    [...entries.keys()],
-    {
-      direction: setup.direction,
-      mcShare: setup.mcShare,
-      canChoose: (id, direction) => hasChoices(entries.get(id)!, direction, everything),
-    },
+    [...material.entries.keys()],
+    { direction: setup.direction, mcShare: setup.mcShare, canChoose: canChoose(material) },
     Math.random,
   );
   const session: Session = {
@@ -140,10 +210,7 @@ export async function beginPractice(
     config: { direction: setup.direction, count: state.total, mcShare: setup.mcShare },
   };
   await startSession(db, session, { key: settingKey(set.id), value: storedSetup(set, setup) });
-
-  // Einmal pro Eintrag: Der Inhalt ändert sich während der Sitzung nicht.
-  const revs = new Map([...entries].map(([id, entry]) => [id, entryRev(entry)]));
-  current = run(db, { set, entries, revs, preferred, rest }, session, state);
+  current = run(db, material, session, state);
 }
 
 function run(

@@ -29,7 +29,13 @@ import { forgetAllOverviews, loadOverview } from "./app/overview";
 import { previewImport, saveImport, saveKnownImport } from "./app/importText";
 import { loadSampleSet } from "./app/sampleSet";
 import { loadLibraryStart } from "./app/library";
-import { beginPractice, currentPractice, quickStart, rememberedSetup } from "./app/practice";
+import {
+  beginPlanned,
+  beginPractice,
+  currentPractice,
+  recommendedStart,
+  rememberedSetup,
+} from "./app/practice";
 import { replaceRoute, type Router, startRouter } from "./app/router";
 import { loadSpeakAloud, saveSpeakAloud } from "./app/speech";
 import { applyTheme, loadTheme, saveTheme } from "./app/theme";
@@ -214,8 +220,9 @@ async function start(): Promise<void> {
         loadOverview: (set) => loadOverview(db, set),
         startLearning: async (set) => {
           // Wie aus der Einrichtung ein neuer Verlaufseintrag, damit Zurück zur Bibliothek führt (D-49).
+          // Empfohlener Einstieg: Fälliges, sonst Neues, sonst der Schnellstart (D-63).
           location.hash =
-            (await quickStart(db, set)) === "started"
+            (await recommendedStart(db, set)) === "started"
               ? "#/practice"
               : `#/learn/${encodeURIComponent(set.id)}`;
         },
@@ -265,6 +272,12 @@ async function start(): Promise<void> {
       },
       takeMessage,
       speaker: speakerFor,
+      startPlanned: async (set) => {
+        // Inzwischen nichts mehr dran (z. B. in einem anderen Tab gelernt): zur Einrichtung.
+        location.hash = (await beginPlanned(db, set))
+          ? "#/practice"
+          : `#/learn/${encodeURIComponent(set.id)}`;
+      },
     });
   const editPage = (signal: AbortSignal, id: string) =>
     editSetView(

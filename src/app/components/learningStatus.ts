@@ -8,6 +8,7 @@ import {
   type StageCounts,
 } from "../../domain/learningState";
 import type { StoredSet } from "../../domain/model";
+import type { PlanSummary } from "../../domain/plan";
 import { describeDay, type Overview } from "../../domain/stats";
 import { type Child, h } from "../dom";
 import { languageName } from "../languages";
@@ -65,6 +66,17 @@ export function describeStages(counts: StageCounts, separator = " · "): string 
   return parts.length > 0 ? parts.join(separator) : `0 ${STAGE_NAMES.fresh}`;
 }
 
+/**
+ * Was der Plan heute anbietet (TDD 12.8, D-63): „12 fällig“, ohne Fälliges „5 neu“, sonst wann wieder
+ * etwas dran ist; `null`, wenn nichts mehr kommt.
+ */
+export function planText(plan: PlanSummary): string | null {
+  if (plan.due > 0) return `${plan.due} fällig`;
+  if (plan.fresh > 0) return `${plan.fresh} neu`;
+  if (plan.nextDueIn === null) return null;
+  return plan.nextDueIn === 1 ? "morgen wieder" : `in ${plan.nextDueIn} Tagen wieder`;
+}
+
 /** Geteilter Balken: sicher, im Aufbau, der Rest ist neu. */
 export function splitTrack(counts: StageCounts): HTMLElement {
   const total = counts.secure + counts.building + counts.fresh;
@@ -82,12 +94,14 @@ export function splitTrack(counts: StageCounts): HTMLElement {
 }
 
 /**
- * Inhalt der Zeile in der Bibliothek: „zuletzt gestern“ und ein geteilter Balken über beide Richtungen
- * (D-62); vorgelesen werden die Stufen je Richtung. Ohne Sitzung „Neu · noch nicht gelernt“.
+ * Inhalt der Zeile in der Bibliothek: was der Plan anbietet (D-63), „zuletzt gestern“ und ein geteilter
+ * Balken über beide Richtungen (D-62); vorgelesen werden die Stufen je Richtung. Ohne Sitzung
+ * „Neu · noch nicht gelernt“.
  */
 export function libraryStatus(
   overview: Overview,
   directions: readonly DirectionStages[],
+  plan: PlanSummary,
   now: Date,
 ): Child[] {
   if (overview.sessions === 0 || !overview.lastAt)
@@ -97,7 +111,9 @@ export function libraryStatus(
   const spoken = directions
     .map(({ spoken, counts }) => `${spoken}: ${describeStages(counts, ", ")}`)
     .join("; ");
+  const next = planText(plan);
   return [
+    next && [h("span", { class: "plan" }, next), " "],
     h("span", null, `zuletzt ${describeDay(overview.lastAt, now)}`),
     // Leerzeichen trennen die Teile im vorgelesenen Text; im Flex-Container fallen sie optisch weg.
     " ",

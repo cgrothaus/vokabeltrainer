@@ -2,7 +2,7 @@
 // und Erstversuchsquote, berechnet aus den gespeicherten Antworten (TDD 12.6, FR-11, AK-17).
 import { expect, type Page, test } from "@playwright/test";
 import type { StoredSet } from "../../src/domain/model";
-import { collectErrors, importText, readStore } from "./support";
+import { collectErrors, importText, readStore, setupLink } from "./support";
 
 const TITLE = "Englisch – Wetter und Tiere";
 
@@ -39,7 +39,7 @@ async function importTwoSections(page: Page): Promise<StoredSet> {
 
 /** Lernt genau eine Sektion mit Karteikarten; `ratings` gilt der Reihe nach für jede Karte. */
 async function learnSection(page: Page, only: string, ratings: ("Nochmal" | "Gewusst")[]) {
-  await page.getByRole("link", { name: `${TITLE} lernen` }).click();
+  await setupLink(page, TITLE).click();
   for (const title of ["Wetter", "Tiere"]) {
     const box = page.getByRole("checkbox", { name: new RegExp(`^${title}`) });
     if (title === only) await box.check();

@@ -2,7 +2,9 @@
 // Lernen-Knopf (Schnellstart, 12.1), unten „Weiterlernen“ mit dem zuletzt gelernten Set. Der Lernstand
 // wird nachgeladen, ein Set nach dem anderen, das zuletzt gelernte zuerst (12.6, D-50).
 import type { Reminder } from "../../domain/backupReminder";
+import { dayNumber } from "../../domain/learningState";
 import type { StoredSet } from "../../domain/model";
+import { FRESH_ONLY, planSummary } from "../../domain/plan";
 import { groupSets, setSize } from "../../domain/library";
 import type { SetStats } from "../../domain/stats";
 import { installOffer, type ProtectionNotice } from "../../domain/storageProtection";
@@ -286,38 +288,36 @@ async function showProgress(
   });
   if (signal.aborted) return;
   const next = start.continueWith;
+  // Zusatz unter „Weiterlernen“; sobald der Lernstand des Sets da ist, nennt er das Fällige (D-63).
+  const detail = h("small", null);
   if (next) {
     const button: HTMLButtonElement = h(
       "button",
       { type: "button", class: "continue", onclick: () => learn(next.set, button) },
       icon("play"),
-      h(
-        "span",
-        null,
-        "Weiterlernen",
-        " ",
-        h(
-          "small",
-          null,
-          next.count === undefined
-            ? next.set.title
-            : `${next.set.title} · ${vocabulary(next.count)}`,
-        ),
-      ),
+      h("span", null, "Weiterlernen", " ", detail),
     );
+    detail.textContent =
+      next.count === undefined ? next.set.title : `${next.set.title} · ${vocabulary(next.count)}`;
     page.setDock(button);
   }
   const first = start.order
     .map((id) => sets.find((set) => set.id === id))
     .filter((set): set is StoredSet => set !== undefined);
   const now = new Date();
+  const today = dayNumber(now);
   for (const set of [...first, ...sets.filter((set) => !first.includes(set))]) {
     const line = lines.get(set.id);
     if (!line) continue;
     try {
       const stats = await context.loadOverview(set);
       if (signal.aborted) return;
-      const status = libraryStatus(stats.set, directionStages(set, stats.cards), now);
+      const plan = planSummary(set, stats.cards, today);
+      const status = libraryStatus(stats.set, directionStages(set, stats.cards), plan, now);
+      if (set === next?.set && plan.due > 0)
+        detail.textContent = `${set.title} · ${plan.due} fällig`;
+      else if (set === next?.set && plan.fresh > 0)
+        detail.textContent = `${set.title} · ${Math.min(plan.fresh, FRESH_ONLY)} neue Vokabeln`;
       line.replaceChildren(...h("span", null, status).childNodes);
     } catch (error) {
       if (signal.aborted) return;

@@ -74,22 +74,50 @@ export function startPractice(
           : ("meaningToTerm" as const)
         : direction,
   }));
-  // Feste Quote (D-28): genau so viele geeignete Karten wie der Anteil ergibt, zufällig gewählt.
+  return fresh(withModes(cards, mcShare, canChoose, random));
+}
+
+/** Eine Karte mit fester Richtung, z. B. aus dem Plan (TDD 12.8). */
+export interface PlannedCard {
+  readonly entryId: string;
+  readonly direction: Direction;
+}
+
+/**
+ * Sitzung nach Plan (TDD 12.8, D-63): Die Richtung kommt von jeder Karte, der Anteil an Multiple Choice
+ * gilt wie beim freien Start.
+ */
+export function startPlannedPractice(
+  cards: readonly PlannedCard[],
+  options: Omit<PracticeOptions, "direction">,
+  random: () => number,
+): PracticeState {
+  const { mcShare = 0, canChoose = () => true } = options;
+  const shuffled = shuffle(cards, random).map(({ entryId, direction }) => ({ entryId, direction }));
+  return fresh(withModes(shuffled, mcShare, canChoose, random));
+}
+
+/** Feste Quote (D-28): genau so viele geeignete Karten wie der Anteil ergibt, zufällig gewählt. */
+function withModes(
+  cards: readonly PlannedCard[],
+  mcShare: number,
+  canChoose: (entryId: string, direction: Direction) => boolean,
+  random: () => number,
+): Card[] {
   const quota = Math.round((cards.length * mcShare) / 100);
   // Nur so viele Karten prüfen, bis die Quote voll ist: Die Prüfung durchsucht das Set.
-  const chosen = new Set<(typeof cards)[number]>();
+  const chosen = new Set<PlannedCard>();
   if (quota > 0) {
     for (const card of shuffle(cards, random)) {
       if (chosen.size === quota) break;
       if (canChoose(card.entryId, card.direction)) chosen.add(card);
     }
   }
-  const queue = cards.map((card): Card => ({
+  return cards.map((card): Card => ({
     ...card,
     mode: chosen.has(card) ? "multipleChoice" : "flashcard",
     firstAttempt: true,
   }));
-  return fresh(queue);
 }
 
 const fresh = (queue: readonly Card[]): PracticeState => ({
