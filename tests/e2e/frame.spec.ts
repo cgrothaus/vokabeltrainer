@@ -141,7 +141,7 @@ test("E2E-27 Hinweisleiste über der Aktionsleiste; auf Tablets breitere Spalte"
   await importSet(page, TITLE);
   await openSet(page);
   const dock = page.locator(".dock");
-  await expect(dock.getByRole("link", { name: `${TITLE} frei lernen` })).toBeVisible();
+  await expect(dock.getByRole("link", { name: `${TITLE} selbst auswählen` })).toBeVisible();
 
   // Wie eine Meldung nach einem Speicherfehler (TDD 6.5); hier geht es nur um die Lage.
   await page.evaluate(() => {

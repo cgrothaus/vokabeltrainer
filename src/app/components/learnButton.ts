@@ -1,5 +1,5 @@
 // „Lernen“ für die Set-Ansicht: führt zur Einrichtung der Sitzung (TDD 12.1, D-27). Mit Fälligem oder
-// Neuem ist „Frei lernen“ der zweite Weg neben der Hauptaktion nach Plan (12.8, D-63).
+// Neuem ist „Selbst auswählen“ der zweite Weg neben der Hauptaktion nach Plan (12.8, D-63).
 import type { StoredSet } from "../../domain/model";
 import type { PlanSummary } from "../../domain/plan";
 import { type Child, h } from "../dom";
@@ -21,7 +21,7 @@ export function learnButton(set: StoredSet): HTMLAnchorElement {
 
 /**
  * Aktionsleiste der Set-Ansicht: „Wiederholen (12)“ bzw. „Neue Vokabeln lernen“ als Hauptaktion,
- * daneben zweitrangig „Frei lernen“; ohne Fälliges und Neues nur „Lernen“.
+ * daneben zweitrangig „Selbst auswählen“; ohne Fälliges und Neues nur „Lernen“.
  */
 export function learnActions(
   set: StoredSet,
@@ -41,9 +41,9 @@ export function learnActions(
       {
         href: setupHref(set),
         class: "action secondary",
-        "aria-label": `${set.title} frei lernen`,
+        "aria-label": `${set.title} selbst auswählen`,
       },
-      "Frei lernen",
+      "Selbst auswählen",
     ),
     button,
   ];

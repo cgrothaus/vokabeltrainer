@@ -301,6 +301,13 @@ function describeSet(
         ),
       ),
     ),
+    // Die Regel hinter „sicher“ (D-64): Fortschritt braucht Tage, nicht Wiederholungen am selben Tag.
+    h(
+      "p",
+      { class: "explain" },
+      "Sicher ist eine Vokabel, wenn du sie an mehreren Tagen mit wachsendem Abstand gewusst hast. ",
+      h("a", { href: "#/help/learning" }, "Wie funktioniert das?"),
+    ),
   ];
 }
 

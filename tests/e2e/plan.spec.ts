@@ -124,11 +124,11 @@ test("E2E-33 Fälliges in Bibliothek und Set-Ansicht, „Jetzt wiederholen“ fr
     `Weiterlernen ${SET.title} · 2 fällig`,
   );
 
-  // Set-Ansicht: dieselbe Zahl, „Jetzt wiederholen“ als Hauptaktion, daneben „Frei lernen“.
+  // Set-Ansicht: dieselbe Zahl, „Jetzt wiederholen“ als Hauptaktion, daneben „Selbst auswählen“.
   await page.getByRole("link", { name: SET.title, exact: true }).click();
   await expect(page.locator(".overview .plan")).toHaveText("2 fällig");
   const dock = page.locator(".dock");
-  await expect(dock.getByRole("link", { name: `${SET.title} frei lernen` })).toBeVisible();
+  await expect(dock.getByRole("link", { name: `${SET.title} selbst auswählen` })).toBeVisible();
   await dock.getByRole("button", { name: "Wiederholen (2)" }).click();
 
   // Genau die fälligen (sun, rain) und fünf neue: die Gegenrichtung von wind und vier neue Wörter.
@@ -159,7 +159,7 @@ test("E2E-33 Fälliges in Bibliothek und Set-Ansicht, „Jetzt wiederholen“ fr
 
   // Die freie Einrichtung bleibt erreichbar, ihre Antworten zählen für den Lernstand.
   await page.getByRole("link", { name: SET.title, exact: true }).click();
-  await page.getByRole("link", { name: `${SET.title} frei lernen` }).click();
+  await page.getByRole("link", { name: `${SET.title} selbst auswählen` }).click();
   await expect(page).toHaveURL(/#\/learn\//);
   await page.getByRole("button", { name: "Los geht’s" }).click();
   await expect(page.getByText("0 von 8 geschafft")).toBeVisible();

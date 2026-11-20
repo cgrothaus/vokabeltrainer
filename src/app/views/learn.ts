@@ -294,6 +294,11 @@ function form(
   page.setDock(start);
   return [
     h("p", { class: "lead" }, "Lernsitzung einrichten"),
+    h(
+      "p",
+      { class: "note" },
+      "Hier wählst du selbst aus. Für den Lernstand zählt jede Vokabel einmal am Tag; was noch nicht fällig ist, rückt dadurch nicht weiter.",
+    ),
     ...(quick || []),
     h(
       "form",

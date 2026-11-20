@@ -261,6 +261,14 @@ h2:focus {
   color: var(--muted);
 }
 
+/* Kurze Erklärungen zum Lernstand (D-64): leise, unter der Überschrift bzw. dem Ergebnis. */
+.setup .note,
+.practice .note {
+  margin: 0 0 0.75rem;
+  color: var(--muted);
+  font-size: var(--text-s);
+}
+
 /* „Wie beim letzten Mal“ (TDD 12.1): Karte mit der Zusammenfassung als Pillen und dem Schnellstart. */
 .setup .quick {
   display: grid;
@@ -1316,12 +1324,14 @@ button.continue small {
 }
 
 .tiles dt,
-.overview .note {
+.overview .note,
+.overview .explain {
   color: var(--muted);
   font-size: var(--text-xs);
 }
 
-.overview .note {
+.overview .note,
+.overview .explain {
   margin-top: 0.5rem;
 }
 

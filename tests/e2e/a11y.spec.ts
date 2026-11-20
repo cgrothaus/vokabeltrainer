@@ -109,6 +109,9 @@ test("Ohne Sets: Bibliothek, Hilfe, Import, Backup, Einstellungen, unbekannte Ad
   for (const summary of await page.locator("summary").all()) await summary.click();
   findings.push(...(await audit(page, "Hilfe aufgeklappt")));
 
+  await page.goto("./#/help/learning");
+  findings.push(...(await audit(page, "Hilfe Lernplan")));
+
   await page.goto("./#/import");
   findings.push(...(await audit(page, "Import")));
   await checkText(page, "Das ist keine Vokabelliste.");
@@ -211,7 +214,7 @@ test("Mit Set: Bibliothek, Set-Ansicht, Löschen, Einrichtung, Karteikarten, Zwi
   await expect(page.getByRole("region", { name: "Wie beim letzten Mal" })).toBeVisible();
   findings.push(...(await audit(page, "Einrichtung wie beim letzten Mal")));
 
-  // Zwei Tage später ist das Gelernte fällig (TDD 12.8): „Jetzt wiederholen“ und „Frei lernen“.
+  // Zwei Tage später ist das Gelernte fällig (TDD 12.8): „Jetzt wiederholen“ und „Selbst auswählen“.
   await page.clock.setFixedTime(new Date(Date.now() + 2 * 86_400_000));
   await page.goto("./");
   await expect(page.locator(".setcard .status .plan")).toContainText("fällig");
@@ -324,7 +327,7 @@ test("Beispielset: Set-Ansicht mit Lernstand, Multiple Choice mit Rückmeldung",
   await backButton(page).click();
 
   await page
-    .getByRole("link", { name: /lernen$/ })
+    .getByRole("link", { name: /(lernen|selbst auswählen)$/ })
     .first()
     .click();
   await page.getByRole("slider", { name: "Multiple Choice" }).fill("100");
@@ -365,7 +368,7 @@ test("Tablet: Set-Ansicht, Bibliothek und Karteikarte bei 768 px (TDD 13.7)", as
 
   // Über die Einrichtung, damit es Karteikarten werden; der runde Knopf startete neue Vokabeln (D-63).
   await page.locator(".setcard a.title").first().click();
-  await page.getByRole("link", { name: /frei lernen$/ }).click();
+  await page.getByRole("link", { name: /selbst auswählen$/ }).click();
   await page.getByRole("slider", { name: "Multiple Choice" }).fill("0");
   await page.getByRole("button", { name: "20 Vokabeln lernen" }).click();
   await page.locator(".flash .front").click();

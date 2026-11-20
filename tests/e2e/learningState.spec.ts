@@ -112,6 +112,12 @@ test("E2E-32 Lernstand je Richtung aus einem Backup mit Antworten über mehrere 
     "1 im Aufbau · 2 neu",
   ]);
 
+  // Die Regel hinter „sicher“ steht gleich darunter, der Link führt zur Erklärung (D-64).
+  await expect(page.locator(".overview .explain")).toContainText("mehreren Tagen");
+  await page.getByRole("link", { name: "Wie funktioniert das?" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Wie lerne ich mit dem Plan?");
+  await expect(page.getByRole("heading", { name: "neu, im Aufbau, sicher" })).toBeVisible();
+
   await page.goto("./");
   await expect(
     page

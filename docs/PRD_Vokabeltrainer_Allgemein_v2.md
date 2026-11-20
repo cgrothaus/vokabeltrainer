@@ -2,7 +2,7 @@
 
 ## Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.9 – Lernstand pro Vokabel  
+**Version:** 2.10 – Lernplan erklären  
 **Stand:** 20. November 2026  
 **Status:** Entwurf für die nächste Entwicklungsiteration  
 **Ausgangspunkt:** Bestehender HTML-Prototyp „Vokabeltrainer Englisch“  
@@ -291,6 +291,9 @@ Vokabeln in der Lernsprache lassen sich vorlesen, in der Lernsitzung und in der 
 **FR-41 – Schreiben ohne Tastatur (SHOULD)**  
 Für die Richtung in die Lernsprache gibt es eine Abfrageform, bei der Lernende das Wort aus angebotenen Buchstaben bzw. Wortteilen zusammensetzen, statt es mit der Bildschirmtastatur zu tippen. Sie übt die Schreibweise, wie sie Vokabeltests verlangen, und wertet nur aus, was eindeutig richtig oder falsch ist; akzeptierte Varianten zählen als richtig.
 
+**FR-42 – Lernplan erklären (SHOULD)**  
+Die Begriffe des Lernplans („fällig“, „im Aufbau“, „sicher“, „Selbst auswählen“) sind für Lernende verständlich, ohne dass sie ein Handbuch lesen. Kurze Sätze am Ort nennen die Regel, wo die Frage entsteht: in der Lernstand-Karte der Set-Ansicht (wann eine Vokabel „sicher“ ist), in der Einrichtung (was für den Lernstand zählt) und im Ergebnis einer Sitzung. Eine eigene, kurze Hilfeseite erklärt das Prinzip im Zusammenhang: Karteikasten, wachsende Abstände, die drei Stufen und der Unterschied zwischen dem Plan und der eigenen Auswahl; sie ist aus der Set-Ansicht erreichbar.
+
 ### 6.4 Import, Aktualisierung und Export
 
 **FR-13 – Ein zentraler Importablauf (MUST)**  
@@ -493,6 +496,7 @@ Die nächste Version gilt als fachlich erfolgreich, wenn mindestens die folgende
 - **AK-33 – Mehrere Sets** (FR-39): Zwei Sets mit demselben Sprachpaar lassen sich in einer Sitzung lernen, Sets mit anderem Sprachpaar nicht; danach zeigt jedes Set seinen eigenen, richtigen Lernstand, und das Löschen des einen lässt die Lerndaten des anderen vollständig.
 - **AK-34 – Vorlesen** (FR-40): Auf iPhone, iPad und dem Android-Testgerät liest die App englische Vokabeln mit einer englischen Stimme vor, auch offline und als installierte App; ohne passende Stimme erscheint kein Knopf zum Vorlesen.
 - **AK-35 – Schreiben ohne Tastatur** (FR-41): In der Richtung in die Lernsprache lässt sich ein Wort aus angebotenen Buchstaben zusammensetzen, ohne dass die Bildschirmtastatur erscheint; richtige Schreibweisen und akzeptierte Varianten zählen als richtig, die Antwort steht im Protokoll mit dieser Abfrageform.
+- **AK-36 – Lernplan erklären** (FR-42): Die Set-Ansicht eines gelernten Sets nennt unter dem Lernstand die Regel hinter „sicher“ und verweist auf die Hilfeseite „Wie lerne ich mit dem Plan?“; sie erklärt Karteikasten, Abstände, „neu“, „im Aufbau“ und „sicher“ sowie „Wiederholen“, „Neue Vokabeln lernen“ und „Selbst auswählen“, ist ohne Verstöße gegen die Barrierefreiheitsprüfung (NFR-09 bis NFR-13) lesbar und braucht kein Netz. Die Einrichtung und das Ergebnis einer Sitzung nennen, dass für den Lernstand jede Vokabel einmal am Tag zählt.
 
 ### 9.1 Produktindikatoren für spätere Evaluation
 
@@ -590,3 +594,4 @@ Das TDD muss insbesondere sicherstellen, dass die zentrale Produktanforderung er
 | 2.7 | 17. November 2026 | Meilenstein M5 nach einer UX/UI-Durchsicht mit klickbarem Entwurf (5.1, 5.3): neu FR-34 (Bedienung wie eine App) und FR-35 (Installation anbieten, auch einmal in der Bibliothek, mit Umzug, wo die installierte App einen eigenen Speicher hat) mit AK-27 und AK-28; Lernstand schon in der Bibliothek (FR-11), Schnellstart mit der letzten Einrichtung (FR-08), Empty State nennt die lokale Datenhaltung positiv (FR-28); Backup-Erinnerung erst ab drei Lerntagen oder einer 7 Tage alten ersten Antwort, als ruhige Zeile unter den Sets, Backup erklärt sich selbst (FR-31, AK-20) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.8 | 20. November 2026 | Meilenstein M6 „Lernen mit Plan“ nach einer Recherche zur Didaktik des Vokabellernens und einem Brainstorm mit dem Nutzer (5.1, 5.3): Abrufüben in der Sitzung – Fehler später und mehrfach, Multiple Choice erst nach eigenem Erinnern, plausiblere falsche Antworten, lautes Sprechen (FR-09, FR-10, AK-29); neu FR-36 (Lernstand pro Vokabel und Richtung in Phasen eines Karteikastens), FR-37 (Wiederholen nach Plan mit empfohlenem Einstieg, freie Einrichtung bleibt), FR-38 (Vorbereitung auf einen Test), FR-39 (Lernen über mehrere Sets), FR-40 (Vorlesen der Lernsprache), FR-41 (Schreiben ohne Tastatur) mit AK-30 bis AK-35; Antwortdauer im Protokoll (FR-11), empfohlener Einstieg (FR-08), mehrere Sets (FR-07, AK-22), PI-06, R-04 mit FR-36; Ausblick (11) und Abgrenzung (5.2) angepasst | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.9 | 20. November 2026 | Bei der Planung von S-49 präzisiert: Die Set-Ansicht zeigt den Lernstand je Richtung, die Bibliothek knapp für beide zusammen (FR-36) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.10 | 20. November 2026 | Lernplan erklären: FR-42 und AK-36 (Sätze am Ort und eine kurze Hilfeseite zu Karteikasten, Stufen und „Selbst auswählen“), ausgelöst durch die Beobachtung, dass „fällig“, „im Aufbau“ und „Frei lernen“ unerklärt dastanden | Claude (Anthropic), Modell Claude Sonnet 5.5, in Zusammenarbeit mit dem Nutzer |

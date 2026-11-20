@@ -600,6 +600,12 @@ export function practiceView(
           h("h2", { id: "practice-flawless" }, "Fehlerfrei"),
           h("p", null, "Alles beim ersten Mal gewusst."),
         ),
+      // Macht den Plan erlebbar (D-64): Der Lernstand rechnet je Vokabel und Tag nur die erste Antwort.
+      h(
+        "p",
+        { class: "note" },
+        "Für den Lernstand zählt jede Vokabel einmal am Tag. Wann sie wieder dran ist, siehst du in der Bibliothek.",
+      ),
       problem,
     );
     page.setBack(null);

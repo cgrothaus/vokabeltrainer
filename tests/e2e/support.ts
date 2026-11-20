@@ -74,12 +74,12 @@ export async function checkText(page: Page, text: string): Promise<void> {
 
 /** „<Titel> lernen“ in Bibliothek oder Set-Ansicht, dann Start mit der vorbelegten Einrichtung. */
 /**
- * Weg zur Einrichtung in der Set-Ansicht: „Frei lernen“ neben der Hauptaktion nach Plan, ohne Fälliges
+ * Weg zur Einrichtung in der Set-Ansicht: „Selbst auswählen“ neben der Hauptaktion nach Plan, ohne Fälliges
  * und Neues „Lernen“ (D-63). Beide führen zur Einrichtung.
  */
 export const setupLink = (page: Page, title: string) =>
   page.getByRole("link", {
-    name: new RegExp(`^${title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} (frei )?lernen$`),
+    name: new RegExp(`^${title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} (selbst auswählen|lernen)$`),
   });
 
 /**
