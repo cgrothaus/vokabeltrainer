@@ -7,7 +7,13 @@ import { describeDay, firstAttemptRate, type Overview, type SetStats } from "../
 import { entryDetails } from "../components/entryDetails";
 import { frame } from "../components/frame";
 import { learnButton } from "../components/learnButton";
-import { track } from "../components/learningStatus";
+import {
+  describeStages,
+  type DirectionStages,
+  directionStages,
+  splitTrack,
+  track,
+} from "../components/learningStatus";
 import { openSheet } from "../components/sheet";
 import { speakButton } from "../components/speakButton";
 import type { DeleteOutcome, DeletionScope } from "../deleteSet";
@@ -136,7 +142,10 @@ function content(set: StoredSet, context: SetContext, message: Child, errors: No
   void context.loadOverview(set).then(
     (stats) => {
       const now = new Date();
-      overview.replaceChildren(...h("div", null, describeSet(stats.set, now)).childNodes);
+      const directions = directionStages(set, stats.cards);
+      overview.replaceChildren(
+        ...h("div", null, describeSet(stats.set, directions, now)).childNodes,
+      );
       for (const [id, line] of sectionLines) {
         const section = stats.sections.get(id);
         if (section)
@@ -204,8 +213,11 @@ function about(set: StoredSet): Node | null {
   );
 }
 
-/** Lernstand des ganzen Sets als drei Kacheln (TDD 12.6, AK-17, D-50). */
-function describeSet(overview: Overview, now: Date): Child[] {
+/**
+ * Lernstand des ganzen Sets als drei Kacheln (TDD 12.6, AK-17, D-50), darunter je Richtung, wie viele
+ * Vokabeln sicher, im Aufbau und neu sind (12.7, AK-30, D-62).
+ */
+function describeSet(overview: Overview, directions: DirectionStages[], now: Date): Child[] {
   if (overview.sessions === 0 || !overview.lastAt) {
     return [h("p", null, "Mit diesem Set hast du noch nicht gelernt.")];
   }
@@ -231,6 +243,21 @@ function describeSet(overview: Overview, now: Date): Child[] {
           ? "Beim ersten Mal gewusst, in der letzten Sitzung"
           : `Beim ersten Mal gewusst, in den letzten ${recent} Sitzungen`,
       ),
+    h(
+      "ul",
+      { class: "stages" },
+      directions.map(({ label, counts }) =>
+        h(
+          "li",
+          null,
+          h("span", { class: "direction" }, label),
+          " ",
+          splitTrack(counts),
+          " ",
+          h("span", { class: "counts" }, describeStages(counts)),
+        ),
+      ),
+    ),
   ];
 }
 

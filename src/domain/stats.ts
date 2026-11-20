@@ -1,5 +1,7 @@
-// Lernstand und Überblick aus den Antworten eines Sets (TDD 12.6, FR-11, AK-17, D-07). Es gibt keinen
-// gespeicherten Lernstand; alles entsteht in einem Durchlauf über die Events (TAK-15).
+// Lernstand und Überblick aus den Antworten eines Sets (TDD 12.6, 12.7, FR-11, FR-36, AK-17, D-07). Es
+// gibt keinen gespeicherten Lernstand; alles entsteht aus den Events (TAK-15).
+import { entryRev } from "./hash";
+import { type CardState, cardStates } from "./learningState";
 import type { ReviewEvent, StoredSet } from "./model";
 
 type Result = ReviewEvent["result"];
@@ -27,6 +29,8 @@ export interface SetStats {
   sections: Map<string, Overview>;
   /** Nur Einträge mit Antworten. */
   entries: Map<string, EntryStats>;
+  /** Lernstand je Karte (Eintrag und Richtung, `cardKey`), nur Karten mit Antworten (12.7). */
+  cards: Map<string, CardState>;
 }
 
 export const RECENT_SESSIONS = 5;
@@ -108,6 +112,9 @@ export function computeStats(set: StoredSet, events: readonly ReviewEvent[]): Se
   }
   const setScope: Scope = new Map();
   const entries = new Map<string, EntryTally>();
+  const revs = new Map<string, string>();
+  for (const section of set.sections)
+    for (const entry of section.entries) revs.set(entry.id, entryRev(entry));
   for (const event of events) {
     const sectionId = sectionOf.get(event.entryId);
     if (sectionId === undefined) continue;
@@ -121,6 +128,7 @@ export function computeStats(set: StoredSet, events: readonly ReviewEvent[]): Se
     entries: new Map(
       [...entries].map(([id, { lastFirstAt: _, ...entry }]) => [id, entry satisfies EntryStats]),
     ),
+    cards: cardStates(events, revs),
   };
 }
 

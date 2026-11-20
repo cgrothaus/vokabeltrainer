@@ -1058,6 +1058,19 @@ button.play svg.icon {
   background: var(--accent);
 }
 
+/* Geteilter Balken (TDD 12.7): sicher, im Aufbau, der Rest in der Grundfarbe ist neu. */
+.track.split {
+  display: flex;
+}
+
+.track.split > span {
+  border-radius: 0;
+}
+
+.track.split > .building {
+  background: var(--accent-mid);
+}
+
 .status .new {
   color: var(--accent);
   font-weight: 650;
@@ -1229,6 +1242,32 @@ button.continue small {
 
 .overview .note {
   margin-top: 0.5rem;
+}
+
+/* Je Richtung eine Zeile (D-62): Sprachpaar, Balken, Anzahl je Stufe. */
+.stages {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stages li {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.stages .direction {
+  font-size: var(--text-s);
+  font-weight: 650;
+}
+
+.stages .counts {
+  color: var(--muted);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
 }
 
 .contents {

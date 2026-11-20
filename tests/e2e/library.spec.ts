@@ -94,7 +94,10 @@ test("E2E-28 Karten mit Lernstand, Lernen-Knopf als Schnellstart, Weiterlernen, 
   await expect(page.getByText("1 von 3 geschafft")).toBeVisible();
   await endPractice(page);
 
-  await expect(status(WEATHER)).toHaveText("zuletzt heute 100 % beim ersten Mal gewusst");
+  // Sichtbar nur der geteilte Balken; vorgelesen die Stufen je Richtung (D-62).
+  await expect(status(WEATHER)).toHaveText(
+    "zuletzt heute Lernstand Englisch nach Deutsch: 1 im Aufbau, 2 neu; Deutsch nach Englisch: 3 neu",
+  );
   await expect(status(ANIMALS)).toHaveText("Neu · noch nicht gelernt");
   await expect(dock.getByRole("button")).toHaveText(`Weiterlernen ${WEATHER} · 3 Vokabeln`);
 

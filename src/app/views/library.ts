@@ -9,7 +9,7 @@ import { installOffer, type ProtectionNotice } from "../../domain/storageProtect
 import { backupReminder, type ReminderActions } from "../components/backupReminder";
 import { type Frame, frame, iconLink } from "../components/frame";
 import type { IosDevice } from "../components/homeScreen";
-import { libraryStatus } from "../components/learningStatus";
+import { directionStages, libraryStatus } from "../components/learningStatus";
 import { protectionHint, quietRow } from "../components/protectionHint";
 import { focusSoon, h } from "../dom";
 import { icon, type IconName } from "../icons";
@@ -317,7 +317,8 @@ async function showProgress(
     try {
       const stats = await context.loadOverview(set);
       if (signal.aborted) return;
-      line.replaceChildren(...h("span", null, libraryStatus(stats.set, now)).childNodes);
+      const status = libraryStatus(stats.set, directionStages(set, stats.cards), now);
+      line.replaceChildren(...h("span", null, status).childNodes);
     } catch (error) {
       if (signal.aborted) return;
       console.warn("Lernstand nicht lesbar", error);

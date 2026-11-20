@@ -65,6 +65,14 @@ async function expectTiles(page: Page, values: string[], note: string): Promise<
   await expect(overview(page).locator("dd")).toHaveText(values);
   await expect(overview(page).locator(".note")).toHaveText(note);
 }
+/** Zeilen je Richtung unter den Kacheln, Lernsprache → Muttersprache zuerst. */
+async function expectStages(page: Page, counts: [string, string]): Promise<void> {
+  await expect(overview(page).locator(".stages .direction")).toHaveText([
+    "Englisch → Deutsch",
+    "Deutsch → Englisch",
+  ]);
+  await expect(overview(page).locator(".stages .counts")).toHaveText(counts);
+}
 const sectionLine = (page: Page, title: string) =>
   page.locator(".section summary", { hasText: title }).locator(".stats");
 
@@ -90,6 +98,8 @@ test("Set-Ansicht zeigt den Lernstand für Set und Sektionen, auch nach dem Neul
   );
   await expect(sectionLine(page, "Wetter")).toHaveText("1 Sitzung · zuletzt heute · 67 %");
   await expect(sectionLine(page, "Tiere")).toHaveText("noch nicht gelernt");
+  // Je Richtung, wie viele Vokabeln sicher, im Aufbau und neu sind (TDD 12.7, D-62).
+  await expectStages(page, ["3 im Aufbau · 2 neu", "5 neu"]);
 
   await learnSection(page, "Tiere", ["Gewusst", "Gewusst"]);
   await openSet();
@@ -101,5 +111,6 @@ test("Set-Ansicht zeigt den Lernstand für Set und Sektionen, auch nach dem Neul
   );
   await expect(sectionLine(page, "Wetter")).toHaveText("1 Sitzung · zuletzt heute · 67 %");
   await expect(sectionLine(page, "Tiere")).toHaveText("1 Sitzung · zuletzt heute · 100 %");
+  await expectStages(page, ["5 im Aufbau", "5 neu"]);
   expect(errors).toEqual([]);
 });

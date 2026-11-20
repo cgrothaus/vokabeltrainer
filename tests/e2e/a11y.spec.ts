@@ -202,7 +202,8 @@ test("Mit Set: Bibliothek, Set-Ansicht, Löschen, Einrichtung, Karteikarten, Zwi
   await expect(page.locator(".hints")).not.toHaveAttribute("aria-busy");
   findings.push(...(await audit(page, "Bibliothek mit Lernstand, Weiterlernen")));
   await page.getByRole("link", { name: "Wetter", exact: true }).click();
-  await expect(page.locator(".tiles")).toBeVisible();
+  // Mit den Zeilen je Richtung (TDD 12.7).
+  await expect(page.locator(".stages li")).toHaveCount(2);
   findings.push(...(await audit(page, "Set-Ansicht mit Lernstand")));
   await page.getByRole("link", { name: "Wetter lernen" }).click();
   await expect(page.getByRole("region", { name: "Wie beim letzten Mal" })).toBeVisible();
