@@ -15,10 +15,12 @@ import {
   createSet,
   moveEntryIn,
   moveSectionIn,
+  placeEntryIn,
   removeEntry,
   removeSection,
   renameSectionIn,
   saveEntry,
+  type EntryTarget,
   saveSetInfo,
 } from "./app/editSet";
 import { deliverExport, prepareExport } from "./app/exportSet";
@@ -258,7 +260,7 @@ async function start(): Promise<void> {
       },
       takeMessage,
     });
-  const editPage = (_signal: AbortSignal, id: string) =>
+  const editPage = (signal: AbortSignal, id: string) =>
     editSetView(
       {
         loadSet: () => getSet(db, id),
@@ -267,7 +269,10 @@ async function start(): Promise<void> {
         removeSection: (set, sectionId) => removeSection(db, set, sectionId),
         moveSection: (set, sectionId, step) => moveSectionIn(db, set, sectionId, step),
         moveEntry: (set, entryId, step) => moveEntryIn(db, set, entryId, step),
+        placeEntry: (set, entryId, sectionId, index) =>
+          placeEntryIn(db, set, entryId, sectionId, index),
       },
+      signal,
       id,
     );
   const exportPage = (_signal: AbortSignal, id: string) =>
@@ -306,8 +311,8 @@ async function start(): Promise<void> {
     );
   const entryContext = (setId: string) => ({
     loadSet: () => getSet(db, setId),
-    saveEntry: (set: StoredSet, form: EntryForm, entryId?: string) =>
-      saveEntry(db, set, form, entryId),
+    saveEntry: (set: StoredSet, form: EntryForm, target: EntryTarget) =>
+      saveEntry(db, set, form, target),
     removeEntry: (set: StoredSet, entryId: string) => removeEntry(db, set, entryId),
   });
   const entryPage = (signal: AbortSignal, setId: string, entryId: string) =>

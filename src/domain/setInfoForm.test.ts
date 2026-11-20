@@ -129,4 +129,12 @@ describe("checkSectionTitle", () => {
       error: "Der Titel der Sektion ist länger als 200 Zeichen.",
     });
   });
+
+  it("lehnt einen Titel ab, den schon eine andere Sektion trägt, ohne auf Großschreibung zu achten", () => {
+    expect(checkSectionTitle(" wetter", ["Wetter", "Kleidung"])).toEqual({
+      ok: false,
+      error: "Eine Sektion „wetter“ gibt es in diesem Set schon.",
+    });
+    expect(checkSectionTitle("Wetter", ["Kleidung"])).toEqual({ ok: true, title: "Wetter" });
+  });
 });

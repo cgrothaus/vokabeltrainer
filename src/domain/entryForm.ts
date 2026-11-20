@@ -12,8 +12,6 @@ export interface AnswerForm {
 
 /** Nur Texte und Listen, so wie sie in den Feldern stehen. */
 export interface EntryForm {
-  /** Ziel-Sektion; eine andere als bisher verschiebt den Eintrag (TDD 10). */
-  sectionId: string;
   term: AnswerForm;
   meanings: AnswerForm[];
   partOfSpeech: string;
@@ -33,9 +31,8 @@ export interface FormError {
 
 export type FormResult = { ok: true; entry: StoredEntry } | { ok: false; errors: FormError[] };
 
-export function emptyEntryForm(sectionId: string): EntryForm {
+export function emptyEntryForm(): EntryForm {
   return {
-    sectionId,
     term: { text: "", variants: [] },
     meanings: [{ text: "", variants: [] }],
     partOfSpeech: "",
@@ -48,13 +45,12 @@ export function emptyEntryForm(sectionId: string): EntryForm {
   };
 }
 
-export function entryToForm(entry: StoredEntry, sectionId: string): EntryForm {
+export function entryToForm(entry: StoredEntry): EntryForm {
   const answer = (value: StoredEntry["term"]): AnswerForm => ({
     text: value.text,
     variants: [...(value.acceptedVariants ?? [])],
   });
   return {
-    sectionId,
     term: answer(entry.term),
     meanings: entry.meanings.map(answer),
     partOfSpeech: entry.grammar?.partOfSpeech ?? "",
@@ -181,7 +177,6 @@ function canonical(form: EntryForm): string {
   const texts = (values: string[]) => filled(values).map(text);
   const answer = (value: AnswerForm) => [text(value.text), texts(value.variants)];
   return JSON.stringify([
-    form.sectionId,
     answer(form.term),
     form.meanings
       .filter((meaning) => !isBlank(meaning.text) || filled(meaning.variants).length > 0)

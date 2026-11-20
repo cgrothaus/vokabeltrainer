@@ -1,13 +1,14 @@
-// Set exportieren (TDD 11.1, FR-18, D-42): ganzes Set oder einzelne Sektionen als Datei über das
-// Teilen-Menü bzw. als Download, oder als Text in die Zwischenablage, z. B. für einen Chat. Darunter die
-// Korrekturvorlage für den KI-Chat (D-44).
+// Set exportieren (TDD 11.1, FR-18, D-42, D-54): ganzes Set oder einzelne Sektionen (Segmentschalter
+// und Chips) als Datei über das Teilen-Menü bzw. als Download oder als Text in die Zwischenablage, z. B.
+// für einen Chat; beides in der Aktionsleiste. Darunter die Korrektur mit dem KI-Chat als Karte (D-44).
 import type { ExportScope } from "../../domain/exportSet";
 import type { StoredSet } from "../../domain/model";
 import type { Delivery } from "../../platform/deliverFile";
-import { frame } from "../components/frame";
+import { type Frame, frame } from "../components/frame";
 import { promptBox } from "../components/promptBox";
 import type { PreparedExport } from "../exportSet";
 import { type Child, focusSoon, h } from "../dom";
+import { icon } from "../icons";
 
 export interface ExportContext {
   /** `undefined`, wenn es das Set nicht gibt. */
@@ -42,8 +43,8 @@ export function exportView(context: ExportContext, setId: string): Node {
     // Ist die Ansicht schon verlassen, hängt `main` nirgends mehr; das Ersetzen bleibt dann folgenlos.
     (set) => {
       if (!set) return fail("Set nicht gefunden", "Dieses Vokabelset gibt es nicht (mehr).");
-      page.setTitle(set.title);
-      main.replaceChildren(...h("div", null, content(set, context)).childNodes);
+      page.setTitle("Exportieren");
+      main.replaceChildren(...h("div", null, content(set, context, page)).childNodes);
     },
     (error: unknown) => {
       console.error("Set nicht lesbar", error);
@@ -53,7 +54,7 @@ export function exportView(context: ExportContext, setId: string): Node {
   return page.element;
 }
 
-function content(set: StoredSet, context: ExportContext): Child[] {
+function content(set: StoredSet, context: ExportContext, page: Frame): Child[] {
   let whole = true;
   const selected = new Set<string>();
   const scope = (): ExportScope =>
@@ -73,33 +74,43 @@ function content(set: StoredSet, context: ExportContext): Child[] {
   const fallback = h("div");
 
   const sectionList = h(
-    "ul",
-    { class: "section-choice", hidden: true },
+    "div",
+    { class: "toggles", hidden: true },
     set.sections.map((section) =>
       h(
-        "li",
-        null,
+        "label",
+        { class: "toggle" },
+        h("input", {
+          type: "checkbox",
+          value: section.id,
+          onchange: (event: Event) => {
+            if ((event.target as HTMLInputElement).checked) selected.add(section.id);
+            else selected.delete(section.id);
+            update();
+          },
+        }),
         h(
-          "label",
+          "span",
           null,
-          h("input", {
-            type: "checkbox",
-            value: section.id,
-            onchange: (event: Event) => {
-              if ((event.target as HTMLInputElement).checked) selected.add(section.id);
-              else selected.delete(section.id);
-              update();
-            },
-          }),
           h("span", { class: "title" }, section.title),
-          h("span", { class: "count" }, count(section.entries.length, "Eintrag", "Einträge")),
+          " ",
+          h(
+            "span",
+            { class: "count" },
+            String(section.entries.length),
+            h(
+              "span",
+              { class: "visually-hidden" },
+              section.entries.length === 1 ? " Eintrag" : " Einträge",
+            ),
+          ),
         ),
       ),
     ),
   );
   const partHint = h(
     "p",
-    { hidden: true },
+    { class: "muted", hidden: true },
     "Einzelne Sektionen lassen sich nicht als neues Set importieren, nur das ganze Set.",
   );
   const choose = (value: boolean) => {
@@ -116,7 +127,7 @@ function content(set: StoredSet, context: ExportContext): Child[] {
       h("legend", null, "Umfang"),
       h(
         "div",
-        { class: "choices" },
+        { class: "seg" },
         (
           [
             [true, "Ganzes Set"],
@@ -132,7 +143,7 @@ function content(set: StoredSet, context: ExportContext): Child[] {
               checked: value,
               onchange: () => choose(value),
             }),
-            label,
+            h("span", null, label),
           ),
         ),
       ),
@@ -159,7 +170,7 @@ function content(set: StoredSet, context: ExportContext): Child[] {
         }
       },
     },
-    "Datei speichern",
+    h("span", null, "Datei speichern"),
   );
   const copy = h(
     "button",
@@ -181,7 +192,7 @@ function content(set: StoredSet, context: ExportContext): Child[] {
         area.select();
       },
     },
-    "Text kopieren",
+    h("span", null, "Text kopieren"),
   );
   const clear = () => {
     result.textContent = "";
@@ -201,8 +212,67 @@ function content(set: StoredSet, context: ExportContext): Child[] {
   };
   update();
 
+  page.setDock(copy, save);
+
+  const correction = promptBox(
+    {
+      id: "export-correction",
+      heading: "Mit KI-Chat korrigieren",
+      prompt: context.correctionPrompt,
+      label: "Korrekturvorlage kopieren",
+      copyText: context.copyText,
+    },
+    h("p", null, "Ein KI-Chat kann das Set prüfen und korrigieren."),
+    h(
+      "ol",
+      { class: "steps" },
+      h(
+        "li",
+        null,
+        h(
+          "span",
+          null,
+          h("strong", null, "Datei speichern"),
+          " oder ",
+          h("strong", null, "Text kopieren"),
+          " (unten).",
+        ),
+      ),
+      h(
+        "li",
+        null,
+        h(
+          "span",
+          null,
+          h("strong", null, "Vorlage kopieren"),
+          ", in den KI-Chat einfügen und die Datei anhängen – oder den Text darunter einfügen.",
+        ),
+      ),
+      h(
+        "li",
+        null,
+        h(
+          "span",
+          null,
+          "Die ",
+          h("strong", null, "Antwort"),
+          " unter „Vokabelset hinzufügen“ einfügen. Du siehst vorher, was sich ändert.",
+        ),
+      ),
+    ),
+  );
+  correction.classList.add("correction");
+  correction.append(
+    h(
+      "a",
+      { href: "#/import", class: "action secondary" },
+      icon("plus"),
+      h("span", null, "Antwort einfügen"),
+    ),
+  );
+
   return [
-    h("p", { class: "languages" }, "Exportieren"),
+    h("p", { class: "lead" }, set.title),
     h(
       "p",
       null,
@@ -212,25 +282,9 @@ function content(set: StoredSet, context: ExportContext): Child[] {
     ),
     scopeChoice,
     status,
-    h("div", { class: "actions" }, save, copy),
     result,
     problem,
     fallback,
-    promptBox(
-      {
-        id: "export-correction",
-        heading: "Mit KI-Chat korrigieren",
-        prompt: context.correctionPrompt,
-        label: "Korrekturvorlage kopieren",
-        copyText: context.copyText,
-      },
-      h(
-        "p",
-        null,
-        "Ein KI-Chat kann das Set prüfen und korrigieren. Speichere die Datei, kopiere diese Vorlage in den Chat und hänge die Datei an – oder füge den kopierten Text unter der Vorlage ein. Die Antwort fügst du unter ",
-        h("a", { href: "#/import" }, "Vokabelset hinzufügen"),
-        " ein; die App zeigt vorher, was sich ändert.",
-      ),
-    ),
+    correction,
   ];
 }

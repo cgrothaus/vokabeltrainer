@@ -1,21 +1,10 @@
-// Eintragseditor (S-30): E2E-07 – Einträge ändern, ergänzen, verschieben und löschen; die Änderung
+// Eintragseditor (S-30, S-45): E2E-07 – Einträge ändern, ergänzen und löschen; die Änderung
 // bleibt nach dem Neuladen. Zurück mit Änderungen fragt nach (TDD 10, FR-04, FR-05, AK-03, D-41).
 import { expect, type Page, test } from "@playwright/test";
 import type { StoredSet } from "../../src/domain/model";
-import { collectErrors, importSet, importText, readStore, setAction } from "./support";
+import { backButton, collectErrors, importSet, readStore, setAction } from "./support";
 
 const TITLE = "Englisch – Wetter";
-
-/** Zwei Sektionen, damit sich ein Eintrag verschieben lässt. */
-const TWO_SECTIONS = JSON.stringify({
-  format: "vokabeltrainer-set",
-  formatVersion: 1,
-  set: { title: "Englisch – Alltag", termLanguage: "en", meaningLanguage: "de" },
-  sections: [
-    { title: "Wetter", entries: [{ term: "rain", meanings: ["Regen"] }] },
-    { title: "Kleidung", entries: [{ term: "coat", meanings: ["Mantel"] }] },
-  ],
-});
 
 /** Öffnet „Set bearbeiten“ aus der Bibliothek über die Set-Ansicht. */
 async function openEditing(page: Page, title: string): Promise<void> {
@@ -55,13 +44,13 @@ test("E2E-07: Eintrag ändern und ergänzen – nach dem Neuladen da", async ({ 
   await page.getByRole("link", { name: "Eintrag hinzufügen zu „Wetter“" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Neuer Eintrag");
   await field(page, "Wort").fill("wind");
-  await field(page, "Bedeutung 1").fill("Wind");
+  await field(page, "Bedeutung").fill("Wind");
   await page.getByRole("button", { name: "Speichern und nächster Eintrag" }).click();
   await expect(page.getByText("„wind“ gespeichert.", { exact: false })).toBeVisible();
   await expect(field(page, "Wort")).toHaveValue("");
   await expect(field(page, "Wort")).toBeFocused();
   await field(page, "Wort").fill("snow");
-  await field(page, "Bedeutung 1").fill("Schnee");
+  await field(page, "Bedeutung").fill("Schnee");
   await page.getByRole("button", { name: "Speichern", exact: true }).click();
   await expect(entryLinks(page)).toHaveText([
     "rain – Regen",
@@ -73,7 +62,7 @@ test("E2E-07: Eintrag ändern und ergänzen – nach dem Neuladen da", async ({ 
 
   await page.reload();
   await expect(entryLinks(page)).toHaveCount(5);
-  await page.getByRole("link", { name: "Fertig" }).click();
+  await backButton(page).click();
   await page.getByText("Wetter", { exact: true }).click();
   await expect(page.getByText("Notiz: amerikanisch: fall")).toBeVisible();
   await expect(page.getByText("autumn (auch: fall) – Herbst; Spätjahr")).toBeVisible();
@@ -135,7 +124,7 @@ test("E2E-07: Zurück mit Änderungen fragt nach; Verwerfen ändert nichts", asy
   // Speichern aus der Frage heraus.
   await setAction(page, "Bearbeiten");
   await entryLinks(page).filter({ hasText: "sun" }).click();
-  await field(page, "Bedeutung 1").fill("die Sonne");
+  await field(page, "Bedeutung").fill("die Sonne");
   await page.goBack();
   await page.getByRole("dialog").getByRole("button", { name: "Speichern", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(`${TITLE} bearbeiten`);
@@ -159,19 +148,4 @@ test("E2E-07: Eintrag löschen mit Ankündigung", async ({ page }) => {
   await page.getByRole("dialog").getByRole("button", { name: "Eintrag löschen" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(`${TITLE} bearbeiten`);
   await expect(entryLinks(page)).toHaveText(["rain – Regen", "autumn – Herbst"]);
-});
-
-test("E2E-07: Eintrag in eine andere Sektion verschieben", async ({ page }) => {
-  await importText(page, TWO_SECTIONS, "„Englisch – Alltag“ mit 2 Einträgen gespeichert.");
-  await openEditing(page, "Englisch – Alltag");
-  await entryLinks(page).filter({ hasText: "rain" }).click();
-  await page.getByLabel("Sektion", { exact: true }).selectOption({ label: "Kleidung" });
-  await page.getByRole("button", { name: "Speichern", exact: true }).click();
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Englisch – Alltag bearbeiten");
-  const sections = page.locator(".edit-section");
-  await expect(sections.nth(0)).toContainText("Diese Sektion hat noch keine Einträge.");
-  await expect(sections.nth(1).locator(".edit-entries a")).toHaveText([
-    "coat – Mantel",
-    "rain – Regen",
-  ]);
 });

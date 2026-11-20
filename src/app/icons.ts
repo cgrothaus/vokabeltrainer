@@ -25,6 +25,22 @@ const ICONS = {
     ["circle", { cx: "19", cy: "12", r: "1.3" }],
   ],
   plus: [["path", { d: "M12 5v14M5 12h14" }]],
+  sort: [["path", { d: "M8 4v16M4 8l4-4 4 4M16 20V4M12 16l4 4 4-4" }]],
+  grip: [
+    ["circle", { cx: "9", cy: "6", r: "1.4", class: "fill" }],
+    ["circle", { cx: "15", cy: "6", r: "1.4", class: "fill" }],
+    ["circle", { cx: "9", cy: "12", r: "1.4", class: "fill" }],
+    ["circle", { cx: "15", cy: "12", r: "1.4", class: "fill" }],
+    ["circle", { cx: "9", cy: "18", r: "1.4", class: "fill" }],
+    ["circle", { cx: "15", cy: "18", r: "1.4", class: "fill" }],
+  ],
+  up: [["path", { d: "M12 19V5M6 11l6-6 6 6" }]],
+  down: [["path", { d: "M12 5v14M6 13l6 6 6-6" }]],
+  move: [["path", { d: "M3 7h7l2 2h9v10H3zM10 14h6M14 12l2 2-2 2" }]],
+  info: [
+    ["circle", { cx: "12", cy: "12", r: "9" }],
+    ["path", { d: "M12 11v6M12 7.5h.01" }],
+  ],
   chevron: [["path", { d: "M9 6l6 6-6 6" }]],
   help: [
     ["circle", { cx: "12", cy: "12", r: "9" }],

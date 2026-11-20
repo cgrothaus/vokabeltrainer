@@ -352,16 +352,28 @@ test("Bearbeiten: Set bearbeiten, Eintragsformular, Fehler, Frage beim Verlassen
   await expect(page.getByRole("heading", { level: 1 })).toContainText("bearbeiten");
   findings.push(...(await audit(page, "Set bearbeiten")));
 
-  // Ein Eintrag mit Varianten, Grammatik und Beispielen: „Weitere Angaben“ ist dann aufgeklappt.
+  // Sortiermodus mit Griff und Menü am Eintrag (D-54).
+  await page.getByRole("button", { name: "Reihenfolge ändern" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Reihenfolge ändern");
+  findings.push(...(await audit(page, "Reihenfolge ändern")));
+  await page.locator(".sort-list li[data-entry-id] .iconbtn").first().click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  findings.push(...(await audit(page, "Reihenfolge ändern, Menü am Eintrag")));
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Fertig" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("bearbeiten");
+
+  // Ein Eintrag mit Beispielen; „Weitere Angaben“ ist zugeklappt und wird aufgeklappt.
   const entries = page.locator(".edit-entries a");
   const count = await entries.count();
   for (let index = 0; index < count; index++) {
     await entries.nth(index).click();
     await expect(page.getByRole("heading", { name: "Eintrag bearbeiten" })).toBeVisible();
-    if ((await page.locator("details.more[open] .example").count()) > 0) break;
+    if ((await page.locator(".more-details .example").count()) > 0) break;
     await page.goBack();
   }
-  await expect(page.locator("details.more[open] .example").first()).toBeVisible();
+  await page.getByText("Weitere Angaben").click();
+  await expect(page.locator(".more-details .example").first()).toBeVisible();
   findings.push(...(await audit(page, "Eintrag bearbeiten")));
 
   const term = page.getByRole("group", { name: "Wort", exact: true }).getByLabel("Text");
@@ -393,18 +405,28 @@ test("Sets und Sektionen: Anlegen, Angaben, Umbenennen, Sektion löschen", async
   await page.getByLabel("Sprachcode der Lernsprache").fill("en");
   await page.getByRole("button", { name: "Set anlegen" }).click();
   await expect(page.getByRole("heading", { name: "Wetter bearbeiten" })).toBeVisible();
-  await page.getByLabel("Titel der neuen Sektion").fill("Jahreszeiten");
   await page.getByRole("button", { name: "Sektion hinzufügen" }).click();
+  await page.getByLabel("Name der neuen Sektion").fill("Sektion 1");
+  await page.getByRole("button", { name: "Hinzufügen", exact: true }).click();
+  await expect(page.getByLabel("Name der neuen Sektion")).toHaveAttribute("aria-invalid", "true");
+  findings.push(...(await audit(page, "Set bearbeiten, neue Sektion mit Fehler")));
+  await page.getByLabel("Name der neuen Sektion").fill("Jahreszeiten");
+  await page.getByRole("button", { name: "Hinzufügen", exact: true }).click();
   await page.getByRole("link", { name: "Eintrag hinzufügen zu „Sektion 1“" }).click();
   await page.getByRole("group", { name: "Wort", exact: true }).getByLabel("Text").fill("rain");
-  await page.getByRole("group", { name: "Bedeutung 1" }).getByLabel("Text").fill("Regen");
+  await page.getByRole("group", { name: "Bedeutung" }).getByLabel("Text").fill("Regen");
   await page.getByRole("button", { name: "Speichern", exact: true }).click();
-  await page.getByRole("button", { name: "Umbenennen: „Sektion 1“" }).click();
+  await page.getByRole("button", { name: "Sektion „Sektion 1“: weitere Aktionen" }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  findings.push(...(await audit(page, "Menü einer Sektion")));
+  await page.getByRole("dialog").getByRole("button", { name: "Umbenennen" }).click();
   findings.push(...(await audit(page, "Set bearbeiten, Umbenennen")));
   await page.getByRole("button", { name: "Abbrechen" }).click();
-  await page.getByRole("button", { name: "Löschen: „Sektion 1“" }).click();
+  await page.getByRole("button", { name: "Sektion „Sektion 1“: weitere Aktionen" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Sektion löschen" }).click();
+  await expect(page.getByRole("dialog", { name: "Sektion löschen?" })).toBeVisible();
   findings.push(...(await audit(page, "Sektion löschen, Ankündigung")));
-  await page.getByRole("button", { name: "Abbrechen" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Abbrechen" }).click();
 
   await page.getByRole("link", { name: "Angaben bearbeiten" }).click();
   await page.getByText("Weitere Angaben").click();

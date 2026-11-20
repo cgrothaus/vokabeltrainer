@@ -17,7 +17,7 @@ export interface PromptBox {
 const NOT_COPIED =
   "Kopieren hat nicht geklappt. Die Vorlage ist jetzt markiert – kopiere sie über das Menü deines Geräts.";
 
-export function promptBox(box: PromptBox, ...intro: Node[]): Node {
+export function promptBox(box: PromptBox, ...intro: Node[]): HTMLElement {
   const text = h("pre", { class: "prompt", id: `${box.id}-prompt` }, box.prompt);
   const status = h("p", { "aria-live": "polite" });
   const done = `${box.label.replace(/ kopieren$/, "")} kopiert.`;

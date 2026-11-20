@@ -31,7 +31,7 @@ async function renameRain(page: Page, meaning: string): Promise<void> {
   await page.getByRole("link", { name: TITLE, exact: true }).click();
   await setAction(page, "Bearbeiten");
   await page.locator(".edit-entries a").filter({ hasText: "rain" }).click();
-  await field(page, "Bedeutung 1").fill(meaning);
+  await field(page, "Bedeutung").fill(meaning);
   await page.getByRole("button", { name: "Speichern", exact: true }).click();
   await expect(page.locator(".edit-entries a").filter({ hasText: "rain" })).toHaveText(
     `rain – ${meaning}`,
@@ -97,7 +97,7 @@ test("E2E-26 Darstellung folgt dem anderen Tab, ein offenes Formular behält sei
   await page.getByRole("link", { name: TITLE, exact: true }).click();
   await setAction(page, "Bearbeiten");
   await page.locator(".edit-entries a").filter({ hasText: "sun" }).click();
-  await field(page, "Bedeutung 1").fill("Sonnenschein");
+  await field(page, "Bedeutung").fill("Sonnenschein");
 
   const other = await secondTab(page, "#/settings");
   await other.getByRole("radio", { name: "Dunkel" }).check();
@@ -106,7 +106,7 @@ test("E2E-26 Darstellung folgt dem anderen Tab, ein offenes Formular behält sei
   await renameRain(other, "Regenschauer");
 
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Eintrag bearbeiten");
-  await expect(field(page, "Bedeutung 1")).toHaveValue("Sonnenschein");
+  await expect(field(page, "Bedeutung")).toHaveValue("Sonnenschein");
 });
 
 test("E2E-26 Set in einem anderen Tab gelöscht: Die Sitzung endet, ohne etwas zu speichern", async ({

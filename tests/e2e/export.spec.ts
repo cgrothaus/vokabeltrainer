@@ -75,7 +75,8 @@ const SAVED = `„${TITLE}“ mit 4 Einträgen gespeichert.`;
 async function openExport(page: Page): Promise<void> {
   await page.getByRole("link", { name: TITLE, exact: true }).click();
   await setAction(page, "Exportieren");
-  await expect(page.getByRole("heading", { level: 1, name: TITLE })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Exportieren" })).toBeVisible();
+  await expect(page.getByRole("main").getByText(TITLE, { exact: true })).toBeVisible();
 }
 
 /** Neuer Browserkontext mit demselben Gerät: wie ein anderes Gerät. */

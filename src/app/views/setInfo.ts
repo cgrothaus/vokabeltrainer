@@ -15,6 +15,7 @@ import { setInfoFields } from "../components/setInfoFields";
 import { guardUnsaved } from "../components/unsavedGuard";
 import type { InfoOutcome } from "../editSet";
 import { focusSoon, h } from "../dom";
+import { icon, type IconName } from "../icons";
 
 export interface NewSetContext {
   /** Sprachcodes vorhandener Sets für die Auswahl; scheitert das Laden, gibt es nur die gängigen. */
@@ -57,13 +58,31 @@ export function newSetView(context: NewSetContext, signal: AbortSignal): Node {
       infoForm(page, main, signal, {
         title: "Leeres Set anlegen",
         intro:
-          "Ein leeres Set füllst du selbst mit Einträgen. Die erste Sektion legst du gleich mit an; weitere kannst du später ergänzen.",
+          "Ein leeres Set füllst du selbst mit Einträgen. Die erste Sektion legst du gleich mit an.",
         initial: emptySetInfoForm(),
         languages,
         fallback: "#/",
         submitLabel: "Set anlegen",
+        submitIcon: "plus",
         question: "Das neue Set ist noch nicht angelegt.",
-        extra: [h("label", { for: sectionId }, "Erste Sektion"), sectionInput, sectionError],
+        extra: [
+          h(
+            "div",
+            { class: "form-group" },
+            h(
+              "div",
+              { class: "field" },
+              h("label", { for: sectionId }, "Erste Sektion"),
+              sectionInput,
+              h(
+                "p",
+                { class: "hint-text" },
+                "Zum Beispiel das Kapitel oder die Unit. Weitere Sektionen kannst du später ergänzen.",
+              ),
+              sectionError,
+            ),
+          ),
+        ],
         extraChanged: () => sectionTitle.trim() !== FIRST_SECTION,
         showExtraErrors: (errors) => {
           const error = errors.find((item) => item.field === "section");
@@ -101,11 +120,12 @@ export function setInfoView(context: SetInfoContext, signal: AbortSignal, setId:
       }
       infoForm(page, main, signal, {
         title: "Angaben bearbeiten",
-        intro: null,
+        intro: set.title,
         initial: setInfoToForm(set),
         languages,
         fallback: editPath(set.id),
         submitLabel: "Speichern",
+        submitIcon: "check",
         question: "Deine Änderungen an den Angaben sind noch nicht gespeichert.",
         extra: [],
         extraChanged: () => false,
@@ -130,6 +150,7 @@ interface InfoFormOptions {
   languages: string[];
   fallback: string;
   submitLabel: string;
+  submitIcon: IconName;
   question: string;
   /** Weitere Felder unter den Angaben, z. B. die erste Sektion beim Anlegen. */
   extra: Node[];
@@ -153,11 +174,16 @@ function infoForm(
 
   let question: Sheet | null = null;
   const summary = h("div", { role: "alert" });
-  const fields = setInfoFields(form, options.languages);
-  const submit = h("button", { type: "submit" }, options.submitLabel);
+  const fields = setInfoFields(form, options.languages, options.extra);
+  const submit = h(
+    "button",
+    { type: "submit" },
+    icon(options.submitIcon),
+    h("span", null, options.submitLabel),
+  );
   const discardButton = h(
     "button",
-    { type: "button", class: "secondary", onclick: () => discard() },
+    { type: "button", class: "textbtn", onclick: () => discard() },
     "Verwerfen",
   );
 
@@ -217,7 +243,7 @@ function infoForm(
 
   page.setTitle(options.title);
   main.replaceChildren(
-    options.intro ? h("p", null, options.intro) : "",
+    options.intro ? h("p", { class: "lead" }, options.intro) : "",
     summary,
     h(
       "form",
@@ -229,8 +255,7 @@ function infoForm(
         },
       },
       fields.element,
-      ...options.extra,
-      h("div", { class: "actions" }, submit, discardButton),
+      h("div", { class: "form-end" }, h("div", { class: "form-buttons" }, submit), discardButton),
     ),
   );
 }

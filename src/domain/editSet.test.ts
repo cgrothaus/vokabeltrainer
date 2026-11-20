@@ -9,6 +9,7 @@ import {
   moveEntry,
   moveSection,
   newEntryId,
+  placeEntry,
   renameSection,
   replaceEntry,
   updateSetInfo,
@@ -53,21 +54,15 @@ describe("findEntry", () => {
 describe("replaceEntry", () => {
   it("ersetzt einen Eintrag an seiner Stelle und lässt das Übrige unverändert", () => {
     const changed = { ...entry("e1e1e1", "drizzle"), notes: "leicht" };
-    const result = replaceEntry(set, changed, "s1s1s1");
+    const result = replaceEntry(set, changed);
     expect(result?.sections[0]!.entries[0]).toEqual(changed);
     expect(order(result)).toEqual(order(set));
     expect(result?.editCount).toBe(3);
     expect(set.sections[0]!.entries[0]!.term.text).toBe("rain");
   });
 
-  it("verschiebt einen Eintrag ans Ende einer anderen Sektion", () => {
-    const result = replaceEntry(set, entry("e1e1e1", "rain"), "s2s2s2");
-    expect(order(result)).toEqual([["e2e2e2"], ["e3e3e3", "e1e1e1"]]);
-  });
-
-  it("liefert nichts, wenn Eintrag oder Sektion fehlen", () => {
-    expect(replaceEntry(set, entry("fehlt", "x"), "s1s1s1")).toBeUndefined();
-    expect(replaceEntry(set, entry("e1e1e1", "x"), "fehlt")).toBeUndefined();
+  it("liefert nichts, wenn der Eintrag fehlt", () => {
+    expect(replaceEntry(set, entry("fehlt", "x"))).toBeUndefined();
   });
 });
 
@@ -174,11 +169,55 @@ describe("Sektionen", () => {
 });
 
 describe("moveEntry", () => {
-  it("verschiebt innerhalb der Sektion, am Rand bleibt alles", () => {
+  it("verschiebt innerhalb der Sektion", () => {
     expect(order(moveEntry(set, "e2e2e2", -1))).toEqual([["e2e2e2", "e1e1e1"], ["e3e3e3"]]);
     expect(order(moveEntry(set, "e1e1e1", 1))).toEqual([["e2e2e2", "e1e1e1"], ["e3e3e3"]]);
-    expect(moveEntry(set, "e2e2e2", 1)).toBe(set);
-    expect(moveEntry(set, "e3e3e3", -1)).toBe(set);
+  });
+
+  it("wechselt am Rand in die Nachbarsektion: ans Ende der vorigen, an den Anfang der nächsten", () => {
+    expect(order(moveEntry(set, "e2e2e2", 1))).toEqual([["e1e1e1"], ["e2e2e2", "e3e3e3"]]);
+    expect(order(moveEntry(set, "e3e3e3", -1))).toEqual([["e1e1e1", "e2e2e2", "e3e3e3"], []]);
+  });
+
+  it("lässt am Rand des Sets alles, wie es ist", () => {
+    expect(moveEntry(set, "e1e1e1", -1)).toBe(set);
+    expect(moveEntry(set, "e3e3e3", 1)).toBe(set);
     expect(moveEntry(set, "fehlt", 1)).toBeUndefined();
+  });
+});
+
+describe("placeEntry", () => {
+  it("stellt einen Eintrag an eine Stelle derselben Sektion", () => {
+    expect(order(placeEntry(set, "e1e1e1", "s1s1s1", 1))).toEqual([
+      ["e2e2e2", "e1e1e1"],
+      ["e3e3e3"],
+    ]);
+  });
+
+  it("stellt einen Eintrag an eine Stelle einer anderen Sektion", () => {
+    expect(order(placeEntry(set, "e1e1e1", "s2s2s2", 0))).toEqual([
+      ["e2e2e2"],
+      ["e1e1e1", "e3e3e3"],
+    ]);
+    expect(order(placeEntry(set, "e1e1e1", "s2s2s2", 1))).toEqual([
+      ["e2e2e2"],
+      ["e3e3e3", "e1e1e1"],
+    ]);
+  });
+
+  it("begrenzt die Stelle auf das Ende der Sektion", () => {
+    expect(order(placeEntry(set, "e1e1e1", "s2s2s2", 99))).toEqual([
+      ["e2e2e2"],
+      ["e3e3e3", "e1e1e1"],
+    ]);
+  });
+
+  it("liefert das Set unverändert, wenn sich die Stelle nicht ändert", () => {
+    expect(placeEntry(set, "e2e2e2", "s1s1s1", 1)).toBe(set);
+  });
+
+  it("liefert nichts, wenn Eintrag oder Sektion fehlen", () => {
+    expect(placeEntry(set, "fehlt", "s1s1s1", 0)).toBeUndefined();
+    expect(placeEntry(set, "e1e1e1", "fehlt", 0)).toBeUndefined();
   });
 });

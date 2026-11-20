@@ -143,8 +143,14 @@ export function setInfoChanged(form: SetInfoForm, original: SetInfoForm): boolea
 
 export type SectionTitleResult = { ok: true; title: string } | { ok: false; error: string };
 
-/** Titel einer neuen oder umbenannten Sektion: Pflicht, getrimmt und in NFC. */
-export function checkSectionTitle(title: string): SectionTitleResult {
+/**
+ * Titel einer neuen oder umbenannten Sektion: Pflicht, getrimmt und in NFC. `taken`: Titel der übrigen
+ * Sektionen; einen davon lehnt die App ab, auch in anderer Großschreibung (D-54).
+ */
+export function checkSectionTitle(
+  title: string,
+  taken: readonly string[] = [],
+): SectionTitleResult {
   const text = title.trim().normalize("NFC");
   if (text === "") return { ok: false, error: "Der Titel der Sektion fehlt." };
   if (length(text) > MAX_LENGTH.short)
@@ -152,5 +158,8 @@ export function checkSectionTitle(title: string): SectionTitleResult {
       ok: false,
       error: `Der Titel der Sektion ist länger als ${count(MAX_LENGTH.short)} Zeichen.`,
     };
+  const key = (value: string) => value.trim().normalize("NFC").toLocaleLowerCase("de");
+  if (taken.some((other) => key(other) === key(text)))
+    return { ok: false, error: `Eine Sektion „${text}“ gibt es in diesem Set schon.` };
   return { ok: true, title: text };
 }

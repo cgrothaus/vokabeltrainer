@@ -1326,105 +1326,475 @@ a.action.secondary {
   color: var(--ink);
 }
 
-/* Set bearbeiten (TDD 10, D-41): Einträge als Liste von Links zum Formular. */
-.edit-set h2 {
-  margin-top: 2rem;
-  font-size: 1.25rem;
+/* Set bearbeiten (TDD 10, D-41, D-54): Kopfkarte, Sektionen als aufklappbare Karten mit ihren Einträgen,
+   Felder am Ort; im Sortiermodus Listen mit Griff, auf dem Tablet als Spalten. */
+.edit-body {
+  display: grid;
+  gap: 1rem;
 }
 
-.edit-set h2 .count {
-  font-size: 1rem;
-  font-weight: 400;
-  opacity: 0.75;
+.edit-body > *,
+.edit-head > * {
+  min-width: 0;
+}
+
+.edit-head .title {
+  margin: 0;
+  font-weight: 700;
+}
+
+.edit-head p {
+  margin: 0;
+}
+
+.edit-head a.action {
+  justify-self: start;
+  gap: 0.5rem;
+}
+
+.edit-body .hint {
+  margin: 0;
+  font-size: var(--text-s);
+}
+
+.edit-section {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  background: var(--surface);
+}
+
+.edit-section.renaming,
+.edit-section.adding {
+  border: 1.5px solid var(--accent);
+}
+
+/* Eigener Pfeil statt Dreieck: Er dreht sich beim Aufklappen. */
+.edit-section summary {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-height: 56px;
+  padding: 0.625rem 0.875rem;
+  list-style: none;
+  cursor: pointer;
+}
+
+.edit-section summary::-webkit-details-marker {
+  display: none;
+}
+
+.edit-section summary svg.icon {
+  flex: none;
+  color: var(--muted);
+  transition: transform 0.2s ease;
+}
+
+.edit-section[open] summary svg.icon {
+  transform: rotate(90deg);
+}
+
+/* Titel und Zahl in Spannen, damit der Flex-Container das Leerzeichen dazwischen nicht verschluckt. */
+.edit-section summary .title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 650;
+}
+
+.edit-section summary .count {
+  color: var(--muted);
+  font-size: var(--text-s);
 }
 
 .edit-entries {
   margin: 0;
   padding: 0;
   list-style: none;
-}
-
-.edit-entries li {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.25rem 0;
-  border-bottom: 1px solid var(--line);
+  border-top: 1px solid var(--line);
 }
 
 .edit-entries a {
   display: flex;
-  flex: 1 1 auto;
   align-items: center;
-  min-width: 0;
-  min-height: 44px;
+  gap: 0.625rem;
+  min-height: 48px;
+  padding: 0.375rem 0.875rem;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
   overflow-wrap: anywhere;
 }
 
-/* Auf/Ab, Umbenennen, Löschen (D-41): brechen bei schmaler Breite um. */
-.edit-set .tools {
+.edit-entries a > span {
+  flex: 1;
+  min-width: 0;
+}
+
+.edit-entries a > span > span:first-child,
+.sort-list .pair > span:first-child {
+  font-weight: 650;
+}
+
+.edit-entries svg.icon {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--muted);
+}
+
+.edit-section .none {
+  margin: 0;
+  padding: 0.5rem 0.875rem;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: var(--text-s);
+}
+
+.section-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.25rem 0.375rem 0.25rem 0.5rem;
+}
+
+.section-actions a.textbtn {
+  gap: 0.375rem;
+  min-width: 0;
+}
+
+.section-actions a.textbtn svg.icon {
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+
+/* Feld am Ort: Umbenennen und neue Sektion. */
+.inline {
+  display: grid;
+  gap: 0.625rem;
+  padding: 0.875rem;
+}
+
+.inline > * {
+  min-width: 0;
+}
+
+.inline input[type="text"] {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-s);
+  background: var(--paper);
+  color: var(--ink);
+  /* 16px verhindert das automatische Zoomen von iOS beim Fokussieren. */
+  font: inherit;
+  font-size: max(1rem, 16px);
+}
+
+.inline [aria-invalid="true"] {
+  border: 2px solid var(--wrong);
+}
+
+.inline .field-error {
+  margin: 0;
+  color: var(--wrong);
+}
+
+.inline-actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 0.5rem;
 }
 
-.edit-entries .tools {
+button.addcard {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 56px;
+  padding: 0.75rem 1rem;
+  border: 1.5px dashed var(--line);
+  border-radius: var(--radius-m);
+  background: transparent;
+  color: var(--accent);
+  font-weight: 650;
+  text-align: left;
+}
+
+button.addcard span {
+  min-width: 0;
+}
+
+.hint-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-s);
+}
+
+.hint-row svg.icon {
   flex: none;
-  flex-wrap: nowrap;
+  color: var(--accent);
 }
 
-/* Pfeile statt Wörtern, damit je Eintrag zwei Schaltflächen neben den Text passen. */
-button.icon {
-  min-width: 44px;
-  padding: 0.5rem;
+.hint-row > span {
+  min-width: 0;
 }
 
-.edit-set .add-section {
-  margin-top: 2rem;
+.sort-board {
+  display: grid;
+  gap: 1.25rem;
 }
 
-.edit-set form button {
-  margin-top: 0.75rem;
+.sort-section {
+  min-width: 0;
+  overflow: hidden;
+  border: 1.5px solid var(--accent);
+  border-radius: var(--radius-m);
+  background: var(--surface);
 }
 
-/* Eintragseditor (TDD 10): Felder über die volle Breite, kein waagerechtes Scrollen (AK-12). */
+.sort-head {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.25rem 0.25rem 0.875rem;
+  background: var(--accent-soft);
+}
+
+.sort-head h2 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--text-m);
+}
+
+.sort-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sort-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  padding: 0.125rem 0.25rem 0.125rem 0.375rem;
+  border-top: 1px solid var(--line);
+}
+
+.sort-list li[hidden] {
+  display: none;
+}
+
+.sort-list .pair {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0;
+}
+
+.sort-list .drop-empty {
+  justify-content: center;
+  padding: 0.875rem;
+  border-top-style: dashed;
+  color: var(--muted);
+  font-size: var(--text-s);
+}
+
+/* Griff: ziehen ohne Scrollen, Textauswahl und Kontextmenü (iOS); Pfeiltasten verschieben ebenso. */
+button.grip {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border-radius: var(--radius-s);
+  background: none;
+  color: var(--muted);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+button.grip:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.sort-list li.placeholder {
+  outline: 2px dashed var(--accent);
+  outline-offset: -4px;
+  background: var(--accent-soft);
+}
+
+.sort-list li.placeholder > * {
+  visibility: hidden;
+}
+
+.ghost {
+  position: fixed;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  margin: 0;
+  padding: 0.125rem 0.25rem 0.125rem 0.375rem;
+  border: 1.5px solid var(--accent);
+  border-radius: var(--radius-s);
+  background: var(--surface);
+  color: var(--ink);
+  list-style: none;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.22);
+  pointer-events: none;
+  transform: rotate(2deg) scale(1.03);
+}
+
+.ghost .pair {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0;
+}
+
+.ghost .grip {
+  color: var(--accent);
+}
+
+body.dragging,
+body.dragging * {
+  cursor: grabbing !important;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+@media (min-width: 900px) {
+  .sort-board {
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    align-items: start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ghost {
+    transform: none;
+  }
+
+  .edit-section summary svg.icon {
+    transition: none;
+  }
+}
+
+/* Formulare (TDD 10, D-49, D-54): Eintrag, Angaben, leeres Set. Felder in Gruppen auf Karten, Wort und
+   Titel mit der roten Kopflinie der Karteikarte, „Weitere Angaben“ zugeklappt mit Zusammenfassung,
+   Knöpfe am Formularende statt Aktionsleiste. Kein waagerechtes Scrollen (AK-12). */
 .editor {
+  display: grid;
+  gap: 1rem;
   overflow-wrap: anywhere;
 }
 
-.editor fieldset {
+.editor > *,
+.editor form,
+.editor .fields > *,
+.form-group > *,
+.more-body > *,
+.field > * {
   min-width: 0;
-  margin: 1rem 0 0;
-  padding: 0.5rem 1rem 1rem;
-  border: 1px solid var(--line);
-  border-radius: 0.5rem;
 }
 
-.editor legend {
-  padding: 0 0.25rem;
-  font-weight: 600;
+.editor .lead {
+  margin: 0;
+  color: var(--muted);
+}
+
+.editor .fields {
+  display: grid;
+  gap: 1rem;
+}
+
+.form-group {
+  display: grid;
+  gap: 0.625rem;
+  padding: 0.875rem 1rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  background: var(--surface);
+}
+
+/* Kopflinie der Karteikarte: das Wort steht vorn auf der Karte. */
+.form-group.front {
+  box-shadow: inset 0 3px 0 var(--card-rule);
+}
+
+.group-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 32px;
+}
+
+.group-head .label {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+.group-head .iconbtn {
+  margin: -0.375rem -0.625rem -0.375rem 0;
+  color: var(--muted);
+}
+
+.lang-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 30px;
+  height: 22px;
+  padding: 0 0.375rem;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--text-xs);
+  letter-spacing: 0.02em;
 }
 
 .editor label {
-  margin-top: 0.75rem;
+  font-size: var(--text-s);
 }
 
 .editor input[type="text"],
-.edit-set input[type="text"],
 .editor select,
 .editor textarea.plain {
   display: block;
   width: 100%;
-  min-height: 44px;
-  margin: 0.25rem 0 0;
-  padding: 0.5rem;
+  min-height: 48px;
+  margin: 0.375rem 0 0;
+  padding: 0.625rem 0.75rem;
   border: 1px solid var(--line);
-  border-radius: 0.5rem;
-  background-color: var(--surface);
+  border-radius: var(--radius-s);
+  background-color: var(--paper);
   color: var(--ink);
   /* 16px verhindert das automatische Zoomen von iOS beim Fokussieren. */
   font: inherit;
-  font-size: 1rem;
+  font-size: max(1rem, 16px);
+}
+
+.editor input.big {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: 650;
+}
+
+.editor textarea.plain {
+  min-height: 5.5rem;
+  resize: vertical;
 }
 
 /* WebKit hält Auswahllisten in eigener Darstellung auf fester Höhe; ohne sie gilt die Mindesthöhe. Der
@@ -1433,8 +1803,8 @@ button.icon {
   appearance: none;
   padding-right: 2.5rem;
   background-image:
-    linear-gradient(45deg, transparent 50%, currentColor 50%),
-    linear-gradient(135deg, currentColor 50%, transparent 50%);
+    linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
   background-position:
     calc(100% - 1.25rem) 50%,
     calc(100% - 0.9rem) 50%;
@@ -1442,7 +1812,9 @@ button.icon {
   background-repeat: no-repeat;
 }
 
-.editor [aria-invalid="true"] {
+.editor input[aria-invalid="true"],
+.editor select[aria-invalid="true"],
+.editor textarea[aria-invalid="true"] {
   border: 2px solid var(--wrong);
 }
 
@@ -1452,62 +1824,153 @@ button.icon {
   font-weight: 600;
 }
 
-.editor .row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 0.5rem;
+.editor .field-error {
+  color: var(--wrong);
+  font-size: var(--text-s);
 }
 
-.editor .row .grow {
-  flex: 1 1 12rem;
+/* Variante, Wortform: Feld und Entfernen in einer Zeile. */
+.editor .row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.editor .row input[type="text"] {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+.editor .row .iconbtn {
+  color: var(--muted);
+}
+
+.sublabel {
+  margin: 0.125rem 0 0;
+  color: var(--muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+button.textbtn.add {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 0.375rem;
+  padding-left: 0;
+}
+
+button.textbtn.add svg.icon {
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+
+/* „Weitere Angaben“: zugeklappt, daneben gedämpft, was gefüllt ist. */
+.more-details summary .muted {
+  font-weight: 500;
+}
+
+.more-body {
+  display: grid;
+  gap: 1rem;
+  padding: 0 1rem 1rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.375rem;
+}
+
+.field-title {
+  margin: 0;
+  font-size: var(--text-s);
+  font-weight: 600;
+}
+
+.pair-fields {
+  display: grid;
+  gap: 1rem;
+}
+
+.pair-fields > * {
   min-width: 0;
 }
 
-.editor fieldset > button,
-.editor .example > button,
-.editor .fields > button {
-  margin-top: 0.75rem;
-}
-
-.editor .example + .example {
-  margin-top: 1rem;
-  padding-top: 0.5rem;
-  border-top: 1px solid var(--line);
+.editor .example {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.625rem 0.75rem 0.75rem;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-s);
 }
 
 .editor .hint-text {
+  display: block;
   margin: 0.25rem 0 0;
-  opacity: 0.75;
-}
-
-.editor .more {
-  margin-top: 1.5rem;
-}
-
-/* Ohne `display: flex`, sonst verschwindet das Dreieck zum Aufklappen; Höhe über den Innenabstand. */
-.editor .more summary {
-  padding: 0.6rem 0;
-  font-weight: 600;
-  cursor: pointer;
+  color: var(--muted);
+  font-size: var(--text-s);
+  font-weight: 400;
 }
 
 .editor .check {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.75rem;
   min-height: 44px;
+  font-size: var(--text-m);
 }
 
 .editor .check input {
-  width: 1.25rem;
-  height: 1.25rem;
-  margin: 0;
+  flex: none;
+  width: 1.375rem;
+  height: 1.375rem;
+  margin: 0.125rem 0 0;
   accent-color: var(--accent);
 }
 
-.editor form .actions {
-  margin-top: 1.5rem;
+/* Knöpfe am Formularende; ist es zu schmal, stehen sie untereinander. */
+.form-end {
+  display: grid;
+  gap: 0.25rem;
+  max-width: 28rem;
+  margin-top: 0.25rem;
+}
+
+.form-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+}
+
+.form-buttons > button {
+  display: inline-flex;
+  flex: 1 1 12rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  min-height: 54px;
+}
+
+.form-end > .textbtn {
+  justify-self: center;
+  min-height: 44px;
+}
+
+.editor .rows.delete {
+  margin-top: 0.5rem;
+}
+
+@media (min-width: 480px) {
+  .pair-fields {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+
+  .form-end > .textbtn {
+    justify-self: start;
+  }
 }
 
 /* Backup (TDD 11, 13.7) und Einstellungen (TDD 13.5, 13.6): Karten mit Stand, Erklärung, Zeilen. */
@@ -2242,9 +2705,49 @@ a.textbtn {
   margin: 0;
 }
 
-.export h2 {
-  margin-top: 2rem;
-  font-size: 1.25rem;
+/* Exportieren (TDD 11.1, D-54): Umfang als Segmentschalter mit Chips, die Korrektur als Karte. */
+.export {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+
+.export > * {
+  min-width: 0;
+  margin: 0;
+}
+
+.export .lead {
+  color: var(--muted);
+}
+
+.export fieldset {
+  display: grid;
+  gap: 0.625rem;
+  margin: 0;
+}
+
+.export fieldset > * {
+  min-width: 0;
+}
+
+/* `display` der Chips höbe `hidden` sonst auf (S-41). */
+.export [hidden] {
+  display: none;
+}
+
+.export fieldset .toggles {
+  margin-top: 0.25rem;
+}
+
+.export > p:empty,
+.export > div:empty {
+  display: none;
+}
+
+.export .correction a.action {
+  justify-self: start;
+  gap: 0.5rem;
 }
 
 .steps {
@@ -2281,7 +2784,8 @@ a.textbtn {
 }
 
 /* Die Vorlage als Karte wie im Entwurf; die Überschrift klein in Versalien. */
-.help > section {
+.help > section,
+.export > .correction {
   display: grid;
   gap: 0.625rem;
   padding: 1rem;
@@ -2290,12 +2794,14 @@ a.textbtn {
   background: var(--surface);
 }
 
-.help section > * {
+.help section > *,
+.export .correction > * {
   min-width: 0;
   margin: 0;
 }
 
-.help section h2 {
+.help section h2,
+.export .correction h2 {
   color: var(--muted);
   font-size: var(--text-xs);
   font-weight: 650;
@@ -2304,7 +2810,8 @@ a.textbtn {
 }
 
 .help section button,
-.help .inside button {
+.help .inside button,
+.export .correction button {
   justify-self: start;
 }
 

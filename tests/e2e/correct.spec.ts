@@ -141,7 +141,7 @@ test("E2E-09 Konflikt: in App und Datei geändert → beide Fassungen, ohne Wahl
   await setAction(page, "Bearbeiten");
   await page.locator(".edit-entries a").filter({ hasText: "train" }).click();
   await page
-    .getByRole("group", { name: "Bedeutung 1", exact: true })
+    .getByRole("group", { name: "Bedeutung", exact: true })
     .getByLabel("Text", { exact: true })
     .fill("Eisenbahn");
   await page.getByRole("button", { name: "Speichern", exact: true }).click();
@@ -190,6 +190,8 @@ test("Veraltete Vorschau: in einem anderen Tab geändert → nichts gespeichert,
   await other.goto("./");
   await other.getByRole("link", { name: TITLE, exact: true }).click();
   await setAction(other, "Bearbeiten");
+  // Nur die erste Sektion ist aufgeklappt.
+  await other.locator(".edit-section summary").filter({ hasText: "Einkaufen" }).click();
   await other.locator(".edit-entries a").filter({ hasText: "apple" }).click();
   await other.getByText("Weitere Angaben").click();
   await other.getByLabel("Notiz").fill("aus dem anderen Tab");

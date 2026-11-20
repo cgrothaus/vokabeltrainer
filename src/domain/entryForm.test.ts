@@ -15,7 +15,7 @@ const full: StoredEntry = {
 /** Ein gültiges Formular mit Wort und einer Bedeutung. */
 function form(overrides: Partial<EntryForm> = {}): EntryForm {
   return {
-    ...emptyEntryForm("q7h3kd"),
+    ...emptyEntryForm(),
     term: { text: "rain", variants: [] },
     meanings: [{ text: "Regen", variants: [] }],
     ...overrides,
@@ -29,7 +29,7 @@ const errors = (value: EntryForm, previous?: StoredEntry) => {
 
 describe("entryToForm und formToEntry", () => {
   it("ergeben zusammen wieder denselben Eintrag", () => {
-    const result = formToEntry(entryToForm(full, "q7h3kd"), full.id, full);
+    const result = formToEntry(entryToForm(full), full.id, full);
     expect(result).toEqual({ ok: true, entry: full });
   });
 
@@ -39,12 +39,11 @@ describe("entryToForm und formToEntry", () => {
       term: { text: "rain" },
       meanings: [{ text: "Regen" }],
     };
-    expect(entryToForm(minimal, "q7h3kd")).toEqual(form());
+    expect(entryToForm(minimal)).toEqual(form());
   });
 
-  it("legt ein leeres Formular mit einer Bedeutung in der Sektion an", () => {
-    expect(emptyEntryForm("q7h3kd")).toEqual({
-      sectionId: "q7h3kd",
+  it("legt ein leeres Formular mit einer Bedeutung an", () => {
+    expect(emptyEntryForm()).toEqual({
       term: { text: "", variants: [] },
       meanings: [{ text: "", variants: [] }],
       partOfSpeech: "",
@@ -190,11 +189,10 @@ describe("formToEntry", () => {
 });
 
 describe("formChanged", () => {
-  it("erkennt Änderungen an Inhalt, Sektion und Prüfstatus", () => {
-    const original = entryToForm(full, "q7h3kd");
+  it("erkennt Änderungen an Inhalt und Prüfstatus", () => {
+    const original = entryToForm(full);
     expect(formChanged(original, original)).toBe(false);
     expect(formChanged({ ...original, notes: "neu" }, original)).toBe(true);
-    expect(formChanged({ ...original, sectionId: "x4k9pd" }, original)).toBe(true);
     expect(formChanged({ ...original, checked: false }, original)).toBe(true);
     expect(formChanged({ ...original, meanings: [...original.meanings].reverse() }, original)).toBe(
       true,
@@ -202,7 +200,7 @@ describe("formChanged", () => {
   });
 
   it("übersieht Leerraum am Rand und leere Zeilen", () => {
-    const original = entryToForm(full, "q7h3kd");
+    const original = entryToForm(full);
     const padded: EntryForm = {
       ...original,
       term: { text: " autumn ", variants: ["fall", " "] },
@@ -213,7 +211,7 @@ describe("formChanged", () => {
   });
 
   it("sieht ein leeres neues Formular als unverändert an", () => {
-    const empty = emptyEntryForm("q7h3kd");
+    const empty = emptyEntryForm();
     expect(formChanged({ ...empty, meanings: [] }, empty)).toBe(false);
     expect(formChanged({ ...empty, notes: "x" }, empty)).toBe(true);
   });

@@ -17,18 +17,16 @@ import { frame } from "../components/frame";
 import { leaveQuestion } from "../components/leaveQuestion";
 import { openSheet, type Sheet } from "../components/sheet";
 import { guardUnsaved, type UnsavedGuard } from "../components/unsavedGuard";
-import type { EditOutcome, EntryOutcome } from "../editSet";
+import type { EditOutcome, EntryOutcome, EntryTarget } from "../editSet";
 import { type Child, focusSoon, h } from "../dom";
+import { icon } from "../icons";
 
 export interface EntryEditorContext {
   /** `undefined`, wenn es das Set nicht gibt. */
   loadSet: () => Promise<StoredSet | undefined>;
-  saveEntry: (set: StoredSet, form: EntryForm, entryId?: string) => Promise<EntryOutcome>;
+  saveEntry: (set: StoredSet, form: EntryForm, target: EntryTarget) => Promise<EntryOutcome>;
   removeEntry: (set: StoredSet, entryId: string) => Promise<EditOutcome>;
 }
-
-/** Entweder ein vorhandener Eintrag oder ein neuer in einer Sektion. */
-export type EditorTarget = { entryId: string } | { sectionId: string };
 
 const NOT_LOADED = "Das Vokabelset konnte nicht geladen werden. Lade die Seite neu.";
 
@@ -36,7 +34,7 @@ export function entryEditorView(
   context: EntryEditorContext,
   signal: AbortSignal,
   setId: string,
-  target: EditorTarget,
+  target: EntryTarget,
 ): Node {
   const main = h("main", { class: "editor" });
   const page = frame({ back: { parent: `#/edit/${encodeURIComponent(setId)}` } }, main);
@@ -52,11 +50,11 @@ export function entryEditorView(
         const found = findEntry(set, target.entryId);
         if (!found)
           return missing("Eintrag nicht gefunden", "Diesen Eintrag gibt es nicht (mehr).");
-        return editor(main, set, entryToForm(found.entry, found.section.id), target.entryId);
+        return editor(main, set, entryToForm(found.entry), target);
       }
       if (!set.sections.some((section) => section.id === target.sectionId))
         return missing("Sektion nicht gefunden", "Diese Sektion gibt es nicht (mehr).");
-      editor(main, set, emptyEntryForm(target.sectionId));
+      editor(main, set, emptyEntryForm(), target);
     },
     (error: unknown) => {
       console.error("Set nicht lesbar", error);
@@ -66,10 +64,11 @@ export function entryEditorView(
   );
 
   /**
-   * Baut das Formular. `entryId` fehlt bei einem neuen Eintrag; nach „Speichern und nächster Eintrag“
-   * bleibt es so, und das Formular beginnt leer in derselben Sektion.
+   * Baut das Formular. Bei einem neuen Eintrag nennt `target` die Sektion; nach „Speichern und
+   * nächster Eintrag“ bleibt es so, und das Formular beginnt leer in derselben Sektion.
    */
-  function editor(main: HTMLElement, loaded: StoredSet, initial: EntryForm, entryId?: string) {
+  function editor(main: HTMLElement, loaded: StoredSet, initial: EntryForm, target: EntryTarget) {
+    const entryId = "entryId" in target ? target.entryId : undefined;
     let set = loaded;
     let form = structuredClone(initial);
     let original = structuredClone(initial);
@@ -106,32 +105,61 @@ export function entryEditorView(
     const fieldErrors = (field: string) =>
       errors.filter((error) => error.field === field).map((error) => error.message);
 
-    /** Feld mit sichtbarer Beschriftung; Fehler dazu stehen darunter und werden mit vorgelesen. */
+    /**
+     * Feld mit Beschriftung; Fehler dazu stehen darunter und werden mit vorgelesen. `hidden`: Die
+     * Beschriftung ist nur für Screenreader da, sichtbar benennt sie die Gruppe (Wort, Varianten).
+     */
     const textField = (
       id: string,
       label: string,
       value: string,
       update: (value: string) => void,
-      options: { lang?: string; field?: string; multiline?: boolean } = {},
+      options: {
+        lang?: string;
+        field?: string;
+        multiline?: boolean;
+        hidden?: boolean;
+        big?: boolean;
+      } = {},
     ): Child[] => {
       const messages = options.field ? fieldErrors(options.field) : [];
       const props = {
         id,
         lang: options.lang,
+        class: options.big ? "big" : null,
         "aria-invalid": messages.length > 0 ? "true" : null,
         "aria-describedby": messages.length > 0 ? `${id}-error` : null,
-        oninput: (event: Event) => update((event.target as HTMLInputElement).value),
+        oninput: (event: Event) => {
+          update((event.target as HTMLInputElement).value);
+          refreshSummary();
+        },
       };
       const input = options.multiline
         ? h("textarea", { ...props, rows: 3, class: "plain" }, value)
         : h("input", { ...props, type: "text", value, autocomplete: "off" });
       return [
-        h("label", { for: id }, label),
+        h("label", { for: id, class: options.hidden ? "visually-hidden" : null }, label),
         input,
         messages.length > 0 &&
           h("p", { id: `${id}-error`, class: "field-error" }, messages.join(" ")),
       ];
     };
+
+    /** Symbolknopf zum Entfernen, z. B. einer Variante; danach bekommt `focus` den Fokus. */
+    const removeButton = (label: string, symbol: "close" | "trash", remove: () => void) =>
+      h(
+        "button",
+        { type: "button", class: "iconbtn", "aria-label": label, onclick: remove },
+        icon(symbol),
+      );
+
+    const addButton = (id: string, text: string, onclick: () => void) =>
+      h(
+        "button",
+        { type: "button", class: "textbtn add", id, onclick },
+        icon("plus"),
+        h("span", null, text),
+      );
 
     /** Liste einzelner Texte mit „hinzufügen“ und „entfernen“, z. B. Varianten oder Wortformen. */
     const textList = (
@@ -144,49 +172,29 @@ export function entryEditorView(
         h(
           "div",
           { class: "row" },
-          h(
-            "div",
-            { class: "grow" },
-            textField(
-              `${id}-${index}`,
-              names.one(index + 1),
-              value,
-              (text) => (values[index] = text),
-              {
-                lang,
-              },
-            ),
-          ),
-          h(
-            "button",
+          textField(
+            `${id}-${index}`,
+            names.one(index + 1),
+            value,
+            (text) => (values[index] = text),
             {
-              type: "button",
-              class: "secondary",
-              "aria-label": `${names.one(index + 1)} entfernen`,
-              onclick: () => {
-                values.splice(index, 1);
-                render(values.length > index ? `${id}-${index}` : `${id}-add`);
-              },
+              lang,
+              hidden: true,
             },
-            "Entfernen",
           ),
+          removeButton(`${names.one(index + 1)} entfernen`, "close", () => {
+            values.splice(index, 1);
+            render(values.length > index ? `${id}-${index}` : `${id}-add`);
+          }),
         ),
       ),
-      h(
-        "button",
-        {
-          type: "button",
-          class: "secondary",
-          id: `${id}-add`,
-          onclick: () => {
-            values.push("");
-            render(`${id}-${values.length - 1}`);
-          },
-        },
-        names.add,
-      ),
+      addButton(`${id}-add`, names.add, () => {
+        values.push("");
+        render(`${id}-${values.length - 1}`);
+      }),
     ];
 
+    /** Wort oder Bedeutung als Gruppe mit Sprachkürzel, großem Feld und Varianten (D-54). */
     const answerGroup = (
       id: string,
       legend: string,
@@ -196,22 +204,32 @@ export function entryEditorView(
       remove?: () => void,
     ): Node =>
       h(
-        "fieldset",
-        { class: "answer" },
-        h("legend", null, legend),
-        textField(id, "Text", answer.text, (text) => (answer.text = text), { lang, field }),
+        "div",
+        {
+          role: "group",
+          class: id === "term" ? "form-group front" : "form-group",
+          "aria-labelledby": `${id}-legend`,
+        },
+        h(
+          "div",
+          { class: "group-head" },
+          h("span", { class: "lang-badge", "aria-hidden": "true" }, languageBadge(lang)),
+          h("span", { class: "label", id: `${id}-legend` }, legend),
+          remove && removeButton(`${legend} entfernen`, "trash", remove),
+        ),
+        textField(id, "Text", answer.text, (text) => (answer.text = text), {
+          lang,
+          field,
+          hidden: true,
+          big: true,
+        }),
+        answer.variants.length > 0 && h("p", { class: "sublabel" }, "Gilt auch als richtig"),
         textList(
           `${id}-variant`,
           answer.variants,
           { one: (n) => `Variante ${n} von „${legend}“`, add: "Variante hinzufügen" },
           lang,
         ),
-        remove &&
-          h(
-            "button",
-            { type: "button", class: "secondary", onclick: remove },
-            `${legend} entfernen`,
-          ),
       );
 
     /** Auswahl mit bekannten Werten auf Deutsch; ein anderer Wert aus dem Set bleibt wählbar. */
@@ -221,27 +239,49 @@ export function entryEditorView(
       known: Record<string, string>,
       value: string,
       update: (value: string) => void,
-    ): Child[] => {
+    ): Node => {
       const options: [string, string][] = [["", "keine Angabe"], ...Object.entries(known)];
       if (value !== "" && !(value in known)) options.push([value, value]);
-      return [
+      return h(
+        "div",
+        { class: "field" },
         h("label", { for: id }, label),
         h(
           "select",
-          { id, onchange: (event: Event) => update((event.target as HTMLSelectElement).value) },
+          {
+            id,
+            onchange: (event: Event) => {
+              update((event.target as HTMLSelectElement).value);
+              refreshSummary();
+            },
+          },
           options.map(([optionValue, text]) =>
             h("option", { value: optionValue, selected: optionValue === value }, text),
           ),
         ),
-      ];
+      );
     };
 
-    const hasMore = () =>
-      [form.partOfSpeech, form.gender, form.plural, form.notes, ...form.forms].some(
-        (value) => value.trim() !== "",
-      ) ||
-      form.examples.length > 0 ||
-      form.checked ||
+    /** Was unter „Weitere Angaben“ gefüllt ist, damit man es auch zugeklappt sieht. */
+    const filled = () =>
+      [
+        form.partOfSpeech.trim() && "Wortart",
+        form.gender.trim() && "Genus",
+        form.plural.trim() && "Plural",
+        form.forms.some((value) => value.trim()) && "Wortformen",
+        form.examples.length === 1 && "1 Beispiel",
+        form.examples.length > 1 && `${form.examples.length} Beispiele`,
+        form.notes.trim() && "Notiz",
+        form.checked && "geprüft",
+      ].filter((part): part is string => !!part);
+
+    const moreSummary = h("span", { class: "muted" });
+    const refreshSummary = () => {
+      const parts = filled();
+      moreSummary.textContent = parts.length > 0 ? ` · ${parts.join(", ")}` : "";
+    };
+
+    const errorInMore = () =>
       errors.some(
         (error) => !error.field.startsWith("term") && !error.field.startsWith("meanings"),
       );
@@ -249,120 +289,129 @@ export function entryEditorView(
     let moreOpen = false;
 
     const render = (focusId?: string) => {
-      const sections = set.sections.length > 1 && [
-        h("label", { for: "section" }, "Sektion"),
-        h(
-          "select",
-          {
-            id: "section",
-            onchange: (event: Event) =>
-              (form.sectionId = (event.target as HTMLSelectElement).value),
-          },
-          set.sections.map((section) =>
-            h(
-              "option",
-              { value: section.id, selected: section.id === form.sectionId },
-              section.title,
-            ),
-          ),
-        ),
-        h("p", { class: "hint-text" }, "In einer anderen Sektion steht der Eintrag am Ende."),
-      ];
       const more = h(
         "details",
         {
-          class: "more",
-          open: moreOpen || hasMore(),
+          class: "about more-details",
+          id: "entry-more",
+          open: moreOpen || errorInMore(),
           ontoggle: () => (moreOpen = more.open),
         },
-        h("summary", null, "Weitere Angaben"),
-        choice("part-of-speech", "Wortart", PARTS_OF_SPEECH, form.partOfSpeech, (value) => {
-          form.partOfSpeech = value;
-        }),
-        choice("gender", "Genus", GENDERS, form.gender, (value) => (form.gender = value)),
-        textField("plural", "Plural", form.plural, (value) => (form.plural = value), {
-          lang: set.termLanguage,
-          field: "plural",
-        }),
+        h("summary", null, "Weitere Angaben", moreSummary),
         h(
-          "fieldset",
-          null,
-          h("legend", null, "Wortformen"),
-          fieldErrors("forms").length > 0 &&
-            h("p", { class: "field-error" }, fieldErrors("forms").join(" ")),
-          textList(
-            "word-form",
-            form.forms,
-            { one: (n) => `Wortform ${n}`, add: "Wortform hinzufügen" },
-            set.termLanguage,
+          "div",
+          { class: "more-body" },
+          h(
+            "div",
+            { class: "pair-fields" },
+            choice("part-of-speech", "Wortart", PARTS_OF_SPEECH, form.partOfSpeech, (value) => {
+              form.partOfSpeech = value;
+            }),
+            choice("gender", "Genus", GENDERS, form.gender, (value) => (form.gender = value)),
           ),
-        ),
-        h(
-          "fieldset",
-          null,
-          h("legend", null, "Beispiele"),
-          form.examples.map((example, index) =>
-            h(
-              "div",
-              { class: "example" },
-              textField(
-                `example-${index}`,
-                `Beispiel ${index + 1}`,
-                example.text,
-                (value) => (example.text = value),
-                { lang: set.termLanguage, field: `examples.${index}` },
-              ),
-              textField(
-                `example-${index}-translation`,
-                `Übersetzung von Beispiel ${index + 1}`,
-                example.translation,
-                (value) => (example.translation = value),
-                { lang: set.meaningLanguage },
-              ),
-              h(
-                "button",
-                {
-                  type: "button",
-                  class: "secondary",
-                  onclick: () => {
-                    form.examples.splice(index, 1);
-                    render("example-add");
-                  },
-                },
-                `Beispiel ${index + 1} entfernen`,
-              ),
+          h(
+            "div",
+            { class: "field" },
+            textField("plural", "Plural", form.plural, (value) => (form.plural = value), {
+              lang: set.termLanguage,
+              field: "plural",
+            }),
+          ),
+          h(
+            "div",
+            { role: "group", class: "field", "aria-labelledby": "word-forms" },
+            h("p", { class: "field-title", id: "word-forms" }, "Wortformen"),
+            fieldErrors("forms").length > 0 &&
+              h("p", { class: "field-error" }, fieldErrors("forms").join(" ")),
+            textList(
+              "word-form",
+              form.forms,
+              { one: (n) => `Wortform ${n}`, add: "Wortform hinzufügen" },
+              set.termLanguage,
             ),
           ),
           h(
-            "button",
-            {
-              type: "button",
-              class: "secondary",
-              id: "example-add",
-              onclick: () => {
-                form.examples.push({ text: "", translation: "" });
-                render(`example-${form.examples.length - 1}`);
+            "div",
+            { role: "group", class: "field", "aria-labelledby": "examples" },
+            h("p", { class: "field-title", id: "examples" }, "Beispiele"),
+            form.examples.map((example, index) =>
+              h(
+                "div",
+                {
+                  role: "group",
+                  class: "example",
+                  "aria-labelledby": `example-${index}-legend`,
+                },
+                h(
+                  "div",
+                  { class: "group-head" },
+                  h(
+                    "span",
+                    { class: "label", id: `example-${index}-legend` },
+                    `Beispiel ${index + 1}`,
+                  ),
+                  removeButton(`Beispiel ${index + 1} entfernen`, "trash", () => {
+                    form.examples.splice(index, 1);
+                    render("example-add");
+                  }),
+                ),
+                textField(
+                  `example-${index}`,
+                  "Satz",
+                  example.text,
+                  (value) => (example.text = value),
+                  { lang: set.termLanguage, field: `examples.${index}` },
+                ),
+                textField(
+                  `example-${index}-translation`,
+                  "Übersetzung",
+                  example.translation,
+                  (value) => (example.translation = value),
+                  { lang: set.meaningLanguage },
+                ),
+              ),
+            ),
+            addButton("example-add", "Beispiel hinzufügen", () => {
+              form.examples.push({ text: "", translation: "" });
+              render(`example-${form.examples.length - 1}`);
+            }),
+          ),
+          h(
+            "div",
+            { class: "field" },
+            textField("notes", "Notiz", form.notes, (value) => (form.notes = value), {
+              field: "notes",
+              multiline: true,
+            }),
+          ),
+          h(
+            "label",
+            { class: "check" },
+            h("input", {
+              type: "checkbox",
+              id: "checked",
+              checked: form.checked,
+              "aria-describedby": "checked-hint",
+              onchange: (event: Event) => {
+                form.checked = (event.target as HTMLInputElement).checked;
+                refreshSummary();
               },
-            },
-            "Beispiel hinzufügen",
+            }),
+            h(
+              "span",
+              null,
+              "Geprüft",
+              h(
+                "span",
+                { class: "hint-text", id: "checked-hint" },
+                "Du hast den Eintrag mit deiner Vokabelliste verglichen.",
+              ),
+            ),
           ),
         ),
-        textField("notes", "Notiz", form.notes, (value) => (form.notes = value), {
-          field: "notes",
-          multiline: true,
-        }),
-        h(
-          "label",
-          { class: "check" },
-          h("input", {
-            type: "checkbox",
-            id: "checked",
-            checked: form.checked,
-            onchange: (event: Event) => (form.checked = (event.target as HTMLInputElement).checked),
-          }),
-          "Geprüft",
-        ),
       );
+      const meaningName = (index: number) =>
+        form.meanings.length > 1 ? `Bedeutung ${index + 1}` : "Bedeutung";
       fields.replaceChildren(
         h(
           "div",
@@ -371,7 +420,7 @@ export function entryEditorView(
           form.meanings.map((meaning, index) =>
             answerGroup(
               `meaning-${index}`,
-              `Bedeutung ${index + 1}`,
+              meaningName(index),
               meaning,
               set.meaningLanguage,
               `meanings.${index}`,
@@ -387,19 +436,20 @@ export function entryEditorView(
             "button",
             {
               type: "button",
-              class: "secondary",
+              class: "addcard",
               id: "meaning-add",
               onclick: () => {
                 form.meanings.push({ text: "", variants: [] });
                 render(`meaning-${form.meanings.length - 1}`);
               },
             },
-            "Bedeutung hinzufügen",
+            icon("plus"),
+            h("span", null, "Weitere Bedeutung hinzufügen"),
           ),
-          sections,
           more,
         ),
       );
+      refreshSummary();
       if (focusId) document.getElementById(focusId)?.focus();
     };
 
@@ -423,7 +473,7 @@ export function entryEditorView(
       setBusy(true);
       summary.replaceChildren();
       status.textContent = "";
-      const outcome = await context.saveEntry(set, form, entryId);
+      const outcome = await context.saveEntry(set, form, target);
       if (signal.aborted) return false;
       setBusy(false);
       if (outcome.ok) {
@@ -448,7 +498,7 @@ export function entryEditorView(
     const saveAndNext = async () => {
       const saved = form.term.text.trim();
       if (!(await save())) return;
-      form = emptyEntryForm(form.sectionId);
+      form = emptyEntryForm();
       original = structuredClone(form);
       moreOpen = false;
       render("term");
@@ -487,19 +537,34 @@ export function entryEditorView(
       question = null;
     }
 
-    const submit = h("button", { type: "submit" }, "Speichern");
+    const submit = h("button", { type: "submit" }, icon("check"), h("span", null, "Speichern"));
     buttons.push(submit);
+    const discardButton = h(
+      "button",
+      { type: "button", class: "textbtn", onclick: discard },
+      "Verwerfen",
+    );
+    buttons.push(discardButton);
     const actions = h(
       "div",
-      { class: "actions" },
-      submit,
-      entryId === undefined && button("Speichern und nächster Eintrag", () => void saveAndNext()),
-      button("Verwerfen", discard),
+      { class: "form-end" },
+      h(
+        "div",
+        { class: "form-buttons" },
+        submit,
+        entryId === undefined && button("Speichern und nächster Eintrag", () => void saveAndNext()),
+      ),
+      discardButton,
     );
 
+    const sectionTitle = () => {
+      const id =
+        "sectionId" in target ? target.sectionId : findEntry(set, target.entryId)?.section.id;
+      return set.sections.find((section) => section.id === id)?.title;
+    };
     page.setTitle(entryId === undefined ? "Neuer Eintrag" : "Eintrag bearbeiten");
     main.replaceChildren(
-      h("p", { class: "languages" }, set.title),
+      h("p", { class: "lead" }, [set.title, sectionTitle()].filter(Boolean).join(" · ")),
       summary,
       h(
         "form",
@@ -523,7 +588,14 @@ export function entryEditorView(
      * nicht mehr.
      */
     function deletion(id: string): Node {
-      const start = button("Eintrag löschen", () => {
+      const start = h(
+        "button",
+        { type: "button", class: "destructive", onclick: () => ask() },
+        icon("trash"),
+        h("span", null, "Eintrag löschen"),
+      );
+      buttons.push(start);
+      const ask = () => {
         start.disabled = true;
         const remove = h(
           "button",
@@ -560,10 +632,15 @@ export function entryEditorView(
           returnTo: start,
           onDismiss: () => (start.disabled = false),
         });
-      });
-      return h("div", { class: "delete" }, start);
+      };
+      return h("ul", { class: "rows delete" }, h("li", null, start));
     }
   }
 
   return page.element;
+}
+
+/** Kürzel der Sprache für die Gruppe, z. B. „EN“ für `en` oder „EN-GB“ für `en-GB`. */
+function languageBadge(code: string): string {
+  return code.toUpperCase();
 }

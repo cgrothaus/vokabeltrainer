@@ -1,7 +1,7 @@
 // Änderungen an einem Set in der App (TDD 10, FR-02–FR-04): reine Funktionen, die ein neues Set
 // liefern. `editCount` und `updatedAt` setzt erst das Speichern (storage/sets.ts `updateSet`). Fehlt
 // ein Eintrag oder eine Sektion (z. B. inzwischen anderswo gelöscht), ist das Ergebnis `undefined`;
-// eine Verschiebung über den Rand hinaus liefert das Set unverändert.
+// eine Verschiebung, die nichts ändert (z. B. über den Rand des Sets hinaus), liefert dasselbe Set.
 import { createId, freshId, ID_LENGTH, idsInSet, type RandomBytes } from "./ids";
 import type { StoredEntry, StoredSection, StoredSet } from "./model";
 
@@ -67,15 +67,43 @@ export function deleteSection(set: StoredSet, sectionId: string): StoredSet | un
   return { ...set, sections: set.sections.filter((section) => section.id !== sectionId) };
 }
 
-/** Um eine Stelle innerhalb der Sektion; in eine andere Sektion verschiebt `replaceEntry` (D-41). */
+/**
+ * Um eine Stelle nach oben (`-1`) oder unten (`1`). Am Rand der Sektion wechselt der Eintrag in die
+ * Nachbarsektion: nach oben ans Ende der vorigen, nach unten an den Anfang der nächsten (D-54).
+ */
 export function moveEntry(set: StoredSet, entryId: string, step: -1 | 1): StoredSet | undefined {
   const found = findEntry(set, entryId);
   if (!found) return undefined;
   const index = found.section.entries.indexOf(found.entry);
-  const entries = swap(found.section.entries, index, step);
-  if (!entries) return set;
-  return mapSections(set, (section) =>
-    section.id === found.section.id ? { ...section, entries } : section,
+  const target = index + step;
+  if (target >= 0 && target < found.section.entries.length)
+    return placeEntry(set, entryId, found.section.id, target);
+  const neighbour = set.sections[set.sections.indexOf(found.section) + step];
+  if (!neighbour) return set;
+  return placeEntry(set, entryId, neighbour.id, step < 0 ? neighbour.entries.length : 0);
+}
+
+/**
+ * Stellt den Eintrag an die Stelle `index` der Sektion `sectionId`, gezählt ohne den Eintrag selbst;
+ * eine zu große Stelle bedeutet das Ende (Ziehen und „In andere Sektion …“, D-54).
+ */
+export function placeEntry(
+  set: StoredSet,
+  entryId: string,
+  sectionId: string,
+  index: number,
+): StoredSet | undefined {
+  const found = findEntry(set, entryId);
+  if (!found || !set.sections.some((section) => section.id === sectionId)) return undefined;
+  const without = deleteEntry(set, entryId)!;
+  const target = without.sections.find((section) => section.id === sectionId)!;
+  const position = Math.max(0, Math.min(index, target.entries.length));
+  if (found.section.id === sectionId && found.section.entries.indexOf(found.entry) === position)
+    return set;
+  const entries = [...target.entries];
+  entries.splice(position, 0, found.entry);
+  return mapSections(without, (section) =>
+    section.id === sectionId ? { ...section, entries } : section,
   );
 }
 
@@ -104,28 +132,13 @@ export function newEntryId(set: StoredSet, randomBytes: RandomBytes): string {
   return freshId(idsInSet(set), ID_LENGTH.entry, randomBytes);
 }
 
-/**
- * Ersetzt den Eintrag mit derselben ID. Gehört er bisher zu einer anderen Sektion als `sectionId`,
- * kommt er ans Ende der neuen Sektion (D-41).
- */
-export function replaceEntry(
-  set: StoredSet,
-  entry: StoredEntry,
-  sectionId: string,
-): StoredSet | undefined {
-  const found = findEntry(set, entry.id);
-  if (!found || !set.sections.some((section) => section.id === sectionId)) return undefined;
-  if (found.section.id === sectionId) {
-    return mapSections(set, (section) =>
-      section.id === sectionId
-        ? {
-            ...section,
-            entries: section.entries.map((item) => (item.id === entry.id ? entry : item)),
-          }
-        : section,
-    );
-  }
-  return addEntry(deleteEntry(set, entry.id)!, sectionId, entry);
+/** Ersetzt den Eintrag mit derselben ID an seiner Stelle. */
+export function replaceEntry(set: StoredSet, entry: StoredEntry): StoredSet | undefined {
+  if (!findEntry(set, entry.id)) return undefined;
+  return mapSections(set, (section) => ({
+    ...section,
+    entries: section.entries.map((item) => (item.id === entry.id ? entry : item)),
+  }));
 }
 
 /** Hängt den Eintrag ans Ende der Sektion. */

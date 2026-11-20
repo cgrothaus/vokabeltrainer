@@ -11,6 +11,7 @@ import {
   moveEntry,
   moveSection,
   newEntryId,
+  placeEntry,
   renameSection,
   replaceEntry,
   updateSetInfo,
@@ -29,6 +30,9 @@ export type EditOutcome =
 /** Mit Fehlern im Formular; dann ist nichts gespeichert. */
 export type EntryOutcome = EditOutcome | { ok: false; errors: FormError[] };
 
+/** Entweder ein vorhandener Eintrag oder ein neuer am Ende einer Sektion. */
+export type EntryTarget = { entryId: string } | { sectionId: string };
+
 const MISSING_SET =
   "Dieses Set gibt es nicht mehr. Vielleicht wurde es in einem anderen Fenster gelöscht.";
 const CHANGED =
@@ -41,22 +45,24 @@ const LAST_SECTION =
   "Die einzige Sektion lässt sich nicht löschen. Um alles zu löschen, lösche das ganze Set.";
 
 /**
- * Speichert das Formular als Änderung des Eintrags `entryId` oder, ohne `entryId`, als neuen Eintrag
- * am Ende der gewählten Sektion.
+ * Speichert das Formular als Änderung des vorhandenen Eintrags an seiner Stelle oder als neuen Eintrag
+ * am Ende der Sektion; die Sektion wechselt ein Eintrag nur beim Umsortieren (D-54).
  */
 export async function saveEntry(
   db: IDBDatabase,
   set: StoredSet,
   form: EntryForm,
-  entryId?: string,
+  target: EntryTarget,
 ): Promise<EntryOutcome> {
-  const previous = entryId === undefined ? undefined : findEntry(set, entryId);
-  if (entryId !== undefined && !previous) return { ok: false, error: MISSING_ENTRY };
-  const result = formToEntry(form, entryId ?? newEntryId(set, randomBytes), previous?.entry);
+  const previous = "entryId" in target ? findEntry(set, target.entryId) : undefined;
+  if ("entryId" in target && !previous) return { ok: false, error: MISSING_ENTRY };
+  const id = "entryId" in target ? target.entryId : newEntryId(set, randomBytes);
+  const result = formToEntry(form, id, previous?.entry);
   if (!result.ok) return result;
-  const changed = previous
-    ? replaceEntry(set, result.entry, form.sectionId)
-    : addEntry(set, form.sectionId, result.entry);
+  const changed =
+    "entryId" in target
+      ? replaceEntry(set, result.entry)
+      : addEntry(set, target.sectionId, result.entry);
   if (!changed) return { ok: false, error: MISSING_SECTION };
   return save(db, changed, set.editCount, "Der Eintrag wurde nicht gespeichert.");
 }
@@ -116,7 +122,8 @@ export async function addSectionTo(
   set: StoredSet,
   title: string,
 ): Promise<EditOutcome> {
-  const checked = checkSectionTitle(title);
+  const titles = set.sections.map((section) => section.title);
+  const checked = checkSectionTitle(title, titles);
   if (!checked.ok) return { ok: false, error: checked.error };
   const changed = addSection(set, checked.title, randomBytes);
   return save(db, changed, set.editCount, "Die Sektion wurde nicht angelegt.");
@@ -128,7 +135,11 @@ export async function renameSectionIn(
   sectionId: string,
   title: string,
 ): Promise<EditOutcome> {
-  const checked = checkSectionTitle(title);
+  const others = set.sections.filter((section) => section.id !== sectionId);
+  const checked = checkSectionTitle(
+    title,
+    others.map((section) => section.title),
+  );
   if (!checked.ok) return { ok: false, error: checked.error };
   const changed = renameSection(set, sectionId, checked.title);
   if (!changed) return { ok: false, error: MISSING_SECTION };
@@ -157,6 +168,7 @@ export async function moveSectionIn(
   return reorder(db, set, moveSection(set, sectionId, step), MISSING_SECTION);
 }
 
+/** Um eine Stelle; am Rand der Sektion in die Nachbarsektion (D-54). */
 export async function moveEntryIn(
   db: IDBDatabase,
   set: StoredSet,
@@ -164,6 +176,19 @@ export async function moveEntryIn(
   step: -1 | 1,
 ): Promise<EditOutcome> {
   return reorder(db, set, moveEntry(set, entryId, step), MISSING_ENTRY);
+}
+
+/** An die Stelle `index` der Sektion, z. B. nach dem Ziehen oder „In andere Sektion …“ (D-54). */
+export async function placeEntryIn(
+  db: IDBDatabase,
+  set: StoredSet,
+  entryId: string,
+  sectionId: string,
+  index: number,
+): Promise<EditOutcome> {
+  const changed = placeEntry(set, entryId, sectionId, index);
+  if (!changed && findEntry(set, entryId)) return { ok: false, error: MISSING_SECTION };
+  return reorder(db, set, changed, MISSING_ENTRY);
 }
 
 async function reorder(
