@@ -1,11 +1,19 @@
 // Bibliothek (TDD 13.1, FR-02, FR-11): Sets als Karten nach Lernsprache, je mit Lernstand und
-// Lernen-Knopf (Schnellstart, 12.1), unten „Weiterlernen“ mit dem zuletzt gelernten Set. Der Lernstand
-// wird nachgeladen, ein Set nach dem anderen, das zuletzt gelernte zuerst (12.6, D-50).
+// Lernen-Knopf (Schnellstart, 12.1), je Sprachpaar mit mehreren Sets „Zusammen lernen“ (12.10), unten
+// „Weiterlernen“ mit dem zuletzt gelernten Set bzw. der Zusammenstellung. Der Lernstand wird
+// nachgeladen, ein Set nach dem anderen, das zuletzt gelernte zuerst (12.6, D-50).
 import type { Reminder } from "../../domain/backupReminder";
 import { dayNumber } from "../../domain/learningState";
 import type { StoredSet } from "../../domain/model";
-import { FRESH_ONLY, planSummary } from "../../domain/plan";
-import { groupSets, setSize } from "../../domain/library";
+import { FRESH_ONLY, planSummary, planSummaryAcross } from "../../domain/plan";
+import {
+  groupSets,
+  joinTitles,
+  type LanguagePair,
+  pairsToCombine,
+  type SetGroup,
+  setSize,
+} from "../../domain/library";
 import type { SetStats } from "../../domain/stats";
 import { installOffer, type ProtectionNotice } from "../../domain/storageProtection";
 import { backupReminder, type ReminderActions } from "../components/backupReminder";
@@ -46,6 +54,8 @@ export interface LibraryContext extends ReminderActions, InstallActions {
   loadOverview: (set: StoredSet) => Promise<SetStats>;
   /** Schnellstart (TDD 12.1): startet mit der gemerkten Einrichtung oder öffnet die Einrichtung. */
   startLearning: (set: StoredSet) => Promise<void>;
+  /** „Weiterlernen“ mit mehreren Sets (TDD 12.10): Plan, sonst die gemerkte freie Auswahl. */
+  startTogether: (sets: StoredSet[]) => Promise<void>;
   /** Speichert das Beispielset (Empty State); bei Erfolg wechselt die App zur Set-Ansicht. */
   loadSampleSet: () => Promise<SampleOutcome>;
   /** Meldung aus dem vorigen Schritt, z. B. nach Import oder Löschen; wird beim Abholen geleert. */
@@ -103,11 +113,11 @@ export function libraryView(context: LibraryContext, signal: AbortSignal): Node 
     h("main", { class: "library" }, message, problem, greeting, hints, sets, more),
   );
 
-  const learn = async (set: StoredSet, button: HTMLButtonElement) => {
+  const learn = async (target: StoredSet | StoredSet[], button: HTMLButtonElement) => {
     button.disabled = true;
     problem.replaceChildren();
     try {
-      await context.startLearning(set);
+      await (Array.isArray(target) ? context.startTogether(target) : context.startLearning(target));
     } catch (error) {
       console.error("Lernsitzung nicht gestartet", error);
       problem.textContent = failureMessage(error, NOT_STARTED);
@@ -199,7 +209,7 @@ function installRow(context: LibraryContext, state: { dismissed: boolean }): Nod
   return row;
 }
 
-type Learn = (set: StoredSet, button: HTMLButtonElement) => Promise<void>;
+type Learn = (target: StoredSet | StoredSet[], button: HTMLButtonElement) => Promise<void>;
 
 /** Liefert die Sets, bei leerer Bibliothek `[]` (Empty State), `null`, wenn sie nicht lesbar sind. */
 async function showSets(
@@ -231,11 +241,33 @@ async function showSets(
           { class: "sets" },
           group.sets.map((set) => setCard(set, learn, lines)),
         ),
+        togetherRows(group),
       ])
-      .flat(),
+      .flat()
+      .filter((node): node is Node => node !== null),
   );
   return sets;
 }
+
+/** „Zusammen lernen“ je Sprachpaar mit mindestens zwei Sets (TDD 12.10). */
+function togetherRows(group: SetGroup): Node | null {
+  const pairs = pairsToCombine(group);
+  if (pairs.length === 0) return null;
+  // Lernt man in einer Gruppe in mehrere Sprachen, nennt die Zeile das Paar.
+  const several = new Set(group.sets.map((set) => set.meaningLanguage)).size > 1;
+  const label = (pair: LanguagePair) =>
+    several
+      ? `Zusammen lernen: ${languageName(pair.termLanguage)} → ${languageName(pair.meaningLanguage)}`
+      : "Zusammen lernen";
+  return h(
+    "ul",
+    { class: "rows combine" },
+    pairs.map((pair) => row(togetherHref(pair), "stack", label(pair))),
+  );
+}
+
+const togetherHref = ({ termLanguage, meaningLanguage }: Omit<LanguagePair, "sets">) =>
+  `#/together/${encodeURIComponent(termLanguage)}/${encodeURIComponent(meaningLanguage)}`;
 
 /** `lines`: Zeile für den Lernstand je Set, gefüllt von `showProgress`. */
 function setCard(set: StoredSet, learn: Learn, lines: Map<string, HTMLElement>): Node {
@@ -288,19 +320,38 @@ async function showProgress(
   });
   if (signal.aborted) return;
   const next = start.continueWith;
+  const together = start.continueTogether;
   // Zusatz unter „Weiterlernen“; sobald der Lernstand des Sets da ist, nennt er das Fällige (D-63).
   const detail = h("small", null);
-  if (next) {
+  if (next || together) {
     const button: HTMLButtonElement = h(
       "button",
-      { type: "button", class: "continue", onclick: () => learn(next.set, button) },
+      {
+        type: "button",
+        class: "continue",
+        onclick: () => learn(together ?? next!.set, button),
+      },
       icon("play"),
       h("span", null, "Weiterlernen", " ", detail),
     );
-    detail.textContent =
-      next.count === undefined ? next.set.title : `${next.set.title} · ${vocabulary(next.count)}`;
+    detail.textContent = together
+      ? `Zusammen: ${joinTitles(together)}`
+      : next!.count === undefined
+        ? next!.set.title
+        : `${next!.set.title} · ${vocabulary(next!.count)}`;
     page.setDock(button);
   }
+  // Lernstand der Zusammenstellung, sobald alle ihre Sets geladen sind.
+  const loaded = new Map<string, SetStats>();
+  const showTogether = (today: number) => {
+    if (!together || together.some((set) => !loaded.has(set.id))) return;
+    const parts = together.map((set) => ({ set, cards: loaded.get(set.id)!.cards }));
+    const plan = planSummaryAcross(parts, today);
+    const titles = `Zusammen: ${joinTitles(together)}`;
+    if (plan.due > 0) detail.textContent = `${titles} · ${plan.due} fällig`;
+    else if (plan.fresh > 0)
+      detail.textContent = `${titles} · ${Math.min(plan.fresh, FRESH_ONLY)} neue Vokabeln`;
+  };
   const first = start.order
     .map((id) => sets.find((set) => set.id === id))
     .filter((set): set is StoredSet => set !== undefined);
@@ -312,6 +363,8 @@ async function showProgress(
     try {
       const stats = await context.loadOverview(set);
       if (signal.aborted) return;
+      loaded.set(set.id, stats);
+      showTogether(today);
       const plan = planSummary(set, stats.cards, today);
       const status = libraryStatus(stats.set, directionStages(set, stats.cards), plan, now);
       if (set === next?.set && plan.due > 0)

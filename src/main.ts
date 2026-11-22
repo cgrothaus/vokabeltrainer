@@ -30,10 +30,14 @@ import { loadSampleSet } from "./app/sampleSet";
 import { loadLibraryStart } from "./app/library";
 import {
   beginPlanned,
+  beginPlannedTogether,
   beginPractice,
+  beginTogether,
   currentPractice,
   recommendedStart,
+  recommendedTogether,
   rememberedSetup,
+  rememberedTogether,
 } from "./app/practice";
 import { replaceRoute, type Router, startRouter } from "./app/router";
 import { loadSpeakAloud, saveSpeakAloud } from "./app/speech";
@@ -47,6 +51,7 @@ import { helpView } from "./app/views/help";
 import { learningHelpView } from "./app/views/learningHelp";
 import { importView } from "./app/views/import";
 import { learnView } from "./app/views/learn";
+import { togetherView } from "./app/views/together";
 import { libraryView } from "./app/views/library";
 import { notFoundView } from "./app/views/notFound";
 import { practiceView } from "./app/views/practice";
@@ -226,6 +231,13 @@ async function start(): Promise<void> {
               ? "#/practice"
               : `#/learn/${encodeURIComponent(set.id)}`;
         },
+        startTogether: async (sets) => {
+          const [first] = sets;
+          location.hash =
+            (await recommendedTogether(db, sets)) === "started"
+              ? "#/practice"
+              : `#/together/${encodeURIComponent(first!.termLanguage)}/${encodeURIComponent(first!.meaningLanguage)}`;
+        },
         loadSampleSet: async () => {
           const outcome = await loadSampleSet(db);
           if (outcome.ok) {
@@ -353,6 +365,25 @@ async function start(): Promise<void> {
       },
       id,
     );
+  const togetherPage = (_signal: AbortSignal, term: string, meaning: string) =>
+    togetherView(
+      {
+        loadSets: () => listSets(db),
+        loadOverview: (set) => loadOverview(db, set),
+        loadSetup: (candidates) => rememberedTogether(db, candidates),
+        startPlanned: async (sets) => {
+          const started = await beginPlannedTogether(db, sets);
+          if (started) location.hash = "#/practice";
+          return started;
+        },
+        startPractice: async (candidates, setup) => {
+          await beginTogether(db, candidates, setup);
+          location.hash = "#/practice";
+        },
+      },
+      term,
+      meaning,
+    );
   const practicePage = (signal: AbortSignal) =>
     practiceView(currentPractice(), signal, { speaker: speakerFor, auto: () => speakAloud });
   const backupPage = () =>
@@ -426,6 +457,7 @@ async function start(): Promise<void> {
       "/help": helpPage,
       "/help/learning": learningHelpView,
       "/learn/*": learnPage,
+      "/together/*/*": togetherPage,
       "/practice": practicePage,
       "/backup": backupPage,
       "/settings": settingsPage,

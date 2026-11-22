@@ -239,7 +239,8 @@ function* candidates(
   const correct = acceptedAnswers(entry, side);
   const shown = new Set<string>();
   for (const candidate of pool) {
-    if (candidate.id === entry.id) continue;
+    // Der Eintrag selbst; Eintrags-IDs sind nur innerhalb eines Sets eindeutig (TDD 12.10).
+    if (candidate === entry) continue;
     if ([...acceptedAnswers(candidate, side)].some((answer) => correct.has(answer))) continue;
     const display = comparable(sideText(candidate, side));
     if (shown.has(display)) continue;

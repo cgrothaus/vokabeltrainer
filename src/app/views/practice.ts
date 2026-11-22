@@ -74,7 +74,6 @@ export function practiceView(
     setUpdateBlocked(false);
   });
 
-  const { set } = practice;
   const main = h("main", { class: "practice" });
 
   // Vorlesen nur der Lernsprache (TDD 12.11): Der Knopf erscheint, sobald das Wort zu sehen ist und die
@@ -87,7 +86,7 @@ export function practiceView(
     slot.replaceChildren(speakButton(text, say));
     if (speech.auto()) say(text);
   };
-  void speech.speaker(set.termLanguage).then((found) => {
+  void speech.speaker(practice.termLanguage).then((found) => {
     say = found;
     // Die erste Karte steht meist schon da, bevor die Stimme bereit ist: für sie nachholen.
     if (found && offered?.slot.isConnected) offerSpeech(offered.slot, offered.text);
@@ -134,7 +133,7 @@ export function practiceView(
   );
 
   const details = (entry: StoredEntry): Node[] =>
-    hasDetails(entry) ? [h("div", { class: "details" }, entryDetails(entry, set))] : [];
+    hasDetails(entry) ? [h("div", { class: "details" }, entryDetails(entry, practice))] : [];
 
   // Was gerade zu sehen ist; eine Antwort, die erst danach gespeichert ist, rückt nicht mehr vor.
   let screen: "cards" | "pause" | "result" = "cards";
@@ -196,9 +195,9 @@ export function practiceView(
     const speakSlot = h("span", { class: "speak-slot" });
     const [promptLanguage, answerLanguage] =
       card.direction === "termToMeaning"
-        ? [set.termLanguage, set.meaningLanguage]
-        : [set.meaningLanguage, set.termLanguage];
-    page.setTitle(set.title);
+        ? [practice.termLanguage, practice.meaningLanguage]
+        : [practice.meaningLanguage, practice.termLanguage];
+    page.setTitle(practice.title);
     page.setBack({
       label: "Beenden",
       icon: "close",
@@ -533,9 +532,9 @@ export function practiceView(
           return h(
             "li",
             null,
-            h("span", { class: "term", lang: set.termLanguage }, sideText(entry, "term")),
+            h("span", { class: "term", lang: practice.termLanguage }, sideText(entry, "term")),
             " – ",
-            h("span", { lang: set.meaningLanguage }, sideText(entry, "meanings")),
+            h("span", { lang: practice.meaningLanguage }, sideText(entry, "meanings")),
           );
         }),
       ),

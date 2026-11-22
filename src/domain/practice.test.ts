@@ -408,6 +408,14 @@ describe("distractors", () => {
     const rest = [entry("r", "old", "alt")];
     expect(distractors(big, "termToMeaning", preferred, rest).map((c) => c.id)).toEqual(["p", "r"]);
   });
+
+  it("nimmt Einträge aus anderen Sets der Sitzung, auch mit gleicher Eintrags-ID (TDD 12.10)", () => {
+    // Eintrags-IDs sind nur innerhalb eines Sets eindeutig.
+    const elsewhere = entry("big", "tall", "hoch");
+    const pool = [big, elsewhere, entry("x", "small", "klein")];
+    const found = distractors(big, "termToMeaning", pool, []);
+    expect(found.map((c) => sideText(c, "meanings"))).toEqual(["hoch", "klein"]);
+  });
 });
 
 describe("multipleChoice", () => {

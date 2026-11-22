@@ -1,19 +1,17 @@
 // Sitzung einrichten (TDD 12.1, FR-07, FR-08, D-27): oben „Wie beim letzten Mal“ mit der gemerkten
 // Einrichtung, darunter Sektionen als Chips, Richtung und Anzahl als Segmentschalter und der Anteil an
 // Multiple Choice, vorbelegt mit der gemerkten Einrichtung oder der Voreinstellung.
-import type { Direction, StoredSet } from "../../domain/model";
+import type { StoredSet } from "../../domain/model";
 import {
-  type CountChoice,
-  countOptions,
   defaultSetup,
   describeSetup,
   effectiveCount,
   fitCount,
-  MC_SHARE_STEP,
   type PracticeSetup,
   selectedEntryCount,
 } from "../../domain/practiceSetup";
 import { type Frame, frame } from "../components/frame";
+import { setupOptions } from "../components/setupOptions";
 import { focusSoon, h } from "../dom";
 import { icon } from "../icons";
 import { languageName } from "../languages";
@@ -72,27 +70,18 @@ function form(
 ): Node[] {
   const initial = remembered ?? defaultSetup(set);
   const selected = new Set(initial.sectionIds);
-  let direction = initial.direction;
-  // Die gewählte Stufe bleibt, auch wenn sie bei kleinerer Auswahl zeitweise als „alle“ erscheint.
-  let chosenCount = initial.count;
-  let mcShare = initial.mcShare;
-
-  const term = languageName(set.termLanguage);
-  const meaning = languageName(set.meaningLanguage);
-  const directions: [Direction | "mixed", string][] = [
-    ["termToMeaning", `${term} → ${meaning}`],
-    ["meaningToTerm", `${meaning} → ${term}`],
-    ["mixed", "Gemischt"],
-  ];
+  const options = setupOptions(
+    initial,
+    { term: languageName(set.termLanguage), meaning: languageName(set.meaningLanguage) },
+    () => update(),
+  );
 
   const sectionIds = () => set.sections.map((s) => s.id).filter((id) => selected.has(id));
   const available = () => selectedEntryCount(set, sectionIds());
-  const setup = (): PracticeSetup => ({
-    sectionIds: sectionIds(),
-    direction,
-    count: fitCount(chosenCount, available()),
-    mcShare,
-  });
+  const setup = (): PracticeSetup => {
+    const chosen = options.value();
+    return { ...chosen, sectionIds: sectionIds(), count: fitCount(chosen.count, available()) };
+  };
 
   const boxes = set.sections.map((section) =>
     h("input", {
@@ -155,56 +144,6 @@ function form(
       ),
     );
 
-  const directionChoice = h(
-    "fieldset",
-    null,
-    h("legend", null, "Richtung"),
-    h(
-      "div",
-      { class: "seg" },
-      directions.map(([value, label]) =>
-        h(
-          "label",
-          null,
-          h("input", {
-            type: "radio",
-            name: "direction",
-            value,
-            checked: value === direction,
-            onchange: () => (direction = value),
-          }),
-          h("span", null, label),
-        ),
-      ),
-    ),
-  );
-
-  const countChoices = h("div", { class: "seg" });
-  const countChoice = h("fieldset", null, h("legend", null, "Anzahl"), countChoices);
-  const shareText = () => `${mcShare} % (Rest: Karteikarten)`;
-  const shareValue = h("span", { class: "share-value" }, shareText());
-  const slider = h("input", {
-    type: "range",
-    id: "mc-share",
-    min: 0,
-    max: 100,
-    step: MC_SHARE_STEP,
-    value: mcShare,
-    "aria-valuetext": `${mcShare} Prozent`,
-    oninput: () => {
-      mcShare = slider.valueAsNumber;
-      shareValue.textContent = shareText();
-      slider.setAttribute("aria-valuetext", `${mcShare} Prozent`);
-    },
-  });
-  const shareChoice = h(
-    "div",
-    { class: "share" },
-    h("label", { for: "mc-share" }, "Multiple Choice"),
-    slider,
-    shareValue,
-  );
-
   const status = h("p", { "aria-live": "polite", class: "selection" });
   const problem = h("div", { role: "alert" });
   // In der Aktionsleiste, also außerhalb des Formulars; `form` verbindet beide (TDD 13.7).
@@ -215,36 +154,10 @@ function form(
     class: remembered ? "secondary" : null,
   });
 
-  const renderCounts = (total: number) => {
-    const shown = fitCount(chosenCount, total);
-    countChoices.replaceChildren(
-      ...countOptions(total).map((option: CountChoice) =>
-        h(
-          "label",
-          null,
-          h("input", {
-            type: "radio",
-            name: "count",
-            value: String(option),
-            checked: option === shown,
-            onchange: () => {
-              chosenCount = option;
-              update();
-            },
-          }),
-          h("span", null, option === "all" ? `alle (${total})` : String(option)),
-        ),
-      ),
-    );
-  };
-
-  let shownTotal = -1;
   const update = () => {
     const total = available();
-    // Nur bei geänderter Auswahl neu aufbauen, sonst verlöre die gewählte Stufe den Fokus.
-    if (total !== shownTotal) renderCounts(total);
-    shownTotal = total;
-    const cards = effectiveCount(chosenCount, total);
+    options.setAvailable(total);
+    const cards = effectiveCount(options.value().count, total);
     status.textContent =
       total === 0
         ? "Wähle mindestens eine Sektion."
@@ -310,9 +223,9 @@ function form(
         },
       },
       sections,
-      directionChoice,
-      countChoice,
-      shareChoice,
+      options.direction,
+      options.count,
+      options.share,
       status,
     ),
     problem,

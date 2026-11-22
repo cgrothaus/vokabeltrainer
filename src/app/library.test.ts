@@ -8,7 +8,7 @@ import { readLearningOrder } from "../storage/sessions";
 import { addSet } from "../storage/sets";
 import { setSetting } from "../storage/settings";
 import { loadLibraryStart } from "./library";
-import { currentPractice, quickStart } from "./practice";
+import { beginTogether, currentPractice, quickStart } from "./practice";
 
 let db: IDBDatabase;
 
@@ -89,7 +89,7 @@ describe("quickStart", () => {
     await remember(large, 10);
     expect(await startLater(large)).toBe("started");
     const practice = currentPractice()!;
-    expect(practice.set.id).toBe(large.id);
+    expect(practice.title).toBe(large.title);
     expect(practice.state.total).toBe(10);
     expect((await readLearningOrder(db)).order).toEqual([large.id]);
   });
@@ -144,5 +144,28 @@ describe("loadLibraryStart", () => {
     expect(
       (await loadLibraryStart(db, [{ ...large, sections: empty.sections }])).continueWith,
     ).toBeUndefined();
+  });
+
+  it("nennt nach einer Sitzung über mehrere Sets die gemerkte Zusammenstellung (TDD 12.10)", async () => {
+    await remember(large, 10);
+    await learn(large);
+    vi.setSystemTime(Date.now() + 60_000);
+    const setup = {
+      setIds: [small.id, large.id],
+      direction: "termToMeaning",
+      // Alle: Bei einer zufälligen Teilmenge könnten alle Karten aus einem Set stammen.
+      count: "all",
+      mcShare: 0,
+    } as const;
+    await beginTogether(db, [large, small], setup);
+    // Erst mit einer Antwort zählt die Sitzung.
+    expect((await loadLibraryStart(db, [large, small])).continueTogether).toBeUndefined();
+    await currentPractice()!.answer("correct");
+    const start = await loadLibraryStart(db, [large, small, empty]);
+    // In der gemerkten Reihenfolge.
+    expect(start.continueTogether).toEqual([small, large]);
+    expect(start.continueWith).toBeUndefined();
+    // Ist eines der Sets gelöscht, bleibt das zuletzt gelernte Set.
+    expect((await loadLibraryStart(db, [small])).continueTogether).toBeUndefined();
   });
 });

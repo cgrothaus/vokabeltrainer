@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { groupSets, setSize } from "./library";
+import { groupSets, joinTitles, pairsToCombine, setSize } from "./library";
 import type { StoredSet } from "./model";
 
 let nextId = 0;
@@ -103,5 +103,43 @@ describe("setSize", () => {
 
   it("zählt ein leeres Set als null", () => {
     expect(setSize(set("A"))).toEqual({ sections: 0, entries: 0 });
+  });
+});
+
+describe("pairsToCombine (TDD 12.10)", () => {
+  const filled = {
+    sections: [
+      {
+        id: "s1",
+        title: "S",
+        entries: [{ id: "e1", term: { text: "a" }, meanings: [{ text: "b" }] }],
+      },
+    ],
+  };
+
+  it("bietet je Sprachpaar mit mindestens zwei Sets mit Einträgen an, in der Reihenfolge der Gruppe", () => {
+    const a = set("A", filled);
+    const b = set("B", filled);
+    const french = set("C", { ...filled, meaningLanguage: "fr" });
+    const empty = set("D", { meaningLanguage: "fr" });
+    const [group] = groupSets([a, b, french, empty], languageName);
+    expect(pairsToCombine(group!)).toEqual([
+      { termLanguage: "en", meaningLanguage: "de", sets: [a, b] },
+    ]);
+  });
+
+  it("bietet nichts an, wenn kein Paar zwei Sets hat", () => {
+    const [group] = groupSets(
+      [set("A", filled), set("B", { ...filled, meaningLanguage: "fr" })],
+      languageName,
+    );
+    expect(pairsToCombine(group!)).toEqual([]);
+  });
+});
+
+describe("joinTitles", () => {
+  it("zählt die Titel auf", () => {
+    expect(joinTitles([set("A")])).toBe("A");
+    expect(joinTitles([set("A"), set("B"), set("C")])).toBe("A, B und C");
   });
 });

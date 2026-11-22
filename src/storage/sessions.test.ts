@@ -201,6 +201,55 @@ describe("Set gibt es nicht mehr, z. B. in einem anderen Tab gelöscht (TDD 3.4)
   });
 });
 
+describe("Sitzung über mehrere Sets (TDD 12.5, 12.10)", () => {
+  const group = (groupId = "g2345678abcd"): Session[] => [
+    { ...session("s2345678abcd"), groupId },
+    { ...session("t2345678abcd"), setId: "k2n7w4b8qp", groupId },
+  ];
+
+  it("legt je Set einen Datensatz in einer Transaktion an und merkt die Zusammenstellung", async () => {
+    const together = { setIds: ["m4x8c2r9tw", "k2n7w4b8qp"] };
+    await startSession(db, group(), { key: "together", value: together });
+    expect(await readAll("sessions")).toEqual(group());
+    expect(await getSetting(db, "together")).toEqual(together);
+  });
+
+  it("legt nichts an, wenn eines der Sets fehlt", async () => {
+    await deleteSet(db, "k2n7w4b8qp");
+    const started = startSession(db, group(), { key: "together", value: {} });
+    await expect(started).rejects.toSatisfy(isSetMissing);
+    expect(await readAll("sessions")).toEqual([]);
+    expect(await getSetting(db, "together")).toBeUndefined();
+  });
+
+  it("schließt alle Datensätze ab und übergeht den eines inzwischen gelöschten Sets", async () => {
+    await startSession(db, group());
+    await deleteSet(db, "k2n7w4b8qp");
+    const ids = ["s2345678abcd", "t2345678abcd"];
+    await finishSession(db, ids, "completed", "2026-10-20T18:05:00.000Z");
+    expect(await readAll("sessions")).toEqual([
+      { ...group()[0]!, status: "completed", endedAt: "2026-10-20T18:05:00.000Z" },
+    ]);
+    await deleteSet(db, "m4x8c2r9tw");
+    await expect(finishSession(db, ids, "ended", "2026-10-20T18:06:00.000Z")).rejects.toSatisfy(
+      isSetMissing,
+    );
+  });
+
+  it("nennt für „Weiterlernen“ die Gruppe der jüngsten Sitzung mit Antwort", async () => {
+    await startSession(db, group());
+    await recordAnswer(
+      db,
+      event("e1aaaaaaaaaa", { sessionId: "t2345678abcd", setId: "k2n7w4b8qp" }),
+    );
+    expect(await readLearningOrder(db)).toEqual({
+      order: ["m4x8c2r9tw", "k2n7w4b8qp"],
+      lastLearned: "k2n7w4b8qp",
+      lastGroup: "g2345678abcd",
+    });
+  });
+});
+
 describe("readLearningOrder", () => {
   async function startAt(id: string, setId: string, startedAt: string): Promise<void> {
     await startSession(db, { ...session(id), setId, startedAt });

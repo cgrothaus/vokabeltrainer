@@ -39,6 +39,36 @@ export function groupSets(sets: StoredSet[], languageName: (code: string) => str
   );
 }
 
+/** Sets, die sich zusammen lernen lassen (TDD 12.10): gleiches Sprachpaar, jeweils mit Einträgen. */
+export interface LanguagePair {
+  termLanguage: string;
+  meaningLanguage: string;
+  /** In der Reihenfolge der Gruppe. */
+  sets: StoredSet[];
+}
+
+/** Die Sprachpaare einer Gruppe mit mindestens zwei Sets mit Einträgen, in der Reihenfolge der Gruppe. */
+export function pairsToCombine(group: SetGroup): LanguagePair[] {
+  const pairs = new Map<string, LanguagePair>();
+  for (const set of group.sets) {
+    if (setSize(set).entries === 0) continue;
+    let pair = pairs.get(set.meaningLanguage);
+    if (!pair) {
+      pair = { termLanguage: set.termLanguage, meaningLanguage: set.meaningLanguage, sets: [] };
+      pairs.set(set.meaningLanguage, pair);
+    }
+    pair.sets.push(set);
+  }
+  return [...pairs.values()].filter((pair) => pair.sets.length > 1);
+}
+
+const titleList = new Intl.ListFormat("de", { type: "conjunction" });
+
+/** Titel mehrerer Sets für Sitzung und „Weiterlernen“ (TDD 12.10): „A, B und C“. */
+export function joinTitles(sets: readonly StoredSet[]): string {
+  return titleList.format(sets.map((set) => set.title));
+}
+
 export function setSize(set: StoredSet): { sections: number; entries: number } {
   return {
     sections: set.sections.length,

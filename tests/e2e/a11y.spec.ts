@@ -16,6 +16,7 @@ import {
   fakeInstallPrompt,
   fakeSpeech,
   importSet,
+  importText,
   libraryMessage,
   readStore,
   setAction,
@@ -587,4 +588,33 @@ test("Speichern nicht möglich", async ({ page }) => {
   await page.goto("./");
   await expect(page.getByRole("heading", { name: "Speichern nicht möglich" })).toBeVisible();
   expect(await audit(page, "Speichern nicht möglich")).toEqual([]);
+});
+
+test("Zusammen lernen: Bibliothek mit Zeile, Auswahl der Sets, nichts gewählt (TDD 12.10)", async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  const findings: string[] = [];
+  await importSet(page, "Wetter");
+  // Langer Titel: Die Chips müssen auch bei 200 % Schrift umbrechen.
+  const title = "Tiere und Jahreszeiten im Herbst";
+  const animals = JSON.parse(setFile(title)) as { sections: { entries: unknown[] }[] };
+  animals.sections[0]!.entries = [
+    { term: "dog", meanings: ["Hund"] },
+    { term: "cat", meanings: ["Katze"] },
+    { term: "bird", meanings: ["Vogel"] },
+  ];
+  await importText(page, JSON.stringify(animals), `„${title}“ mit 3 Einträgen gespeichert.`);
+  await expect(page.getByRole("link", { name: "Zusammen lernen" })).toBeVisible();
+  findings.push(...(await audit(page, "Bibliothek mit „Zusammen lernen“")));
+
+  await page.getByRole("link", { name: "Zusammen lernen" }).click();
+  await expect(page.locator(".together .plan")).toHaveText("6 neu");
+  findings.push(...(await audit(page, "Zusammen lernen")));
+  await page.getByRole("button", { name: "Keine" }).click();
+  await expect(page.getByText("Wähle mindestens ein Set.")).toBeVisible();
+  findings.push(...(await audit(page, "Zusammen lernen ohne Auswahl")));
+
+  expect(findings).toEqual([]);
+  expect(errors).toEqual([]);
 });

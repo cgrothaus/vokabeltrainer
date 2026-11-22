@@ -19,6 +19,8 @@ const ICONS = {
     ],
   ],
   play: [["path", { d: "M7 4.5v15l12-7.5z", class: "fill" }]],
+  // Mehrere Sets übereinander (Zusammen lernen, TDD 12.10).
+  stack: [["path", { d: "M4 10h16v10H4zM6 6.5h12M8 3h8" }]],
   speaker: [
     [
       "path",

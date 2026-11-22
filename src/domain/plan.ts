@@ -1,6 +1,7 @@
 // Wiederholen nach Plan (TDD 12.8, FR-37, D-57, D-63): was heute fällig ist und was „Jetzt wiederholen“
-// bzw. „Neue Vokabeln lernen“ abfragt. Grundlage ist der Lernstand je Karte (learningState.ts); `today`
-// ist der Tag in Ortszeit (`dayNumber`), damit Tests mit fester Uhr rechnen.
+// bzw. „Neue Vokabeln lernen“ abfragt, für ein Set oder mehrere zusammen (12.10). Grundlage ist der
+// Lernstand je Karte (learningState.ts); `today` ist der Tag in Ortszeit (`dayNumber`), damit Tests mit
+// fester Uhr rechnen.
 import { cardKey, type CardState, dueIn, type Phase } from "./learningState";
 import type { Direction, StoredSet } from "./model";
 import type { Mode } from "./practice";
@@ -17,6 +18,7 @@ export const REVERSE_FROM_PHASE = 2;
 export const PLAN_CHOICE_MAX_PHASE = 1;
 
 export interface PlanCard {
+  readonly setId: string;
   readonly entryId: string;
   readonly direction: Direction;
   /** Gewünschte Form; Multiple Choice nur, wenn es genug Kandidaten gibt (TDD 12.3). */
@@ -47,6 +49,12 @@ export interface PlanSelection {
   readonly cards: readonly PlanCard[];
 }
 
+/** Ein Set mit seinem Lernstand; bei mehreren Sets in der Reihenfolge, in der sie gewählt sind. */
+export interface PlanPart {
+  readonly set: StoredSet;
+  readonly cards: ReadonlyMap<string, CardState>;
+}
+
 const DIRECTIONS: readonly Direction[] = ["termToMeaning", "meaningToTerm"];
 
 interface Due extends PlanCard {
@@ -55,17 +63,23 @@ interface Due extends PlanCard {
   readonly order: number;
 }
 
-/** Fällige Karten des Sets, die dringendsten zuerst (überfällig, dann niedrigere Phase, Set-Reihenfolge). */
-function dueCards(set: StoredSet, cards: ReadonlyMap<string, CardState>, today: number): Due[] {
+/**
+ * Fällige Karten aller Sets, die dringendsten zuerst: überfällig, dann niedrigere Phase, dann die
+ * Reihenfolge der Sets und darin die des Sets.
+ */
+function dueCards(parts: readonly PlanPart[], today: number): Due[] {
   const due: Due[] = [];
-  for (const entryId of entryIds(set)) {
-    for (const direction of DIRECTIONS) {
-      const card = cards.get(cardKey(entryId, direction));
-      if (!card) continue;
-      const days = dueIn(card, today);
-      if (days <= 0) {
-        const { phase } = card;
-        due.push({ entryId, direction, mode: planMode(phase), days, phase, order: due.length });
+  for (const { set, cards } of parts) {
+    for (const entryId of entryIds(set)) {
+      for (const direction of DIRECTIONS) {
+        const card = cards.get(cardKey(entryId, direction));
+        if (!card) continue;
+        const days = dueIn(card, today);
+        if (days <= 0) {
+          const { phase } = card;
+          const mode = planMode(phase);
+          due.push({ setId: set.id, entryId, direction, mode, days, phase, order: due.length });
+        }
       }
     }
   }
@@ -84,9 +98,10 @@ function freshCards(set: StoredSet, cards: ReadonlyMap<string, CardState>): Plan
   const fresh: PlanCard[] = [];
   for (const entryId of entryIds(set)) {
     const first = cards.get(cardKey(entryId, "termToMeaning"));
-    if (!first) fresh.push({ entryId, direction: "termToMeaning", mode: planMode(0) });
+    const setId = set.id;
+    if (!first) fresh.push({ setId, entryId, direction: "termToMeaning", mode: planMode(0) });
     else if (first.phase >= REVERSE_FROM_PHASE && !cards.has(cardKey(entryId, "meaningToTerm")))
-      fresh.push({ entryId, direction: "meaningToTerm", mode: planMode(0) });
+      fresh.push({ setId, entryId, direction: "meaningToTerm", mode: planMode(0) });
   }
   return fresh;
 }
@@ -106,39 +121,66 @@ export function planSummary(
   cards: ReadonlyMap<string, CardState>,
   today: number,
 ): PlanSummary {
-  const present = entryIds(set).flatMap((entryId) =>
-    DIRECTIONS.map((direction) => cards.get(cardKey(entryId, direction))).filter(
-      (card): card is CardState => card !== undefined,
+  return planSummaryAcross([{ set, cards }], today);
+}
+
+/** Zusammen über mehrere Sets (TDD 12.10). */
+export function planSummaryAcross(parts: readonly PlanPart[], today: number): PlanSummary {
+  const present = parts.flatMap(({ set, cards }) =>
+    entryIds(set).flatMap((entryId) =>
+      DIRECTIONS.map((direction) => cards.get(cardKey(entryId, direction))).filter(
+        (card): card is CardState => card !== undefined,
+      ),
     ),
   );
   return {
     due: present.filter((card) => dueIn(card, today) <= 0).length,
     nextDueIn: nextDueIn(present, today),
-    fresh: freshCards(set, cards).length,
+    fresh: parts.reduce((sum, { set, cards }) => sum + freshCards(set, cards).length, 0),
   };
 }
 
-/**
- * Auswahl für die Sitzung nach Plan (TDD 12.8, D-63): höchstens 30 fällige, aufgefüllt mit bis zu
- * 5 neuen; ohne Fälliges 10 neue. Je Eintrag höchstens eine Richtung, sonst verriete die eine Karte
- * die andere; die zweite bleibt fällig.
- */
 export function planSelection(
   set: StoredSet,
   cards: ReadonlyMap<string, CardState>,
   today: number,
 ): PlanSelection {
+  return planSelectionAcross([{ set, cards }], today);
+}
+
+/**
+ * Auswahl für die Sitzung nach Plan (TDD 12.8, D-63), auch über mehrere Sets (12.10): höchstens 30
+ * fällige, aufgefüllt mit bis zu 5 neuen; ohne Fälliges 10 neue, abwechselnd aus den Sets und darin in
+ * Set-Reihenfolge, damit jedes gewählte Set neue Vokabeln beisteuert. Je
+ * Eintrag höchstens eine Richtung, sonst verriete die eine Karte die andere; die zweite bleibt fällig.
+ */
+export function planSelectionAcross(parts: readonly PlanPart[], today: number): PlanSelection {
   const chosen: PlanCard[] = [];
   const used = new Set<string>();
-  for (const card of dueCards(set, cards, today)) {
+  // Eintrags-IDs sind nur innerhalb eines Sets eindeutig.
+  const key = (card: PlanCard) => JSON.stringify([card.setId, card.entryId]);
+  for (const card of dueCards(parts, today)) {
     if (chosen.length === PLAN_LIMIT) break;
-    if (used.has(card.entryId)) continue;
-    used.add(card.entryId);
-    chosen.push({ entryId: card.entryId, direction: card.direction, mode: card.mode });
+    if (used.has(key(card))) continue;
+    used.add(key(card));
+    const { setId, entryId, direction, mode } = card;
+    chosen.push({ setId, entryId, direction, mode });
   }
   const review = chosen.length > 0;
   const room = review ? Math.min(FILL_FRESH, PLAN_LIMIT - chosen.length) : FRESH_ONLY;
-  const fresh = freshCards(set, cards).filter((card) => !used.has(card.entryId));
+  const fresh = interleave(parts.map(({ set, cards }) => freshCards(set, cards))).filter(
+    (card) => !used.has(key(card)),
+  );
   chosen.push(...fresh.slice(0, room));
   return { kind: review ? "review" : chosen.length > 0 ? "new" : null, cards: chosen };
+}
+
+/** Abwechselnd je eins aus jeder Liste, bis alle erschöpft sind. */
+function interleave<T>(lists: readonly (readonly T[])[]): T[] {
+  const result: T[] = [];
+  const longest = Math.max(0, ...lists.map((list) => list.length));
+  for (let i = 0; i < longest; i++) {
+    for (const list of lists) if (i < list.length) result.push(list[i]!);
+  }
+  return result;
 }

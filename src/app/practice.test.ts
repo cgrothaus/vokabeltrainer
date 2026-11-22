@@ -3,13 +3,22 @@ import { IDBFactory } from "fake-indexeddb";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { entryRev } from "../domain/hash";
 import type { ReviewEvent, Session, StoredSet } from "../domain/model";
-import { settingKey } from "../domain/practiceSetup";
+import { settingKey, TOGETHER_KEY } from "../domain/practiceSetup";
+import { validateRecords } from "../domain/validateRecords";
 import { openDatabase } from "../storage/database";
 import { recordAnswer, startSession } from "../storage/sessions";
 import { addSet } from "../storage/sets";
-import { setSetting } from "../storage/settings";
-import { forgetAllOverviews } from "./overview";
-import { currentPractice, quickStart, recommendedStart } from "./practice";
+import { getSetting, setSetting } from "../storage/settings";
+import { removeSet } from "./deleteSet";
+import { forgetAllOverviews, loadOverview } from "./overview";
+import {
+  beginPlannedTogether,
+  beginTogether,
+  currentPractice,
+  quickStart,
+  recommendedStart,
+  recommendedTogether,
+} from "./practice";
 
 let db: IDBDatabase;
 
@@ -209,5 +218,151 @@ describe("Herkunft und Antwortdauer (TDD 12.4, 12.5, D-68)", () => {
     const recorded = await events();
     expect(recorded.map((event) => event.responseMs).sort()).toEqual([2400, undefined]);
     expect(recorded.filter((event) => "responseMs" in event)).toHaveLength(1);
+  });
+});
+
+describe("Mehrere Sets (TDD 12.10, AK-22, AK-33)", () => {
+  /** Gleiche Eintrags-IDs wie `small`, aber andere Wörter. */
+  const other: StoredSet = {
+    ...setWith("p7k2v9q4zd", 6),
+    title: "Anderes",
+    sections: [
+      {
+        id: "q7h3kd",
+        title: "Farben",
+        entries: Array.from({ length: 6 }, (_, index) => ({
+          id: `e${String(index).padStart(5, "0")}`,
+          term: { text: `colour ${index}` },
+          meanings: [{ text: `Farbe ${index}` }],
+        })),
+      },
+    ],
+  };
+  const both = [small, other];
+  const setup = (mcShare: number) =>
+    ({
+      setIds: [small.id, other.id],
+      direction: "termToMeaning",
+      count: "all",
+      mcShare,
+    }) as const;
+
+  beforeEach(async () => {
+    await addSet(db, other);
+  });
+
+  /** Beim ersten Versuch alles falsch, danach richtig, bis die Runde fertig ist. */
+  async function missAll(): Promise<void> {
+    const practice = currentPractice()!;
+    while (!practice.finished) {
+      await practice.answer(practice.state.queue[0]!.firstAttempt ? "incorrect" : "correct");
+    }
+  }
+
+  async function knowAll(): Promise<void> {
+    const practice = currentPractice()!;
+    while (!practice.finished) await practice.answer("correct");
+  }
+
+  it("legt je Set einen Datensatz mit gemeinsamer Gruppe an, jede Antwort gehört zu ihrem Set", async () => {
+    await beginTogether(db, both, setup(0));
+    const practice = currentPractice()!;
+    expect(practice.title).toBe("Set k2n7w4b8qp und Anderes");
+    expect(practice.state.total).toBe(9);
+    await knowAll();
+    const records = await sessions();
+    expect(records.map((record) => record.setId).sort()).toEqual([small.id, other.id].sort());
+    expect(new Set(records.map((record) => record.groupId)).size).toBe(1);
+    expect(records[0]!.groupId).toHaveLength(12);
+    expect(new Set(records.map((record) => record.startedAt)).size).toBe(1);
+    expect(records.every((record) => record.status === "completed")).toBe(true);
+    const sessionOf = new Map(records.map((record) => [record.setId, record.id]));
+    const recorded = await events();
+    expect(recorded.every((event) => event.sessionId === sessionOf.get(event.setId))).toBe(true);
+    expect(recorded.filter((event) => event.setId === small.id)).toHaveLength(3);
+    expect(recorded.filter((event) => event.setId === other.id)).toHaveLength(6);
+    expect(await getSetting(db, TOGETHER_KEY)).toEqual(setup(0));
+    // Jedes Set sieht nur seine Antworten (TDD 12.6).
+    expect((await loadOverview(db, small)).cards.size).toBe(3);
+    expect((await loadOverview(db, other)).cards.size).toBe(6);
+  });
+
+  it("nimmt falsche Antworten aus allen Sets der Sitzung", async () => {
+    // Allein hat `small` zu wenige Kandidaten für Multiple Choice.
+    await beginTogether(db, both, setup(100));
+    const practice = currentPractice()!;
+    expect(practice.state.queue.every((card) => card.mode === "multipleChoice")).toBe(true);
+    const question = practice.question();
+    if (question.mode !== "multipleChoice") throw new Error("Multiple Choice erwartet");
+    const meanings = new Set(
+      [...small.sections, ...other.sections]
+        .flatMap((section) => section.entries)
+        .map((entry) => entry.meanings[0]!.text),
+    );
+    expect(question.options.every((option) => meanings.has(option))).toBe(true);
+  });
+
+  it("wiederholt Fehler je Set mit Verweis auf den Datensatz desselben Sets", async () => {
+    await beginTogether(db, both, setup(0));
+    await missAll();
+    vi.setSystemTime(new Date("2026-11-20T08:10:00.000Z"));
+    await currentPractice()!.repeatMistakes();
+    const records = await sessions();
+    const first = records.filter((record) => record.repeatOf === undefined);
+    const repeat = records.filter((record) => record.repeatOf !== undefined);
+    expect(repeat).toHaveLength(2);
+    for (const record of repeat) {
+      const original = first.find((candidate) => candidate.id === record.repeatOf)!;
+      expect(original.setId).toBe(record.setId);
+    }
+    expect(repeat[0]!.groupId).toBeDefined();
+    expect(repeat[0]!.groupId).toBe(repeat[1]!.groupId);
+    expect(repeat[0]!.groupId).not.toBe(first[0]!.groupId);
+  });
+
+  it("lässt beim Löschen eines Sets die Lerndaten des anderen vollständig", async () => {
+    await beginTogether(db, both, setup(0));
+    await missAll();
+    const before = (await events()).filter((event) => event.setId === other.id);
+    expect((await removeSet(db, small)).ok).toBe(true);
+    expect((await sessions()).map((record) => record.setId)).toEqual([other.id]);
+    const left = await events();
+    expect(left).toHaveLength(before.length);
+    expect(left.every((event) => event.setId === other.id)).toBe(true);
+    const records = { sets: [large, other], sessions: await sessions(), reviewEvents: left };
+    expect(validateRecords({ ...records, settings: [] })).toEqual([]);
+  });
+
+  it("wiederholt nach Plan über alle gewählten Sets und behält die gemerkte freie Auswahl", async () => {
+    await setSetting(db, {
+      key: TOGETHER_KEY,
+      value: { setIds: [other.id], direction: "mixed", count: 10, mcShare: 50 },
+    });
+    expect(await beginPlannedTogether(db, both)).toBe(true);
+    // Neue Vokabeln aus beiden Sets: alle neun, höchstens zehn.
+    expect(currentPractice()!.state.total).toBe(9);
+    expect((await sessions()).map((record) => record.origin)).toEqual(["plan", "plan"]);
+    expect(await getSetting(db, TOGETHER_KEY)).toEqual({
+      setIds: [small.id, other.id],
+      direction: "mixed",
+      count: 10,
+      mcShare: 50,
+    });
+  });
+
+  it("startet ohne Fälliges und Neues die gemerkte freie Auswahl", async () => {
+    await beginTogether(db, both, setup(0));
+    await knowAll();
+    // Alles in Phase 1, die Gegenrichtung ist erst ab Phase 2 neu: Der Plan hat nichts.
+    expect(await recommendedTogether(db, both)).toBe("started");
+    expect(currentPractice()!.state.total).toBe(9);
+    expect((await sessions()).filter((record) => record.origin === "setup")).toHaveLength(4);
+  });
+
+  it("öffnet ohne gemerkte Zusammenstellung die Auswahl", async () => {
+    await beginPlannedTogether(db, both);
+    await knowAll();
+    await setSetting(db, { key: TOGETHER_KEY, value: null });
+    expect(await recommendedTogether(db, both)).toBe("setup");
   });
 });

@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { cardKey, type CardState, type Phase } from "./learningState";
 import type { Direction, StoredSet } from "./model";
-import { nextDueIn, planMode, planSelection, planSummary } from "./plan";
+import {
+  nextDueIn,
+  planMode,
+  planSelection,
+  planSelectionAcross,
+  planSummary,
+  planSummaryAcross,
+} from "./plan";
 
 const TODAY = 20_000;
 
@@ -179,5 +186,70 @@ describe("Abfrageform nach Lernstand", () => {
       "e0:→": "flashcard",
       "e1:→": "multipleChoice",
     });
+  });
+});
+
+describe("Plan über mehrere Sets", () => {
+  /** Ein zweites Set mit eigener ID; die Eintrags-IDs `e0` … gleichen denen des ersten. */
+  const other = (count: number): StoredSet => ({ ...set(count), id: "p7k2v9q4zd", title: "Zwei" });
+  const keys = (selection: ReturnType<typeof planSelectionAcross>) =>
+    selection.cards.map(({ setId, entryId }) => `${setId === "m4x8c2r9tw" ? "A" : "B"}${entryId}`);
+
+  it("ordnet fällige Karten über alle Sets nach Überfälligkeit und Phase, bei Gleichstand nach Set", () => {
+    const parts = [
+      { set: set(2), cards: cards([0, 1, 1], [1, 2, 3]) },
+      { set: other(2), cards: cards([0, 1, 4], [1, 1, 1]) },
+    ];
+    const selection = planSelectionAcross(parts, TODAY);
+    expect(selection.kind).toBe("review");
+    // B e0 seit 3 Tagen überfällig, dann Phase 1 vor Phase 2, bei Gleichstand das erste Set.
+    expect(keys(selection)).toEqual(["Be0", "Ae0", "Be1", "Ae1"]);
+  });
+
+  it("hält gleiche Eintrags-IDs in zwei Sets auseinander", () => {
+    const parts = [
+      { set: set(1), cards: cards([0, 1, 1]) },
+      { set: other(1), cards: cards([0, 1, 1]) },
+    ];
+    expect(keys(planSelectionAcross(parts, TODAY))).toEqual(["Ae0", "Be0"]);
+    expect(planSummaryAcross(parts, TODAY).due).toBe(2);
+  });
+
+  it("nimmt über alle Sets höchstens 30 und füllt mit neuen abwechselnd aus den Sets auf", () => {
+    const due = (n: number) => cards(...Array.from({ length: n }, (_, i): Spec => [i, 1, 1]));
+    const parts = [
+      { set: set(20), cards: due(14) },
+      { set: other(20), cards: due(14) },
+    ];
+    const selection = planSelectionAcross(parts, TODAY);
+    expect(selection.cards).toHaveLength(30);
+    expect(keys(selection).slice(28)).toEqual(["Ae14", "Be14"]);
+  });
+
+  it("bietet ohne Fälliges zehn neue an, abwechselnd aus den Sets", () => {
+    const parts = [
+      { set: set(8), cards: cards() },
+      { set: other(2), cards: cards() },
+    ];
+    const selection = planSelectionAcross(parts, TODAY);
+    expect(selection.kind).toBe("new");
+    // Ist ein Set erschöpft, kommen die übrigen aus den anderen.
+    expect(keys(selection)).toEqual([
+      "Ae0",
+      "Be0",
+      "Ae1",
+      "Be1",
+      ...[2, 3, 4, 5, 6, 7].map((i) => `Ae${i}`),
+    ]);
+  });
+
+  it("fasst die Übersicht zusammen", () => {
+    const parts = [
+      { set: set(3), cards: cards([0, 1, 1], [1, 3, 2]) },
+      { set: other(2), cards: cards([0, 2, 1], [1, 2, 1]) },
+    ];
+    // Fällig: A e0. Als Nächstes in 2 Tagen (B), A e1 erst in 5. Neu: A e2 und die Gegenrichtungen
+    // von A e1, B e0 und B e1 (ab Phase 2).
+    expect(planSummaryAcross(parts, TODAY)).toEqual({ due: 1, nextDueIn: 2, fresh: 4 });
   });
 });

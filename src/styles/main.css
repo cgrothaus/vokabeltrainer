@@ -252,6 +252,23 @@ h2:focus {
   font-size: var(--text-s);
 }
 
+/* Zusammen lernen (TDD 12.10): was der Plan über die gewählten Sets anbietet, wie in der Set-Ansicht. */
+.together .plan {
+  margin: 1rem 0 0;
+  color: var(--accent);
+  font-size: var(--text-l);
+  font-weight: 700;
+}
+
+.together h2.own {
+  margin: 2rem 0 0.25rem;
+  color: var(--muted);
+  font-size: var(--text-xs);
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .setup .selection {
   margin: 1.5rem 0 0.75rem;
 }
@@ -431,6 +448,11 @@ h2:focus {
   display: flex;
   gap: 0.5rem;
   margin-top: 0.25rem;
+}
+
+/* „Alle“ ist als Text schmaler als die Zielgröße von 44 px (E2E-20). */
+.quick-choice button.textbtn {
+  min-width: 44px;
 }
 
 /* Zurückhaltende Schaltfläche als Text, z. B. „Alle“ und „Keine“. */
@@ -1025,8 +1047,14 @@ button.textbtn {
   text-transform: uppercase;
 }
 
-.library section > .sets + .group {
+.library section > .sets + .group,
+.library section > .combine + .group {
   margin-top: 1.25rem;
+}
+
+/* „Zusammen lernen“ unter den Sets eines Sprachpaars (TDD 12.10). */
+.library .rows.combine {
+  margin-top: 0.625rem;
 }
 
 .sets {

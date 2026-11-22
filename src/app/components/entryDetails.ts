@@ -23,7 +23,10 @@ export const GENDERS: Record<string, string> = { m: "maskulin", f: "feminin", n:
 const translate = (table: Record<string, string>, value: string) =>
   table[value.toLowerCase()] ?? value;
 
-export function entryDetails(entry: StoredEntry, set: StoredSet): Child[] {
+export function entryDetails(
+  entry: StoredEntry,
+  set: Pick<StoredSet, "termLanguage" | "meaningLanguage">,
+): Child[] {
   const { grammar, examples = [] } = entry;
   const grammarParts = grammar
     ? [

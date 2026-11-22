@@ -6,12 +6,16 @@ import {
   describeSetup,
   effectiveCount,
   fitCount,
+  pickAcross,
   pickEntries,
   type PracticeSetup,
   restoreSetup,
+  restoreTogether,
   selectedEntryCount,
   settingKey,
   storedSetup,
+  togetherEntryCount,
+  togetherSetIds,
 } from "./practiceSetup";
 
 /** Liefert die angegebenen Werte der Reihe nach und danach immer wieder von vorn. */
@@ -274,5 +278,75 @@ describe("describeSetup", () => {
       "Englisch → Deutsch",
       "25 % Multiple Choice",
     ]);
+  });
+});
+
+describe("Zusammen lernen (TDD 12.10)", () => {
+  const first = storedSet(section("a", 3), section("b", 2));
+  const second = { ...storedSet(section("a", 4)), id: "p7k2v9q4zd", title: "Zwei" };
+  const third = { ...storedSet(section("c", 1)), id: "q3w8e5r1ty", title: "Drei" };
+  const candidates = [first, second, third];
+
+  it("liest die gemerkten Sets tolerant", () => {
+    expect(togetherSetIds({ setIds: ["x", 3, "y", "x"] })).toEqual(["x", "y"]);
+    expect(togetherSetIds({ setIds: "x" })).toEqual([]);
+    expect(togetherSetIds(null)).toEqual([]);
+  });
+
+  it("wählt die gemerkten Sets in der Reihenfolge der Bibliothek, unbekannte fallen weg", () => {
+    const stored = {
+      setIds: [third.id, "gelöscht", first.id],
+      direction: "mixed",
+      count: 10,
+      mcShare: 50,
+    };
+    expect(restoreTogether(candidates, stored)).toEqual({
+      setIds: [first.id, third.id],
+      direction: "mixed",
+      count: 10,
+      mcShare: 50,
+    });
+  });
+
+  it("wählt ohne passende gemerkte Sets alle und ersetzt Unbrauchbares durch die Voreinstellung", () => {
+    const stored = { setIds: ["anderes"], direction: "seitwärts", count: 7, mcShare: 33 };
+    expect(restoreTogether(candidates, stored)).toEqual({
+      setIds: [first.id, second.id, third.id],
+      direction: "termToMeaning",
+      count: 20,
+      mcShare: 25,
+    });
+    expect(restoreTogether(candidates, undefined).setIds).toHaveLength(3);
+  });
+
+  it("zählt und zieht Einträge über die gewählten Sets, gleiche Eintrags-IDs bleiben getrennt", () => {
+    const setup = {
+      setIds: [first.id, second.id],
+      direction: "termToMeaning",
+      count: "all",
+      mcShare: 0,
+    } as const;
+    expect(togetherEntryCount(candidates, setup.setIds)).toBe(9);
+    const all = pickAcross(candidates, setup, sequence(0.5));
+    expect(all).toHaveLength(9);
+    expect(all.filter((ref) => ref.entryId === "a0").map((ref) => ref.setId)).toEqual([
+      first.id,
+      second.id,
+    ]);
+    // Eine Stufe über der Auswahl nimmt alle.
+    expect(pickAcross(candidates, { ...setup, count: 10 }, sequence(0.3))).toHaveLength(9);
+  });
+
+  it("zieht bei kleinerer Anzahl eine zufällige Teilmenge", () => {
+    const big = { ...storedSet(section("z", 12)), id: "z9z9z9z9z9" };
+    const setup = {
+      setIds: [big.id, second.id],
+      direction: "termToMeaning",
+      count: 10,
+      mcShare: 0,
+    } as const;
+    const drawn = pickAcross([big, second], setup, sequence(0.1, 0.9, 0.4));
+    expect(drawn).toHaveLength(10);
+    expect(new Set(drawn.map((ref) => `${ref.setId}/${ref.entryId}`)).size).toBe(10);
   });
 });

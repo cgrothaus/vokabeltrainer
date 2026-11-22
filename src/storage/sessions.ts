@@ -8,15 +8,15 @@ import { putSetting, type SettingRecord } from "./settings";
 import { runTransaction } from "./transaction";
 
 /**
- * Schreibt nur, wenn `exists` in derselben Transaktion etwas findet; sonst wird nichts geschrieben,
- * und das Versprechen lehnt mit `SetMissingError` ab. Ein anderer Tab kann das Set inzwischen
- * gelöscht oder alles ersetzt haben (TDD 3.4); Antworten oder Sitzungen ohne Set machten jedes Backup
- * ungültig (D-25). `count` liest dabei kein ganzes Dokument.
+ * Schreibt nur, wenn jede Anfrage aus `exists` in derselben Transaktion etwas findet; sonst wird nichts
+ * geschrieben, und das Versprechen lehnt mit `SetMissingError` ab. Ein anderer Tab kann das Set
+ * inzwischen gelöscht oder alles ersetzt haben (TDD 3.4); Antworten oder Sitzungen ohne Set machten
+ * jedes Backup ungültig (D-25). `count` liest dabei kein ganzes Dokument.
  */
 async function writeIfPresent(
   db: IDBDatabase,
   stores: StoreName[],
-  exists: (transaction: IDBTransaction) => IDBRequest<number>,
+  exists: (transaction: IDBTransaction) => IDBRequest<number>[],
   write: (transaction: IDBTransaction) => void,
 ): Promise<void> {
   let missing = false;
@@ -25,38 +25,48 @@ async function writeIfPresent(
   let thrown: unknown;
   try {
     await runTransaction(db, stores, "readwrite", (transaction) => {
-      const request = exists(transaction);
-      request.onsuccess = () => {
-        if (request.result === 0) {
-          missing = true;
-          return transaction.abort();
-        }
-        try {
-          write(transaction);
-        } catch (error) {
-          thrown = error;
-          transaction.abort();
-        }
-      };
+      const requests = exists(transaction);
+      let pending = requests.length;
+      for (const request of requests) {
+        request.onsuccess = () => {
+          if (missing) return;
+          if (request.result === 0) {
+            missing = true;
+            return transaction.abort();
+          }
+          if (--pending > 0) return;
+          try {
+            write(transaction);
+          } catch (error) {
+            thrown = error;
+            transaction.abort();
+          }
+        };
+      }
     });
   } catch (error) {
     throw missing ? new SetMissingError() : (thrown ?? error);
   }
 }
 
-/** `remember` (die Einrichtung, TDD 12.1) wird nur zusammen mit der Sitzung gespeichert. */
+/**
+ * Eine Sitzung über mehrere Sets ist je Set ein Datensatz (TDD 12.5, D-68); sie entstehen nur
+ * zusammen, und nur, wenn es jedes Set noch gibt. `remember` (die Einrichtung, TDD 12.1, bzw. die
+ * Zusammenstellung, 12.10) wird nur zusammen mit der Sitzung gespeichert.
+ */
 export function startSession(
   db: IDBDatabase,
-  session: Session,
+  session: Session | readonly Session[],
   remember?: SettingRecord,
 ): Promise<void> {
+  const records = Array.isArray(session) ? session : [session as Session];
   const stores: StoreName[] = remember ? ["sets", "sessions", "settings"] : ["sets", "sessions"];
   return writeIfPresent(
     db,
     stores,
-    (transaction) => transaction.objectStore("sets").count(session.setId),
+    (transaction) => records.map((record) => transaction.objectStore("sets").count(record.setId)),
     (transaction) => {
-      transaction.objectStore("sessions").add(session);
+      for (const record of records) transaction.objectStore("sessions").add(record);
       if (remember) putSetting(transaction, remember);
     },
   );
@@ -70,7 +80,7 @@ export function recordAnswer(db: IDBDatabase, event: ReviewEvent): Promise<void>
   return writeIfPresent(
     db,
     ["sessions", "reviewEvents"],
-    (transaction) => transaction.objectStore("sessions").count(event.sessionId),
+    (transaction) => [transaction.objectStore("sessions").count(event.sessionId)],
     (transaction) => transaction.objectStore("reviewEvents").add(event),
   );
 }
@@ -90,6 +100,8 @@ export interface LearningOrder {
   order: string[];
   /** Set der jüngsten Sitzung mit mindestens einer Antwort (TDD 12.6). */
   lastLearned?: string;
+  /** Deren Gruppe, wenn sie mehrere Sets umfasste (TDD 12.10). */
+  lastGroup?: string;
 }
 
 /**
@@ -112,8 +124,9 @@ export async function readLearningOrder(db: IDBDatabase): Promise<LearningOrder>
         if (!session) return;
         const count = answers.count(session.id);
         count.onsuccess = () => {
-          if (count.result > 0) result.lastLearned = session.setId;
-          else check(index + 1);
+          if (count.result === 0) return check(index + 1);
+          result.lastLearned = session.setId;
+          if (session.groupId !== undefined) result.lastGroup = session.groupId;
         };
       }
       check(0);
@@ -123,26 +136,37 @@ export async function readLearningOrder(db: IDBDatabase): Promise<LearningOrder>
 }
 
 /**
- * Lesen und Schreiben in einer Transaktion. Eine unbekannte Sitzung wurde mit ihrem Set gelöscht:
+ * Lesen und Schreiben in einer Transaktion, bei mehreren Sets für alle Datensätze der Sitzung. Ein
+ * unbekannter Datensatz wurde mit seinem Set gelöscht und wird übergangen; fehlen alle:
  * `SetMissingError`, nichts wird angelegt.
  */
 export async function finishSession(
   db: IDBDatabase,
-  id: string,
+  id: string | readonly string[],
   status: Extract<SessionStatus, "completed" | "ended">,
   endedAt: string,
 ): Promise<void> {
+  const ids = typeof id === "string" ? [id] : id;
   let missing = false;
   try {
     await runTransaction(db, "sessions", "readwrite", (transaction) => {
       const store = transaction.objectStore("sessions");
-      const request = store.get(id);
-      request.onsuccess = () => {
-        const session = request.result as Session | undefined;
-        if (session) return store.put({ ...session, status, endedAt } satisfies Session);
-        missing = true;
-        transaction.abort();
-      };
+      let pending = ids.length;
+      let found = 0;
+      for (const each of ids) {
+        const request = store.get(each);
+        request.onsuccess = () => {
+          const session = request.result as Session | undefined;
+          if (session) {
+            found++;
+            store.put({ ...session, status, endedAt } satisfies Session);
+          }
+          if (--pending === 0 && found === 0) {
+            missing = true;
+            transaction.abort();
+          }
+        };
+      }
     });
   } catch (error) {
     throw missing ? new SetMissingError() : error;
