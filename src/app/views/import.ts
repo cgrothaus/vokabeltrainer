@@ -357,10 +357,19 @@ export function importView(context: ImportContext, signal: AbortSignal): Node {
     h(
       "ol",
       { class: "steps" },
-      step("Fotografiere", " deine Vokabelliste."),
+      // Kostenlose KI-Chats erlauben nur wenige Uploads am Tag; ein PDF zählt als einer.
+      step(
+        "Fotografiere",
+        " deine Vokabelliste.",
+        h(
+          "p",
+          { class: "step-tip" },
+          "Mehrere Seiten scannst du am besten als ein PDF, dann ist es nur ein Upload – kostenlose KI-Chats erlauben oft nur wenige am Tag. Auf dem iPhone geht das in Notizen oder Dateien mit „Dokumente scannen“, auf Android in Google Drive mit „Scannen“.",
+        ),
+      ),
       step(
         "Kopiere die Vorlage",
-        ", füge sie in einen KI-Chat wie ChatGPT, Claude oder Gemini ein und hänge die Fotos an.",
+        ", füge sie in einen KI-Chat wie ChatGPT, Claude oder Gemini ein und hänge die Fotos oder das PDF an.",
         promptBox({
           id: "import",
           shown: NEW_SET_SHOWN,

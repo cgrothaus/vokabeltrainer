@@ -27,7 +27,7 @@ const withStubs = (page: Page, copy: "ok" | "fail") =>
   }, copy);
 
 /** Die Vorlage, wie sie im Chat landet: Begleittext, ganze Spezifikation, Auftrag (D-65). */
-const NEW_SET_PROMPT = `Hier ist die Formatbeschreibung für meinen Vokabeltrainer:\n\n${spec.trimEnd()}\n\nMach aus den Vokabeln auf den angehängten Fotos ein Vokabelset in diesem Format.`;
+const NEW_SET_PROMPT = `Hier ist die Formatbeschreibung für meinen Vokabeltrainer:\n\n${spec.trimEnd()}\n\nMach aus den Vokabeln auf den angehängten Fotos oder Seiten ein Vokabelset in diesem Format.`;
 
 const recorded = (page: Page) =>
   page.evaluate(() => (window as unknown as { recorded: Recorded }).recorded);

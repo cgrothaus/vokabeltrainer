@@ -1,6 +1,6 @@
 # TDD: Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.71 – Anleitung in „Vokabelset hinzufügen“  
+**Version:** 2.72 – Mehrere Seiten als ein PDF  
 **Stand:** 22. November 2026  
 **Bezug:** PRD 2.11 (`PRD_Vokabeltrainer_Allgemein_v2.md`), Formatspezifikation Version 1 (`Formatspezifikation_Vokabelset_v1.md`), Review-Notizen (`20261019_TDD_v1_Review_Notizen.md`)  
 **Status:** Entwurf; Grundlage für M0 (Walking Skeleton)  
@@ -813,8 +813,8 @@ Zurückgestellt am 22. November 2026 (S-52, D-57). Der Abschnitt bleibt als Entw
 - Der Empty State ergibt sich aus dem Datenbestand, erscheint also auch nach dem Löschen des letzten Sets.
 - „Einstellungen“ (13.6) erreicht man über das Zahnrad in der App-Leiste. Unter der Liste stehen zurückhaltend „Vokabelset hinzufügen“ (gestrichelte Karte) und als Zeile „Backup und Wiederherstellung“; „Leeres Set anlegen“ steht seit S-44 in „Vokabelset hinzufügen“ (D-50, D-53), die Zeile „Wie bekomme ich ein Vokabelset?“ entfiel mit S-59 (D-71); im Empty State entsprechend „Leeres Set anlegen“ und „Backup von einem anderen Gerät laden“.
 - **Vokabelset hinzufügen** (`#/import`, 8.1, FR-20, D-53, D-71), erreichbar über „Vokabelset hinzufügen“ unter der Liste, „Erstes Vokabelset hinzufügen“ im Empty State und „Exportieren“. Die Ansicht führt in der Reihenfolge des Wegs durch drei Schritte als nummerierte Kreise; was ein Schritt zum Bedienen mitbringt, steht in voller Breite unter seinem Text:
-  1. „Fotografiere deine Vokabelliste.“
-  2. „Kopiere die Vorlage, füge sie in einen KI-Chat wie ChatGPT, Claude oder Gemini ein und hänge die Fotos an.“ Darunter als Karte „Vorlage kopieren“ und zugeklappt „Was wird kopiert?“. Die Vorlage (`newSetPrompt` in `src/content/help.ts`, nur in der App, D-35, D-65): ein Begleitsatz, die ganze Spezifikation und der Auftrag. Die Spezifikation ist per `?raw` aus `docs/` eingebettet, dieselbe Datei, die der Build veröffentlicht; so liegt sie beim Tippen vor, ohne Laden. Aufgeklappt zeigt „Was wird kopiert?“ nur Begleitsatz und Auftrag mit dem Hinweis „[Formatbeschreibung der App – wird mitkopiert]“, „Vorlage kopieren“ kopiert den vollen Text; scheitert das Kopieren, steht der volle Text markiert in einem Feld, und ein Hinweis erklärt, ihn selbst zu kopieren.
+  1. „Fotografiere deine Vokabelliste.“ Darunter leiser der Tipp, mehrere Seiten als ein PDF zu scannen (iPhone: Notizen oder Dateien, „Dokumente scannen“; Android: Google Drive, „Scannen“): Kostenlose KI-Chats erlauben nur wenige Uploads am Tag, ChatGPT Free etwa drei Dateien (Quelle 46). Ein PDF statt eines ZIP, weil die Chats PDFs direkt lesen, die Bilder in einem ZIP aber nur über Werkzeuge mit Texterkennung.
+  2. „Kopiere die Vorlage, füge sie in einen KI-Chat wie ChatGPT, Claude oder Gemini ein und hänge die Fotos oder das PDF an.“ Darunter als Karte „Vorlage kopieren“ und zugeklappt „Was wird kopiert?“. Die Vorlage (`newSetPrompt` in `src/content/help.ts`, nur in der App, D-35, D-65): ein Begleitsatz, die ganze Spezifikation und der Auftrag. Die Spezifikation ist per `?raw` aus `docs/` eingebettet, dieselbe Datei, die der Build veröffentlicht; so liegt sie beim Tippen vor, ohne Laden. Aufgeklappt zeigt „Was wird kopiert?“ nur Begleitsatz und Auftrag mit dem Hinweis „[Formatbeschreibung der App – wird mitkopiert]“, „Vorlage kopieren“ kopiert den vollen Text; scheitert das Kopieren, steht der volle Text markiert in einem Feld, und ein Hinweis erklärt, ihn selbst zu kopieren.
   3. „Kopiere die Antwort und füge sie hier ein. Du siehst vor dem Speichern, was übernommen wird.“ Darunter die Karte mit „Antwort einfügen“ als großem Knopf und nach „oder“ „Datei auswählen“, dann zugeklappt „Text lieber selbst einfügen“.
 
   Bei 320 × 640 px ist „Antwort einfügen“ ohne Scrollen zu sehen; wer aus dem Chat zurückkommt, findet ihn also sofort. Darunter zugeklappt das Formatbeispiel aus Kapitel 1 der Spezifikation („So sieht ein Vokabelset aus“) und „Ein Set korrigieren“ mit dem Weg über „Exportieren“ (D-53, D-65), als letzte Zeile „Leeres Set anlegen und selbst tippen“ (10). Meldungen stehen oben. Nach dem Prüfen folgt die Vorschau (9.2, 9.7). Die frühere Hilfe „Wie bekomme ich ein Vokabelset?“ (`#/help`) ist darin aufgegangen; die Adresse leitet für alte Lesezeichen auf `#/import` um und ersetzt sich dabei im Verlauf.
@@ -1215,6 +1215,7 @@ Geprüft am 18. bis 20. Oktober 2026; Quellen 30–45 aus der Recherche zur Dida
 43. Anki-Handbuch – Planverfahren SM-2 und FSRS: https://docs.ankiweb.net/faqs/what-spaced-repetition-algorithm
 44. MDN – SpeechSynthesis (Web Speech API): https://developer.mozilla.org/en-US/docs/Web/API/SpeechSynthesis
 45. Nakata, T. & Suzuki, Y. (2019): Effects of massing and spacing on the learning of semantically related and unrelated words. Studies in Second Language Acquisition 41, 287–311 – bedeutungsähnliche Wörter führen zu mehr Verwechslungen: https://doi.org/10.1017/S0272263118000219
+46. OpenAI-Hilfe – File uploads FAQ (Upload-Grenzen, im Free-Tarif drei Dateien am Tag; ZIP nur über die Datenanalyse): https://help.openai.com/en/articles/8555545-file-uploads-faq
 
 ---
 
@@ -1295,6 +1296,7 @@ Geprüft am 18. bis 20. Oktober 2026; Quellen 30–45 aus der Recherche zur Dida
 | 2.69 | 22. November 2026 | S-54 Lernen über mehrere Sets: Einstieg, Ansicht, gemerkte Zusammenstellung und Sitzung (12.10), Kandidaten aus den Sets der Sitzung (12.3), Schreiben der Gruppe (12.5), „Weiterlernen“ mit Gruppe (12.6), Plan über mehrere Sets (12.8), Bibliothek (13.1); D-69, D-58 verweist darauf; Testfälle (15.2), E2E-34 (15.4); Bericht bei S-54 (21) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.70 | 22. November 2026 | S-55 Schreiben ohne Tastatur: Buchstaben ausformuliert (12.3), Schalter in Einrichtung und Zusammenstellung (12.1, 12.10), Plan ab Phase 4 in Richtung Lernsprache (12.8), Varianten (12.7), Testfälle (15.2), E2E-35 und E2E-20 (15.4), D-70, Kap. 21 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.71 | 22. November 2026 | S-59 Anleitung in „Vokabelset hinzufügen“: drei Schritte mit der Vorlage vor der Antwort, Hilfe „Wie bekomme ich ein Vokabelset?“ aufgegangen (13.1), Verzeichnisbaum (3.1), E2E-16 und E2E-20 (15.4), D-71, Kap. 21 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.72 | 22. November 2026 | Tipp in Schritt 1 von „Vokabelset hinzufügen“: mehrere Seiten als ein PDF scannen, wegen der Upload-Grenzen kostenloser KI-Chats; Schritt 2 und Auftrag der Vorlage nennen Fotos oder Seiten (13.1); Quelle 46 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 
 ---
 

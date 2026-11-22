@@ -9,9 +9,9 @@ import spec from "../../docs/Formatspezifikation_Vokabelset_v1.md?raw";
 
 const INTRO = "Hier ist die Formatbeschreibung für meinen Vokabeltrainer:";
 
-/** Auftrag am Ende der Vorlage für ein neues Set aus Fotos. */
+/** Auftrag am Ende der Vorlage für ein neues Set aus Fotos oder einem gescannten PDF. */
 export const NEW_SET_TASK =
-  "Mach aus den Vokabeln auf den angehängten Fotos ein Vokabelset in diesem Format.";
+  "Mach aus den Vokabeln auf den angehängten Fotos oder Seiten ein Vokabelset in diesem Format.";
 
 /**
  * Auftrag der Korrekturvorlage (D-42, D-44). Kurz wie der erste: Was eine Korrektur erhalten muss
