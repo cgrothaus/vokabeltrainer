@@ -215,3 +215,49 @@ test("E2E-30 Sperre vor „Antworten zeigen“", async ({ page }) => {
   await expect(options.first()).toBeVisible();
   expect(errors, "Fehler in der Konsole").toEqual([]);
 });
+
+test("E2E-30 Tippen auf die Frage zeigt die Antworten vorzeitig, aber erst nach der Sperre", async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  await importWords(page);
+  await goToSetup(page, TITLE);
+  await page.getByRole("slider", { name: "Multiple Choice" }).fill("100");
+  await page.getByRole("radio", { name: /^alle/ }).check();
+  await stopClock(page);
+  await page.getByRole("button", { name: "8 Vokabeln lernen" }).click();
+
+  const show = page.getByRole("button", { name: "Antworten zeigen" });
+  const options = page.locator(".options button");
+  const question = page.locator(".question .prompt");
+  await expect(show).toHaveAttribute("aria-disabled", "true");
+  await question.click({ force: true });
+  await expect(options.first()).toBeHidden();
+  await page.clock.runFor(1220);
+  await expect(show).not.toHaveAttribute("aria-disabled");
+  await question.click();
+  await expect(options.first()).toBeVisible();
+  expect(errors, "Fehler in der Konsole").toEqual([]);
+});
+
+test("E2E-30 Ohne Eingreifen zeigt Multiple Choice die Antworten nach 2 s", async ({ page }) => {
+  const errors = collectErrors(page);
+  await importWords(page);
+  await goToSetup(page, TITLE);
+  await page.getByRole("slider", { name: "Multiple Choice" }).fill("100");
+  await page.getByRole("radio", { name: /^alle/ }).check();
+  await stopClock(page);
+  await page.getByRole("button", { name: "8 Vokabeln lernen" }).click();
+
+  const options = page.locator(".options button");
+  await expect(page.getByRole("button", { name: "Antworten zeigen" })).toHaveAttribute(
+    "aria-disabled",
+    "true",
+  );
+  // 2 s ab dem Ende des Einblendens (0,22 s).
+  await page.clock.runFor(2219);
+  await expect(options.first()).toBeHidden();
+  await page.clock.runFor(1);
+  await expect(options.first()).toBeVisible();
+  expect(errors, "Fehler in der Konsole").toEqual([]);
+});

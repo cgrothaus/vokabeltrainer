@@ -35,7 +35,7 @@ const CARDS = "practice-cards";
 const SVG = "http://www.w3.org/2000/svg";
 
 /** Pause vor den Antworten bei Multiple Choice in Millisekunden (TDD 12.3, D-60). */
-const CHOICE_DELAY = 3000;
+const CHOICE_DELAY = 2000;
 
 /**
  * Sperre, bevor eine Karte aufgedeckt werden kann, in Millisekunden: gegen Doppeltippen und
@@ -385,7 +385,15 @@ export function practiceView(
     const showChoice = (question: Extract<Question, { mode: "multipleChoice" }>) => {
       const prompt = h(
         "div",
-        { class: "question", tabindex: -1 },
+        {
+          class: "question",
+          tabindex: -1,
+          // Wie bei der Karteikarte deckt auch ein Tippen auf die Frage vorzeitig auf, nicht aber
+          // auf den Lautsprecher.
+          onclick: (event: Event) => {
+            if (ready && !(event.target as Element).closest("button")) reveal();
+          },
+        },
         h("span", { class: "lang-tag" }, languageName(promptLanguage)),
         h("span", { class: "prompt", lang: promptLanguage }, faces.prompt),
         speakSlot,
@@ -428,7 +436,7 @@ export function practiceView(
         onKey = null;
         page.setDock();
       };
-      // Vorzeitig erst nach einer Sperre (TDD 12.3).
+      // Vorzeitig (Knopf oder Tippen auf die Frage) erst nach einer Sperre (TDD 12.3).
       const showNow = h(
         "button",
         {

@@ -339,7 +339,7 @@ test("Beispielset: Set-Ansicht mit Lernstand, Multiple Choice mit Rückmeldung",
   await expect(page.getByRole("button", { name: "Antworten zeigen" })).toBeVisible();
   await expect(page.getByRole("button", { name: /vorlesen$/ })).toBeVisible();
   findings.push(...(await audit(page, "Multiple Choice vor den Antworten, mit Lautsprecher")));
-  // Die Uhr läuft (mit angehaltener hinge axe): Unter Last erscheinen die Antworten nach 3 s schon während
+  // Die Uhr läuft (mit angehaltener hinge axe): Unter Last erscheinen die Antworten nach 2 s schon während
   // der Prüfung von selbst (TDD 12.3). Enter zeigt sie nach der Sperre, falls nicht, sonst nichts.
   await cardReady(page);
   await page.keyboard.press("Enter");
