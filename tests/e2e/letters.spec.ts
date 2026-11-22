@@ -63,7 +63,9 @@ test("E2E-35 Selbst auswählen mit Buchstaben: antippen, zurücknehmen, prüfen,
   await expect(page.locator(".letter-tiles")).toBeHidden();
   await page.getByRole("button", { name: "Weiter" }).click();
 
-  // Dritte Karte mit der Tastatur: Buchstaben, Rücktaste, Enter.
+  // Dritte Karte mit der Tastatur: Buchstaben, Rücktaste, Enter. Die alte Karte läuft noch kurz aus.
+  await expect(prompt(page)).not.toHaveText(MEANINGS[second]!);
+  await expect(page.locator(".letter-tiles")).toBeVisible();
   const third = TERMS[(await prompt(page).textContent())!]!;
   await page.keyboard.type(third.slice(0, 1));
   await page.keyboard.press("Backspace");

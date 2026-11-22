@@ -621,7 +621,12 @@ export function practiceView(
       if (asksTerm) offerSpeech(speakSlot, term);
       onKey = (event) => {
         if (event.key === "Backspace") takeLast();
-        else if (event.key === "Enter" && !handledByTarget(event)) void submit();
+        // Eine fokussierte Kachel nähme Enter sonst als Tippen auf sich selbst.
+        else if (
+          event.key === "Enter" &&
+          (!handledByTarget(event) || (complete() && event.target !== check))
+        )
+          void submit();
         else if (event.key.length > 2 || !/[\p{L}\p{N}]/u.test(event.key) || !typed(event.key))
           return false;
         return true;
