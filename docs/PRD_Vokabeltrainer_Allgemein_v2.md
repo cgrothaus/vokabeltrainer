@@ -2,8 +2,8 @@
 
 ## Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.10 – Lernplan erklären  
-**Stand:** 20. November 2026  
+**Version:** 2.11 – Vorbereitung auf einen Test zurückgestellt  
+**Stand:** 22. November 2026  
 **Status:** Entwurf für die nächste Entwicklungsiteration  
 **Ausgangspunkt:** Bestehender HTML-Prototyp „Vokabeltrainer Englisch“  
 **Entstehung und Autorenschaft:** siehe Kapitel 13 (Änderungshistorie)
@@ -174,7 +174,7 @@ Die Liste fasst den Umfang zusammen; verbindlich sind die jeweils referenzierten
 - Bereitstellung über statisches Hosting als installierbare, offline nutzbare Web-App (NFR-01–05).
 - Weiterarbeiten mit dem vorhandenen lokalen Bestand nach jedem App-Update (FR-33, DF-11).
 - Eine Oberfläche, die sich wie eine App bedient, mit Lernen im Mittelpunkt und einem Angebot zur Installation (FR-34, FR-35).
-- Lernen mit Plan: Lernstand pro Vokabel und Richtung, Wiederholen fälliger Vokabeln mit einem empfohlenen Einstieg, Vorbereitung auf einen Test, Lernen über mehrere Sets, Vorlesen der Lernsprache und Schreiben ohne Tastatur (FR-36–FR-41).
+- Lernen mit Plan: Lernstand pro Vokabel und Richtung, Wiederholen fälliger Vokabeln mit einem empfohlenen Einstieg, Lernen über mehrere Sets, Vorlesen der Lernsprache und Schreiben ohne Tastatur (FR-36, FR-37, FR-39–FR-41). Die Vorbereitung auf einen Test (FR-38) ist zurückgestellt (Kap. 11).
 
 ### 5.2 Bewusst nicht Teil dieser Version
 
@@ -200,7 +200,7 @@ Diese Tabelle legt nur Inhalt und Reihenfolge fest. Arbeitspakete und Umsetzungs
 | **M3 – Inhalte pflegen und teilen** | Vokabeleditor, leeres Set anlegen, Sektionen anlegen, umbenennen, umsortieren und löschen, Export von Sets und Sektionen | FR-02 (Leeres Set anlegen), FR-03 (Bearbeiten), FR-04, FR-18 |
 | **M4 – Korrigieren und aktualisieren** | Erkennen bekannter Sets, Aktualisieren und Ersetzen (auch einzelner Sektionen), Warnung bei lokalen Änderungen seit dem Export | FR-14, FR-15, FR-17, FR-29 |
 | **M5 – Oberfläche als App, Lernen im Mittelpunkt** | Eigene, kindgerechte Gestaltung mit App-Rahmen; Lernen als hervorgehobene Hauptaktion mit Lernstand in der Bibliothek und Schnellstart; Lernsitzung in Daumenreichweite; Installation und lokale Datenhaltung verständlich erklärt, Backup-Erinnerung später und ruhiger; Hinzufügen per Einfügen zuerst; aufgeräumte Pflege; eigenes Layout für Tablets. Grundlage ist eine UX/UI-Durchsicht nach M4 mit klickbarem Entwurf. Keine Änderung am gespeicherten Datenmodell | FR-08, FR-11, FR-24, FR-27, FR-28, FR-31, FR-34, FR-35 |
-| **M6 – Lernen mit Plan** | Grundlage ist eine Recherche zur Didaktik des Vokabellernens nach M4. Zuerst die Sitzung nach Erkenntnissen zum Abrufüben: Fehler kommen später und mehrfach wieder, Multiple Choice erst nach einem eigenen Erinnerungsversuch und mit plausibleren falschen Antworten, Einladung zum lauten Sprechen. Dann Vorlesen der Lernsprache. Danach als gemeinsame Grundlage ein Lernstand pro Vokabel und Richtung in Phasen eines Karteikastens; darauf bauen fällige Wiederholungen mit empfohlenem Einstieg, die Abfrageform nach Lernstand und die Vorbereitung auf einen Test mit Termin auf. Zuletzt Lernen über mehrere Sets und Schreiben in der Lernsprache ohne Tastatur. Erste Änderung am gespeicherten Datenmodell seit der Auslieferung, gebündelt in einem Schritt (FR-33) | FR-07–FR-11, FR-33, FR-36–FR-41 |
+| **M6 – Lernen mit Plan** | Grundlage ist eine Recherche zur Didaktik des Vokabellernens nach M4. Zuerst die Sitzung nach Erkenntnissen zum Abrufüben: Fehler kommen später und mehrfach wieder, Multiple Choice erst nach einem eigenen Erinnerungsversuch und mit plausibleren falschen Antworten, Einladung zum lauten Sprechen. Dann Vorlesen der Lernsprache. Danach als gemeinsame Grundlage ein Lernstand pro Vokabel und Richtung in Phasen eines Karteikastens; darauf bauen fällige Wiederholungen mit empfohlenem Einstieg und die Abfrageform nach Lernstand auf; die Vorbereitung auf einen Test mit Termin ist zurückgestellt (FR-38). Zuletzt Lernen über mehrere Sets und Schreiben in der Lernsprache ohne Tastatur. Erste Änderung am gespeicherten Datenmodell seit der Auslieferung, gebündelt in einem Schritt (FR-33) | FR-07–FR-11, FR-33, FR-36, FR-37, FR-39–FR-41 |
 
 FR-06 (Schutz vor Datenverlust) und FR-16 (Vorschau und Validierung) gelten in jedem Meilenstein für die dort hinzukommenden Aktionen. FR-33 gilt ab der ersten Auslieferung an Nutzende: Ab dann muss jede weitere Version den vorhandenen Bestand übernehmen. Das provisorische Deployment aus M0 dient nur Tests; die endgültige Adresse (eigene Domain) wird vor der ersten Auslieferung an Nutzende festgelegt, weil lokal gespeicherte Daten an die Adresse der App gebunden sind.
 
@@ -279,11 +279,12 @@ Die App kennt für jede Vokabel und jede Abfragerichtung getrennt, wie sicher si
 **FR-37 – Wiederholen nach Plan (MUST)**  
 Aus dem Lernstand ergibt sich, wann eine Vokabel wieder dran ist; die Abstände wachsen mit jeder Phase von einem Tag auf einige Wochen. Bibliothek und Set-Ansicht zeigen, wie viele Vokabeln heute fällig sind. Der empfohlene Einstieg („Jetzt wiederholen“) stellt die fälligen Vokabeln zusammen, ergänzt um wenige neue, und bestimmt die Abfrageform nach dem Lernstand: neue und unsichere Vokabeln eher als Multiple Choice, sicherere als Karteikarte oder zum Schreiben (FR-41). Ohne Fälliges bietet er neue Vokabeln an oder sagt, wann wieder etwas dran ist. Der Plan blockiert nichts: Wer frei lernen will, nutzt die Einrichtung wie bisher, und auch diese Antworten zählen für den Lernstand. Benachrichtigungen außerhalb der App gibt es nicht; was fällig ist, sieht man beim Öffnen.
 
-**FR-38 – Vorbereitung auf einen Test (SHOULD)**  
+**FR-38 – Vorbereitung auf einen Test (LATER, zurückgestellt)**  
+Zurückgestellt am 22. November 2026, weil sie weniger wichtig ist als die übrigen Teile von M6; sie steht im Ausblick (Kap. 11) und wird von dort wieder aufgenommen. Die Beschreibung bleibt als Entwurf stehen.  
 Lernende können für ein Set (mit FR-39 auch für mehrere) den Termin eines Tests eintragen. Bis dahin verteilt der Plan das Wiederholen auf wenige Lerntage vor dem Termin, mit Schwerpunkt auf der Richtung in die Lernsprache, wie sie Vokabeltests meist abfragen. Der Termin lässt sich ändern und entfernen; nach dem Termin gilt wieder der normale Plan.
 
 **FR-39 – Lernen über mehrere Sets (SHOULD)**  
-Mehrere Sets mit demselben Sprachpaar, etwa mehrere Lektionen vor einer Klassenarbeit, lassen sich zu einer Sitzung zusammenfassen – in der freien Einrichtung, beim Wiederholen und bei der Vorbereitung auf einen Test. Lernstand und Überblick bleiben pro Set richtig; das Löschen eines Sets lässt die Lerndaten der anderen unberührt.
+Mehrere Sets mit demselben Sprachpaar, etwa mehrere Lektionen vor einer Klassenarbeit, lassen sich zu einer Sitzung zusammenfassen – in der freien Einrichtung und beim Wiederholen, mit FR-38 auch bei der Vorbereitung auf einen Test. Lernstand und Überblick bleiben pro Set richtig; das Löschen eines Sets lässt die Lerndaten der anderen unberührt.
 
 **FR-40 – Vorlesen der Lernsprache (SHOULD)**  
 Vokabeln in der Lernsprache lassen sich vorlesen, in der Lernsitzung und in der Set-Ansicht. Die Stimme richtet sich nach der Lernsprache des Sets und kommt vom Gerät; die App nutzt keinen externen Dienst. Gibt es auf dem Gerät keine passende Stimme, bietet die App das Vorlesen nicht an, statt es scheitern zu lassen. Ob in der Sitzung automatisch vorgelesen wird, lässt sich einstellen.
@@ -492,7 +493,7 @@ Die nächste Version gilt als fachlich erfolgreich, wenn mindestens die folgende
 - **AK-29 – Abrufüben in der Sitzung** (FR-09, FR-10): Eine falsch beantwortete Karte kommt nicht unmittelbar nach wenigen Karten wieder und gilt erst nach mehr als einer richtigen Antwort als geschafft. Bei Multiple Choice erscheinen die Antworten erst nach einem kurzen Moment oder auf Tippen; die falschen Antworten haben, wo das Set Wortarten nennt, dieselbe Wortart wie die richtige.
 - **AK-30 – Lernstand pro Vokabel** (FR-36): Nach Antworten an mehreren Tagen zeigt die Set-Ansicht für beide Richtungen getrennt, wie viele Vokabeln neu, im Aufbau und sicher sind; mehrere richtige Antworten am selben Tag rücken eine Vokabel nur eine Phase vor, nur durch Multiple Choice wird keine Vokabel „sicher“. Ein Backup mit Antworten aus der Zeit vor M6 ergibt nach dem Wiederherstellen denselben Lernstand.
 - **AK-31 – Wiederholen nach Plan** (FR-37): Mit einer festen Uhr gespielt, sind Vokabeln nach den Abständen ihrer Phase fällig; Bibliothek und Set-Ansicht zeigen die Zahl, „Jetzt wiederholen“ fragt genau die fälligen und wenige neue ab. Die freie Einrichtung bleibt erreichbar, ihre Antworten verändern den Lernstand.
-- **AK-32 – Vorbereitung auf einen Test** (FR-38): Mit einem Termin in fünf Tagen schlägt die App bis dahin mehrere Lerntage vor, fragt überwiegend in die Lernsprache ab und kehrt nach dem Termin zum normalen Plan zurück.
+- **AK-32 – Vorbereitung auf einen Test** (FR-38, zurückgestellt mit FR-38): Mit einem Termin in fünf Tagen schlägt die App bis dahin mehrere Lerntage vor, fragt überwiegend in die Lernsprache ab und kehrt nach dem Termin zum normalen Plan zurück.
 - **AK-33 – Mehrere Sets** (FR-39): Zwei Sets mit demselben Sprachpaar lassen sich in einer Sitzung lernen, Sets mit anderem Sprachpaar nicht; danach zeigt jedes Set seinen eigenen, richtigen Lernstand, und das Löschen des einen lässt die Lerndaten des anderen vollständig.
 - **AK-34 – Vorlesen** (FR-40): Auf iPhone, iPad und dem Android-Testgerät liest die App englische Vokabeln mit einer englischen Stimme vor, auch offline und als installierte App; ohne passende Stimme erscheint kein Knopf zum Vorlesen.
 - **AK-35 – Schreiben ohne Tastatur** (FR-41): In der Richtung in die Lernsprache lässt sich ein Wort aus angebotenen Buchstaben zusammensetzen, ohne dass die Bildschirmtastatur erscheint; richtige Schreibweisen und akzeptierte Varianten zählen als richtig, die Antwort steht im Protokoll mit dieser Abfrageform.
@@ -533,7 +534,7 @@ Diese Punkte sind im TDD zu konkretisieren; sie sollen nicht durch unklare Annah
 
 ### Priorität 1: Didaktik und Lernwirksamkeit verbessern
 
-In M6 aufgenommen (FR-09, FR-10, FR-36–FR-39). Offen bleiben danach ein Planverfahren, das sich aus der eigenen Lernhistorie anpasst, Abfragen im Satzzusammenhang (z. B. Lückensätze aus Beispielsätzen) und Fortschrittsübersichten über längere Zeiträume.
+In M6 aufgenommen (FR-09, FR-10, FR-36, FR-37, FR-39). Zurückgestellt aus M6 (Ideenparkplatz): die Vorbereitung auf einen Test mit Termin (FR-38, AK-32); wieder aufnehmen, wenn Nutzende sich eine gezielte Vorbereitung auf Klassenarbeiten wünschen. Offen bleiben danach ein Planverfahren, das sich aus der eigenen Lernhistorie anpasst, Abfragen im Satzzusammenhang (z. B. Lückensätze aus Beispielsätzen) und Fortschrittsübersichten über längere Zeiträume.
 
 - Verteiltes Wiederholen: Vokabeln abhängig vom individuellen Lernstand zu sinnvollen Zeitpunkten erneut abfragen.
 - Lernplanung, die neue Vokabeln, fällige Wiederholungen und gezieltes Nachlernen sinnvoll kombiniert.
@@ -595,3 +596,4 @@ Das TDD muss insbesondere sicherstellen, dass die zentrale Produktanforderung er
 | 2.8 | 20. November 2026 | Meilenstein M6 „Lernen mit Plan“ nach einer Recherche zur Didaktik des Vokabellernens und einem Brainstorm mit dem Nutzer (5.1, 5.3): Abrufüben in der Sitzung – Fehler später und mehrfach, Multiple Choice erst nach eigenem Erinnern, plausiblere falsche Antworten, lautes Sprechen (FR-09, FR-10, AK-29); neu FR-36 (Lernstand pro Vokabel und Richtung in Phasen eines Karteikastens), FR-37 (Wiederholen nach Plan mit empfohlenem Einstieg, freie Einrichtung bleibt), FR-38 (Vorbereitung auf einen Test), FR-39 (Lernen über mehrere Sets), FR-40 (Vorlesen der Lernsprache), FR-41 (Schreiben ohne Tastatur) mit AK-30 bis AK-35; Antwortdauer im Protokoll (FR-11), empfohlener Einstieg (FR-08), mehrere Sets (FR-07, AK-22), PI-06, R-04 mit FR-36; Ausblick (11) und Abgrenzung (5.2) angepasst | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.9 | 20. November 2026 | Bei der Planung von S-49 präzisiert: Die Set-Ansicht zeigt den Lernstand je Richtung, die Bibliothek knapp für beide zusammen (FR-36) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.10 | 20. November 2026 | Lernplan erklären: FR-42 und AK-36 (Sätze am Ort und eine kurze Hilfeseite zu Karteikasten, Stufen und „Selbst auswählen“), ausgelöst durch die Beobachtung, dass „fällig“, „im Aufbau“ und „Frei lernen“ unerklärt dastanden | Claude (Anthropic), Modell Claude Sonnet 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.11 | 22. November 2026 | Vorbereitung auf einen Test (FR-38, AK-32) zurückgestellt und in den Ausblick übernommen (5.1, 5.3, 11); FR-39 nennt sie nur noch als spätere Ergänzung. Entscheidung des Nutzers: weniger wichtig als die übrigen Teile von M6 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
