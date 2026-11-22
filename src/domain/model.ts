@@ -62,11 +62,17 @@ export interface ReviewEvent {
   /** ISO 8601, UTC. */
   occurredAt: string;
   direction: Direction;
-  mode: "flashcard" | "multipleChoice";
+  /** `letters` ab `DB_VERSION` 2 (TDD 12.3). */
+  mode: "flashcard" | "multipleChoice" | "letters";
   /** Bei Selbstbewertung: `correct` = „gewusst“, `incorrect` = „nochmal“. */
   result: "correct" | "incorrect";
   /** Nur die erste Antwort zu einem Eintrag in einer Sitzung. */
   firstAttempt: boolean;
+  /**
+   * Ab `DB_VERSION` 2 (TDD 12.4, D-68): Millisekunden, bis die Karte aufgedeckt bzw. eine Antwort
+   * gewählt war, höchstens `MAX_RESPONSE_MS`. Fehlt bei unterbrochener Messung und älteren Antworten.
+   */
+  responseMs?: number;
 }
 
 export type SessionStatus = "active" | "completed" | "ended" | "interrupted";
@@ -83,4 +89,11 @@ export interface Session {
   config: { direction: Direction | "mixed"; count: number; mcShare: number };
   /** „Nur Fehler üben“: die Sitzung, deren Fehler hier wiederholt werden (D-29). */
   repeatOf?: string;
+  /** Ab `DB_VERSION` 2 (TDD 12.5, D-68): vom Plan oder selbst ausgewählt; fehlt bei älteren Sitzungen. */
+  origin?: "plan" | "setup";
+  /**
+   * Ab `DB_VERSION` 2 (TDD 12.5, D-68): Eine Sitzung über mehrere Sets hat je Set einen Datensatz,
+   * alle mit derselben Kennung; `config` gilt dann für die ganze Sitzung. Fehlt bei einem Set.
+   */
+  groupId?: string;
 }

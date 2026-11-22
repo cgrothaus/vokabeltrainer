@@ -8,7 +8,10 @@ export interface DataMigration {
 }
 
 /** Migrationen der App, ein Eintrag je Version ab 2 (TDD 7.1, 7.4). */
-export const migrations: readonly DataMigration[] = [];
+export const migrations: readonly DataMigration[] = [
+  // Version 2 (S-53, D-68): nur neue optionale Felder und Werte, ältere Datensätze bleiben gültig.
+  { version: 2, stores: {} },
+];
 
 /** Bringt einen Datensatz von Version `from` auf `to`. */
 export function migrateRecord(

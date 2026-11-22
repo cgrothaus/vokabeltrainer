@@ -4,7 +4,7 @@
 // „Beenden“ und die Zurück-Taste zeigen den Zwischenstand als Blatt über der Karte (D-51); das
 // Ergebnis listet die Fehler mit „Nur Fehler üben“ (D-29).
 import type { StoredEntry } from "../../domain/model";
-import { cardFaces, currentCard, type Result, sideText } from "../../domain/practice";
+import { cardFaces, currentCard, responseTime, type Result, sideText } from "../../domain/practice";
 import { entryDetails, hasDetails } from "../components/entryDetails";
 import { frame } from "../components/frame";
 import { openSheet, type Sheet } from "../components/sheet";
@@ -122,6 +122,17 @@ export function practiceView(
     { signal },
   );
 
+  // Antwortdauer der gezeigten Karte (TDD 12.4, D-68); ein verborgener Tab macht die Messung ungültig.
+  // Nach dem Zwischenstand wird die Karte neu gezeigt und neu gemessen.
+  let timing = { from: 0, hidden: false };
+  document.addEventListener(
+    "visibilitychange",
+    () => {
+      if (document.visibilityState === "hidden") timing.hidden = true;
+    },
+    { signal },
+  );
+
   const details = (entry: StoredEntry): Node[] =>
     hasDetails(entry) ? [h("div", { class: "details" }, entryDetails(entry, set))] : [];
 
@@ -195,13 +206,19 @@ export function practiceView(
       onclick: () => (answered() ? history.back() : (location.hash = "#/")),
     });
     showProgress();
+    // Gemessen ab dem Ende des Einblendens bis zum Aufdecken bzw. zur Wahl, nicht bis zur Bewertung.
+    timing = { from: performance.now() + afterEntrance(0), hidden: false };
+    let responseMs: number | undefined;
+    const measure = () => {
+      responseMs = responseTime(timing.from, performance.now(), timing.hidden);
+    };
 
     /** Speichert die Antwort; erst danach geht es weiter (TDD 12.4). */
     const save = async (result: Result): Promise<boolean> => {
       onKey = null;
       const at = shown;
       saving = true;
-      const saved = await practice.answer(result);
+      const saved = await practice.answer(result, responseMs);
       saving = false;
       if (signal.aborted) return false;
       if (!saved.ok && saved.setGone) {
@@ -285,6 +302,7 @@ export function practiceView(
         // Ein Klick nach einer Wischgeste darf nicht ein zweites Mal aufdecken.
         if (revealed || !ready) return;
         revealed = true;
+        measure();
         flash.classList.add("flipped");
         front.inert = true;
         back.inert = false;
@@ -339,6 +357,7 @@ export function practiceView(
       const after = h("div", null);
       let advance: ReturnType<typeof setTimeout> | undefined;
       const pick = async (index: number) => {
+        measure();
         for (const option of options) option.disabled = true;
         const right = index === question.correct;
         // Markiert mit Zeichen und Rahmen, nicht nur mit Farbe (TDD 13.4).

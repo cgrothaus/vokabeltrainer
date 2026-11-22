@@ -211,6 +211,47 @@ describe("validateRecords", () => {
     ]);
   });
 
+  it("akzeptiert die Angaben ab Version 2 und prüft ihre Werte", () => {
+    const sets = [set("set0000001"), set("set0000002")];
+    const sessions = [
+      session("session00001", "set0000001", { origin: "plan", groupId: "group0000001" }),
+      session("session00002", "set0000002", { origin: "setup", groupId: "group0000001" }),
+    ];
+    const reviewEvents = [
+      event("event0000001", "session00001", "set0000001", { mode: "letters", responseMs: 0 }),
+      event("event0000002", "session00002", "set0000002", { responseMs: 60_000 }),
+    ];
+    expect(validateRecords(records({ sets, sessions, reviewEvents }))).toEqual([]);
+
+    const badSession = session("session00001", "set0000001", {
+      origin: "test" as never,
+      groupId: "" as never,
+    });
+    const badEvents = [
+      event("event0000001", "session00001", "set0000001", { responseMs: 60_001 }),
+      event("event0000002", "session00001", "set0000001", { responseMs: 1.5 }),
+      event("event0000003", "session00001", "set0000001", { responseMs: -1 }),
+    ];
+    expect(validateRecords(records({ sessions: [badSession], reviewEvents: badEvents }))).toEqual([
+      "Lernsitzung 1: Die Angabe „origin“ fehlt oder ist ungültig.",
+      "Lernsitzung 1: Die Angabe „groupId“ fehlt oder ist ungültig.",
+      "Antwort 1: Die Angabe „responseMs“ fehlt oder ist ungültig.",
+      "Antwort 2: Die Angabe „responseMs“ fehlt oder ist ungültig.",
+      "Antwort 3: Die Angabe „responseMs“ fehlt oder ist ungültig.",
+    ]);
+  });
+
+  it("meldet ein Set, das in einer Gruppe von Lernsitzungen mehrfach vorkommt", () => {
+    const sessions = [
+      session("session00001", "set0000001", { groupId: "group0000001" }),
+      session("session00002", "set0000001", { groupId: "group0000001" }),
+      session("session00003", "set0000001", { groupId: "group0000002" }),
+    ];
+    expect(validateRecords(records({ sessions, reviewEvents: [] }))).toEqual([
+      "Lernsitzung 2: Das Set kommt in ihrer Gruppe mehrfach vor.",
+    ]);
+  });
+
   it("meldet Lernsitzungen und Antworten ohne zugehöriges Set", () => {
     expect(
       validateRecords(

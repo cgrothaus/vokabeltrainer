@@ -2,14 +2,14 @@ import "fake-indexeddb/auto";
 import { IDBFactory } from "fake-indexeddb";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { entryRev } from "../domain/hash";
-import type { Session, StoredSet } from "../domain/model";
+import type { ReviewEvent, Session, StoredSet } from "../domain/model";
 import { settingKey } from "../domain/practiceSetup";
 import { openDatabase } from "../storage/database";
 import { recordAnswer, startSession } from "../storage/sessions";
 import { addSet } from "../storage/sets";
 import { setSetting } from "../storage/settings";
 import { forgetAllOverviews } from "./overview";
-import { currentPractice, recommendedStart } from "./practice";
+import { currentPractice, quickStart, recommendedStart } from "./practice";
 
 let db: IDBDatabase;
 
@@ -80,6 +80,13 @@ const sessions = () =>
   new Promise<Session[]>((resolve, reject) => {
     const request = db.transaction("sessions").objectStore("sessions").getAll();
     request.onsuccess = () => resolve(request.result as Session[]);
+    request.onerror = () => reject(request.error);
+  });
+
+const events = () =>
+  new Promise<ReviewEvent[]>((resolve, reject) => {
+    const request = db.transaction("reviewEvents").objectStore("reviewEvents").getAll();
+    request.onsuccess = () => resolve(request.result as ReviewEvent[]);
     request.onerror = () => reject(request.error);
   });
 
@@ -172,5 +179,35 @@ describe("recommendedStart", () => {
     expect(await recommendedStart(db, small)).toBe("started");
     // Die gemerkte Einrichtung: alle drei Einträge in ihrer Richtung.
     expect(queued()).toHaveLength(3);
+  });
+});
+
+describe("Herkunft und Antwortdauer (TDD 12.4, 12.5, D-68)", () => {
+  it("hält fest, ob eine Sitzung vom Plan stammt; „Nur Fehler üben“ übernimmt das", async () => {
+    expect(await recommendedStart(db, large)).toBe("started");
+    const practice = currentPractice()!;
+    for (let i = practice.state.queue.length; i > 0; i--) await practice.answer("incorrect");
+    vi.setSystemTime(new Date("2026-11-20T08:10:00.000Z"));
+    await practice.repeatMistakes();
+    await remember(small, 0);
+    vi.setSystemTime(new Date("2026-11-20T08:20:00.000Z"));
+    expect(await quickStart(db, small)).toBe("started");
+    const byStart = (await sessions()).sort((a, b) => a.startedAt.localeCompare(b.startedAt));
+    expect(byStart.map((session) => [session.origin, session.repeatOf !== undefined])).toEqual([
+      ["plan", false],
+      ["plan", true],
+      ["setup", false],
+    ]);
+  });
+
+  it("speichert die Antwortdauer nur, wenn es eine gibt", async () => {
+    await remember(small, 0);
+    expect(await quickStart(db, small)).toBe("started");
+    const practice = currentPractice()!;
+    await practice.answer("correct", 2400);
+    await practice.answer("correct");
+    const recorded = await events();
+    expect(recorded.map((event) => event.responseMs).sort()).toEqual([2400, undefined]);
+    expect(recorded.filter((event) => "responseMs" in event)).toHaveLength(1);
   });
 });

@@ -121,6 +121,11 @@ describe("cardStates", () => {
     });
   });
 
+  it("wertet Buchstaben als Erinnern wie die Karteikarte", () => {
+    const answers: Answer[] = [1, 2, 5, 12, 26].map((day) => ({ day, mode: "letters" }));
+    expect(state(answers)).toEqual({ phase: 5, lastDay: today(26), stale: false });
+  });
+
   it("führt beide Richtungen getrennt", () => {
     const states = cardStates(
       [event({ day: 1 }), event({ day: 2 }), event({ day: 2, direction: "meaningToTerm" })],

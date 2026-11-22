@@ -1,6 +1,7 @@
 // Gespeicherte Datensätze prüfen (TDD 11.4), z. B. aus einem Backup vor dem Wiederherstellen. Geprüft
 // werden Pflichtangaben und Typen nach domain/model.ts, eindeutige Schlüssel und die Verweise von
 // Sitzungen und Antworten auf Sets. Die Meldungen nennen nur Positionen, keine Inhalte (TDD 14).
+import { MAX_RESPONSE_MS } from "./practice";
 
 /** Datensätze der Stores, die ein Backup enthält (TDD 11.3); `meta` gehört nicht dazu. */
 // Typalias statt Interface: Nur so passt es zu `BackupFile.data` (Record mit Index-Signatur).
@@ -33,6 +34,7 @@ const optional =
     value === undefined || check(value);
 const count: Check = (value) => Number.isInteger(value) && (value as number) >= 0;
 const number: Check = (value) => typeof value === "number" && Number.isFinite(value);
+const milliseconds: Check = (value) => count(value) && (value as number) <= MAX_RESPONSE_MS;
 
 const answer: Check = (value) =>
   isObject(value) && text(value.text) && optional(listOf(text))(value.acceptedVariants);
@@ -95,6 +97,9 @@ const SESSION_FIELDS: Record<string, Check> = {
     number(value.mcShare),
   // Zeigt auf eine Sitzung desselben Sets; beide werden nur zusammen gelöscht (D-25).
   repeatOf: optional(text),
+  origin: optional(oneOf("plan", "setup")),
+  // Sitzung über mehrere Sets: je Set ein Datensatz mit derselben Kennung (TDD 12.5, D-68).
+  groupId: optional(text),
 };
 
 const EVENT_FIELDS: Record<string, Check> = {
@@ -105,9 +110,10 @@ const EVENT_FIELDS: Record<string, Check> = {
   entryRev: text,
   occurredAt: text,
   direction,
-  mode: oneOf("flashcard", "multipleChoice"),
+  mode: oneOf("flashcard", "multipleChoice", "letters"),
   result: oneOf("correct", "incorrect"),
   firstAttempt: (value) => typeof value === "boolean",
+  responseMs: optional(milliseconds),
 };
 
 const SETTING_FIELDS: Record<string, Check> = { key: text };
@@ -123,10 +129,17 @@ export function validateRecords(records: StoreRecords): string[] {
   });
 
   const sessionSets = new Map<string, unknown>();
+  const groupSets = new Set<string>();
   eachRecord(records.sessions, "Lernsitzung", SESSION_FIELDS, "id", errors, (session, where) => {
     if (typeof session.id === "string") sessionSets.set(session.id, session.setId);
     if (typeof session.setId === "string" && !setIds.has(session.setId))
       errors.push(`${where}: Das zugehörige Set fehlt.`);
+    if (typeof session.groupId !== "string" || typeof session.setId !== "string") return;
+    // JSON.stringify trennt eindeutig, auch wenn eine Kennung das Trennzeichen enthielte.
+    const inGroup = JSON.stringify([session.groupId, session.setId]);
+    if (groupSets.has(inGroup))
+      errors.push(`${where}: Das Set kommt in ihrer Gruppe mehrfach vor.`);
+    groupSets.add(inGroup);
   });
 
   eachRecord(records.reviewEvents, "Antwort", EVENT_FIELDS, "id", errors, (event, where) => {

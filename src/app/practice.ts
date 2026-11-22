@@ -54,8 +54,11 @@ export interface PracticeSession {
   /** Alle Karten gewusst; die Sitzung ist als abgeschlossen gespeichert oder wird es gerade. */
   readonly finished: boolean;
   entry(id: string): StoredEntry;
-  /** Speichert die Antwort und rückt danach vor, auch wenn das Speichern scheiterte (TDD 12.4). */
-  answer(result: Result): Promise<AnswerOutcome>;
+  /**
+   * Speichert die Antwort und rückt danach vor, auch wenn das Speichern scheiterte (TDD 12.4).
+   * `responseMs` aus `responseTime`; ohne Wert fehlt die Angabe in der Antwort.
+   */
+  answer(result: Result, responseMs?: number): Promise<AnswerOutcome>;
   /** Antworten, die nicht gespeichert wurden; sie fehlen im Lernstand (D-32). */
   readonly unsaved: number;
   /** Vorzeitiges Ende, z. B. beim Verlassen der Ansicht. */
@@ -143,12 +146,13 @@ export async function beginPlanned(db: IDBDatabase, set: StoredSet): Promise<boo
     sectionIds,
     startedAt: new Date().toISOString(),
     status: "active",
-    // Bis S-53 eine gewöhnliche Sitzung; der Anteil ist der tatsächliche (TDD 12.8).
+    // Der Anteil ist der tatsächliche (TDD 12.8).
     config: {
       direction: "mixed",
       count: state.total,
       mcShare: Math.round((choices * 100) / state.total),
     },
+    origin: "plan",
   };
   await startSession(db, session);
   current = run(db, material, session, state);
@@ -203,6 +207,7 @@ export async function beginPractice(
     startedAt: new Date().toISOString(),
     status: "active",
     config: { direction: setup.direction, count: state.total, mcShare: setup.mcShare },
+    origin: "setup",
   };
   await startSession(db, session, { key: settingKey(set.id), value: storedSetup(set, setup) });
   current = run(db, material, session, state);
@@ -257,7 +262,7 @@ function run(
     },
     entry: (id) => entries.get(id)!,
     question,
-    async answer(result) {
+    async answer(result, responseMs) {
       const { mode } = question();
       const next = answer(state, result);
       const event: ReviewEvent = {
@@ -271,6 +276,8 @@ function run(
         mode,
         result,
         firstAttempt: next.recorded.firstAttempt,
+        // Ohne Messung fehlt das Feld ganz, statt als `undefined` gespeichert zu werden.
+        ...(responseMs === undefined ? {} : { responseMs }),
       };
       let outcome: AnswerOutcome = { ok: true };
       try {
@@ -312,6 +319,8 @@ function run(
         status: "active",
         config: { ...session.config, count: repeat.total },
         repeatOf: session.id,
+        // Die Herkunft der Ausgangssitzung; dass es eine Wiederholung ist, sagt `repeatOf`.
+        origin: session.origin,
       };
       // Ohne gemerkte Einrichtung: Sie gehört zur Auswahl, nicht zu den Fehlern.
       await startSession(db, next);

@@ -9,7 +9,9 @@ import {
   hasChoices,
   multipleChoice,
   type PracticeState,
+  MAX_RESPONSE_MS,
   repeatMistakes,
+  responseTime,
   sideText,
   startPlannedPractice,
   startPractice,
@@ -515,5 +517,23 @@ describe("plausible Kandidaten", () => {
   it("schließt Gleichbedeutende trotz gleicher Wortart aus", () => {
     const pool = [as("verb", entry("s", "to walk", "gehen|laufen"))];
     expect(distractors(go, "termToMeaning", pool, [])).toEqual([]);
+  });
+});
+
+describe("responseTime", () => {
+  it("liefert ganze Millisekunden zwischen Start und Antwort", () => {
+    expect(responseTime(1000.4, 3500.9, false)).toBe(2501);
+    expect(responseTime(1000, 1000, false)).toBe(0);
+  });
+
+  it("kappt lange Zeiten bei der Obergrenze", () => {
+    expect(MAX_RESPONSE_MS).toBe(60_000);
+    expect(responseTime(0, 61_000, false)).toBe(MAX_RESPONSE_MS);
+  });
+
+  it("liefert nichts, wenn die Messung unterbrochen war oder nicht stimmen kann", () => {
+    expect(responseTime(0, 2000, true)).toBeUndefined();
+    expect(responseTime(2000, 1000, false)).toBeUndefined();
+    expect(responseTime(Number.NaN, 1000, false)).toBeUndefined();
   });
 });

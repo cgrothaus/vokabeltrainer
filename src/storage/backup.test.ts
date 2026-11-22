@@ -3,7 +3,6 @@ import { IDBFactory } from "fake-indexeddb";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BACKUP_STORES, type CheckedBackup, parseBackup } from "../domain/backup";
 import { migrations } from "../domain/migrations";
-import { testMigration } from "../domain/migrations/testMigration";
 import type { ReviewEvent, Session, StoredSet } from "../domain/model";
 import { clearAllData, readBackup, readStores, restoreBackup } from "./backup";
 import { openDatabase } from "./database";
@@ -12,7 +11,7 @@ import { readPreMigrationCopy } from "./preMigrationCopy";
 import { DB_VERSION } from "./schema";
 import { recordAnswer, startSession } from "./sessions";
 import { addSet } from "./sets";
-import { testSchema } from "./testMigration";
+import { nextAppVersion } from "./testMigration";
 import { runTransaction } from "./transaction";
 
 let db: IDBDatabase;
@@ -232,17 +231,12 @@ describe("Sicherungskopie vor Migrationen (TDD 7.3)", () => {
     await fill(db);
     const before = check(await readBackup(db, "test", "2026-10-20T20:00:00.000Z"));
     db.close();
-    const migrated = await openDatabase({
-      appVersion: "test",
-      version: 2,
-      schema: testSchema,
-      migrations: [testMigration],
-    });
+    const migrated = await openDatabase({ appVersion: "test", ...nextAppVersion });
     if (!migrated.ok) throw new Error(migrated.reason);
     db = migrated.db;
 
     const copy = check(await readPreMigrationCopy(db.name));
-    expect(copy.dataVersion).toBe(1);
+    expect(copy.dataVersion).toBe(DB_VERSION);
     expect(copy.data).toEqual(before.data);
   });
 });

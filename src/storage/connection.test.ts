@@ -1,11 +1,10 @@
 import "fake-indexeddb/auto";
 import { forceCloseDatabase, IDBFactory } from "fake-indexeddb";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { testMigration } from "../domain/migrations/testMigration";
 import { keepConnected } from "./connection";
 import { type OpenResult, openDatabase } from "./database";
 import { getMeta, setMeta } from "./meta";
-import { testSchema } from "./testMigration";
+import { nextAppVersion } from "./testMigration";
 import { runTransaction } from "./transaction";
 
 let db: IDBDatabase;
@@ -98,12 +97,7 @@ describe("keepConnected", () => {
   it("verbindet nicht neu, wenn eine neuere App-Version die Datenbank übernimmt", async () => {
     const reopen = vi.fn(open);
     keepConnected(db, { reopen });
-    const newer = await openDatabase({
-      appVersion: "neu",
-      version: 2,
-      schema: testSchema,
-      migrations: [testMigration],
-    });
+    const newer = await openDatabase({ appVersion: "neu", ...nextAppVersion });
     expect(newer.ok).toBe(true);
     await expect(setMeta(db, "persistRequested", true)).rejects.toMatchObject({
       name: "InvalidStateError",

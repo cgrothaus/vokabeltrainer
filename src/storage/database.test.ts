@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { failingTestMigration, testMigration } from "../domain/migrations/testMigration";
 import { type OpenOptions, type OpenResult, openDatabase } from "./database";
 import { readPreMigrationCopy, savePreMigrationCopy } from "./preMigrationCopy";
-import { DB_NAME } from "./schema";
+import { DB_NAME, DB_VERSION } from "./schema";
 import { testSchema } from "./testMigration";
 
 vi.mock("./preMigrationCopy", async (importOriginal) => {
@@ -12,9 +12,13 @@ vi.mock("./preMigrationCopy", async (importOriginal) => {
   return { ...original, savePreMigrationCopy: vi.fn(original.savePreMigrationCopy) };
 });
 
+// Den Mechanismus prüft die Test-Migration: Ausgangslage ist Version 1 der App, Ziel deren eigene Version 2.
+const v1: Partial<OpenOptions> = { version: 1, schema: testSchema, migrations: [] };
 const v2: Partial<OpenOptions> = { version: 2, schema: testSchema, migrations: [testMigration] };
 const open = (options: Partial<OpenOptions> = {}) =>
-  openDatabase({ appVersion: "test", ...options });
+  openDatabase({ appVersion: "test", ...v1, ...options });
+/** Wie die App selbst öffnet: `DB_VERSION`, Schema und Migrationen der App. */
+const openApp = () => openDatabase({ appVersion: "test" });
 
 function expectOk(result: OpenResult): IDBDatabase {
   if (!result.ok) throw new Error(`Öffnen fehlgeschlagen: ${result.reason}`);
@@ -104,6 +108,16 @@ describe("Einrichtung", () => {
     // Ein späterer Start richtet die Datenbank vollständig ein.
     const db = expectOk(await open());
     expect(db.objectStoreNames).toHaveLength(5);
+    db.close();
+  });
+
+  it("übernimmt Version 1 in die Version der App, ohne Datensätze zu ändern (D-68)", async () => {
+    await seed({ sets: [sets[0]] });
+    const db = expectOk(await openApp());
+    expect(db.version).toBe(DB_VERSION);
+    expect(await readAll(db, "sets")).toEqual([sets[0]]);
+    // Ohne Datenumwandlung gibt es keine Sicherungskopie (TDD 7.3).
+    expect(await indexedDB.databases()).toEqual([{ name: DB_NAME, version: DB_VERSION }]);
     db.close();
   });
 

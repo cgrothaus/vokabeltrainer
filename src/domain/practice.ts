@@ -40,6 +40,24 @@ export const RETRY_GAP = 6;
 /** So oft muss eine Karte nach einem Fehler gewusst werden. */
 export const CONFIRMATIONS = 2;
 
+/** Obergrenze der gespeicherten Antwortdauer (TDD 12.4, D-68); länger heißt meist: kurz weggegangen. */
+export const MAX_RESPONSE_MS = 60_000;
+
+/**
+ * Antwortdauer in ganzen Millisekunden zwischen zwei Zeitpunkten derselben Uhr, höchstens
+ * `MAX_RESPONSE_MS`. Ohne Wert, wenn die Messung unterbrochen war (Tab verborgen, Zwischenstand) oder
+ * die Zeitpunkte nicht passen.
+ */
+export function responseTime(
+  startedAt: number,
+  answeredAt: number,
+  interrupted: boolean,
+): number | undefined {
+  const ms = Math.round(answeredAt - startedAt);
+  if (interrupted || !(ms >= 0)) return undefined;
+  return Math.min(ms, MAX_RESPONSE_MS);
+}
+
 /** Fisher-Yates; `random` liefert Werte in `[0, 1)`, z. B. `Math.random`. Die Eingabe bleibt unverändert. */
 export function shuffle<T>(items: readonly T[], random: () => number): T[] {
   const order = [...items];

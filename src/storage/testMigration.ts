@@ -1,19 +1,33 @@
 // Strukturteil der Test-Migration v1 → v2 (TDD 7.4); der Datenteil steht in domain/migrations/testMigration.ts.
 // Genutzt von den Integrationstests und dem Dev-Schalter `?testmigration=`, nie von der App selbst.
+import { migrations } from "../domain/migrations";
 import { failingTestMigration, testMigration } from "../domain/migrations/testMigration";
 import { type OpenOptions, type OpenResult, openDatabase } from "./database";
 import { deleteDatabase, deletePreMigrationCopy } from "./preMigrationCopy";
-import { schema, type SchemaStep } from "./schema";
+import { DB_VERSION, schema, type SchemaStep } from "./schema";
 import { runTransaction } from "./transaction";
 
-/** Schema der App plus Version 2 mit einem Index auf dem umbenannten Feld. */
+/**
+ * Version 1 der App plus eine eigene Version 2 mit einem Index auf dem umbenannten Feld. Die Version 2
+ * der App gehört nicht dazu: Der Mechanismus wird an einer Umwandlung geprüft, die echte hat keine.
+ */
 export const testSchema: readonly SchemaStep[] = [
-  ...schema,
+  ...schema.filter((step) => step.version === 1),
   {
     version: 2,
     structure: (_db, transaction) => transaction.objectStore("sets").createIndex("name", "name"),
   },
 ];
+
+/**
+ * Eine gedachte nächste App-Version mit der Umwandlung der Test-Migration, für Tests, die eine
+ * Datenbank der aktuellen App übernehmen (neuere Version in einem anderen Tab, Sicherungskopie).
+ */
+export const nextAppVersion = {
+  version: DB_VERSION + 1,
+  schema: [...schema, { version: DB_VERSION + 1, structure: () => {} }],
+  migrations: [...migrations, { ...testMigration, version: DB_VERSION + 1 }],
+} satisfies Partial<OpenOptions>;
 
 const TEST_DB_NAME = "vokabeltrainer-testmigration";
 
@@ -28,7 +42,13 @@ export async function openWithTestMigration(
 ): Promise<OpenResult> {
   await deleteDatabase(TEST_DB_NAME);
   await deletePreMigrationCopy(TEST_DB_NAME);
-  const v1 = await openDatabase({ ...options, name: TEST_DB_NAME });
+  const v1 = await openDatabase({
+    ...options,
+    name: TEST_DB_NAME,
+    version: 1,
+    schema: testSchema,
+    migrations: [],
+  });
   if (!v1.ok) return v1;
   await runTransaction(v1.db, "sets", "readwrite", (transaction) => {
     transaction

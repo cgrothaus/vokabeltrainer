@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type DataMigration, migrateRecord, storesToMigrate } from "./index";
+import { type DataMigration, migrateRecord, migrations, storesToMigrate } from "./index";
 
 const chain: DataMigration[] = [
   { version: 2, stores: { sets: (r) => ({ ...(r as object), a: 1 }) } },
@@ -74,5 +74,13 @@ describe("storesToMigrate", () => {
 
   it("prüft die Vollständigkeit der Kette", () => {
     expect(() => storesToMigrate(chain, 1, 5)).toThrow("Version 5");
+  });
+});
+
+describe("Kette der App", () => {
+  it("übernimmt Version 1 nach 2 ohne Datenumwandlung (D-68)", () => {
+    expect(storesToMigrate(migrations, 1, 2)).toEqual([]);
+    const session = { id: "session00001", setId: "set0000001" };
+    expect(migrateRecord(migrations, "sessions", session, 1, 2)).toBe(session);
   });
 });
