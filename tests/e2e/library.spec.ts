@@ -56,8 +56,9 @@ const sets = (page: Page) => page.getByRole("region", { name: "Vokabelsets" });
 
 test("Bibliothek gruppiert nach Lernsprache und zeigt die Lernstufe", async ({ page }) => {
   const errors = collectErrors(page);
-  await importFrench(page);
+  // Zuerst das Set ohne Lernstufe: Später übernähme es den Vorschlag „Klasse 7“ (D-72).
   await importSet(page, "Englisch – Wetter");
+  await importFrench(page);
 
   await expect(sets(page).getByRole("heading")).toHaveText(["Englisch", "Französisch"]);
   await expect(sets(page).getByRole("listitem").locator("div")).toHaveText([

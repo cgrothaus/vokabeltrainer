@@ -5,6 +5,7 @@
 import { diffImport, type ImportDiff, type ImportMode } from "../domain/diff";
 import { duplicateMessage, findDuplicates } from "../domain/duplicates";
 import { newSetFromFile, readSetFile } from "../domain/importSet";
+import { knownLevels, suggestedLevel } from "../domain/library";
 import { applyImport, type ImportDecisions } from "../domain/merge";
 import type { StoredSet } from "../domain/model";
 import type { SetFile } from "../domain/validate";
@@ -23,6 +24,10 @@ export interface ImportPreview {
   duplicates: string[];
   sections: { title: string; entryCount: number }[];
   entryCount: number;
+  /** Lernstufen der vorhandenen Sets zur Wahl, wenn die Datei keine nennt (D-72). */
+  levels: string[];
+  /** Vorschlag daraus: die Lernstufe des zuletzt hinzugefügten Sets. */
+  suggestedLevel?: string;
 }
 
 /** Eine Datei zu einem Set, das es schon gibt (TDD 9.3–9.7). */
@@ -95,6 +100,20 @@ export async function previewImport(db: IDBDatabase, text: string): Promise<Prev
       entryCount: section.entries.length,
     })),
     entryCount: countEntries(set),
+    ...levelChoice(set, existing),
+  };
+}
+
+/** Nennt die Datei keine Lernstufe, bietet die Vorschau die vorhandenen an (D-72). */
+function levelChoice(
+  set: StoredSet,
+  existing: StoredSet[],
+): Pick<ImportPreview, "levels" | "suggestedLevel"> {
+  if (set.level !== undefined) return { levels: [] };
+  const suggested = suggestedLevel(existing);
+  return {
+    levels: knownLevels(existing),
+    ...(suggested !== undefined && { suggestedLevel: suggested }),
   };
 }
 

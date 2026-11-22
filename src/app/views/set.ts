@@ -17,6 +17,8 @@ import {
   splitTrack,
   track,
 } from "../components/learningStatus";
+import type { ArrangeOutcome } from "../archive";
+import { quietRow } from "../components/protectionHint";
 import { openSheet } from "../components/sheet";
 import { speakButton } from "../components/speakButton";
 import type { DeleteOutcome, DeletionScope } from "../deleteSet";
@@ -40,6 +42,9 @@ export interface SetContext {
   speaker: (lang: string) => Promise<Say | null>;
   /** „Jetzt wiederholen“ bzw. „Neue Vokabeln lernen“ (TDD 12.8); wechselt bei Erfolg zur Sitzung. */
   startPlanned: (set: StoredSet) => Promise<void>;
+  /** Ob das Set im Archiv liegt (D-72). */
+  loadArchived: (set: StoredSet) => Promise<boolean>;
+  setArchived: (set: StoredSet, archived: boolean) => Promise<ArrangeOutcome>;
 }
 
 const NOT_STARTED = "Die Lernsitzung wurde nicht gestartet.";
@@ -88,11 +93,63 @@ export function setView(context: SetContext): Node {
           };
           if (setSize(set).entries > 0) page.setDock(...learnActions(set, plan, start));
         };
+        // Archiv (D-72): Hinweis unter dem Titel, Archivieren und Zurückholen auch im Menü „···“.
+        const archiveNote = h("div", { class: "archive-note" });
+        const status = h("div", { class: "archive-status" });
+        let archived = false;
+        const showArchived = () =>
+          archiveNote.replaceChildren(
+            archived
+              ? quietRow(
+                  "archive",
+                  "Dieses Set liegt im Archiv. In der Bibliothek erscheint es wieder, wenn du es zurückholst.",
+                  h(
+                    "button",
+                    { type: "button", class: "textbtn", onclick: toggleArchive },
+                    "Zurückholen",
+                  ),
+                )
+              : "",
+          );
+        const toggleArchive = async () => {
+          errors.replaceChildren();
+          const outcome = await context
+            .setArchived(set, !archived)
+            .catch((error: unknown): ArrangeOutcome => ({
+              ok: false,
+              error: failureMessage(error, "Das Set wurde nicht verschoben."),
+            }));
+          if (!outcome.ok) {
+            errors.textContent = outcome.error;
+            return focusSoon(errors as HTMLElement);
+          }
+          archived = !archived;
+          showArchived();
+          const done = h(
+            "p",
+            { role: "status", class: "message", tabindex: "-1" },
+            outcome.message,
+          );
+          status.replaceChildren(done);
+          focusSoon(done);
+        };
+        void context.loadArchived(set).then(
+          (value) => {
+            archived = value;
+            showArchived();
+          },
+          (error: unknown) => console.warn("Archiv nicht lesbar", error),
+        );
         main.replaceChildren(
-          ...h("div", null, content(set, context, message, errors, showPlan)).childNodes,
+          ...h("div", null, content(set, context, [message, status, archiveNote], errors, showPlan))
+            .childNodes,
         );
         const remove = deletion(set, context, page.element, menuButton, errors);
-        menuButton.onclick = () => openMenu(set, page.element, menuButton, remove);
+        menuButton.onclick = () =>
+          openMenu(set, page.element, menuButton, remove, {
+            archived: () => archived,
+            toggle: toggleArchive,
+          });
         menuButton.hidden = false;
         if (setSize(set).entries > 0) page.setDock(learnButton(set));
         // Fokus auf die Meldung, damit Screenreader sie vorlesen (D-34).
@@ -111,9 +168,18 @@ export function setView(context: SetContext): Node {
   return page.element;
 }
 
-/** Menü „···“ als Blatt von unten (TDD 13.7): Bearbeiten, Exportieren, Löschen (rot). */
-/** `opener` ausdrücklich: WebKit fokussiert einen angetippten Knopf nicht. */
-function openMenu(set: StoredSet, within: Element, opener: HTMLElement, remove: () => void): void {
+/**
+ * Menü „···“ als Blatt von unten (TDD 13.7): Bearbeiten, Exportieren, Archivieren bzw. Zurückholen
+ * (D-72), Löschen (rot). `opener` ausdrücklich: WebKit fokussiert einen angetippten Knopf nicht.
+ */
+function openMenu(
+  set: StoredSet,
+  within: Element,
+  opener: HTMLElement,
+  remove: () => void,
+  archive: { archived: () => boolean; toggle: () => Promise<void> },
+): void {
+  const archived = archive.archived();
   const id = encodeURIComponent(set.id);
   const sheet = openSheet(within, {
     title: set.title,
@@ -131,6 +197,22 @@ function openMenu(set: StoredSet, within: Element, opener: HTMLElement, remove: 
           "li",
           null,
           h("a", { href: `#/export/${id}` }, icon("download"), h("span", null, "Exportieren")),
+        ),
+        h(
+          "li",
+          null,
+          h(
+            "button",
+            {
+              type: "button",
+              onclick: () => {
+                sheet.close();
+                void archive.toggle();
+              },
+            },
+            icon(archived ? "restore" : "archive"),
+            h("span", null, archived ? "Aus dem Archiv zurückholen" : "Archivieren"),
+          ),
         ),
         h(
           "li",

@@ -17,6 +17,7 @@ import {
   getSet,
   listSets,
   updateSet,
+  updateSets,
 } from "./sets";
 
 let db: IDBDatabase;
@@ -205,6 +206,61 @@ describe("deleteSet", () => {
       },
     } as unknown as IDBDatabase;
     expect(await deleteSet(full, "m4x8c2r9tw")).toEqual({ ok: false, reason: "quota" });
+  });
+});
+
+describe("updateSets", () => {
+  const now = "2026-11-22T09:00:00.000Z";
+
+  it("speichert mehrere Sets in einer Transaktion", async () => {
+    const a = storedSet("m4x8c2r9tw");
+    const b = storedSet("k2n7w4b8qp", "Anderes");
+    await addSet(db, a);
+    await addSet(db, b);
+    const result = await updateSets(
+      db,
+      [
+        { set: { ...a, level: "Klasse 11" }, expectedEditCount: 0 },
+        { set: { ...b, level: "Klasse 11" }, expectedEditCount: 0 },
+      ],
+      now,
+    );
+    expect(result.ok).toBe(true);
+    expect((await getSet(db, "m4x8c2r9tw"))?.level).toBe("Klasse 11");
+    expect(await getSet(db, "k2n7w4b8qp")).toMatchObject({ level: "Klasse 11", editCount: 1 });
+  });
+
+  it("schreibt keines, wenn eines inzwischen geändert wurde", async () => {
+    const a = storedSet("m4x8c2r9tw");
+    const b = storedSet("k2n7w4b8qp", "Anderes");
+    await addSet(db, a);
+    await addSet(db, b);
+    await updateSet(db, { ...b, title: "Anderes Fenster" }, 0, now);
+    const result = await updateSets(
+      db,
+      [
+        { set: { ...a, level: "Klasse 11" }, expectedEditCount: 0 },
+        { set: { ...b, level: "Klasse 11" }, expectedEditCount: 0 },
+      ],
+      now,
+    );
+    expect(result).toEqual({ ok: false, reason: "changed" });
+    expect((await getSet(db, "m4x8c2r9tw"))?.level).toBeUndefined();
+  });
+
+  it("legt kein gelöschtes Set wieder an", async () => {
+    const a = storedSet("m4x8c2r9tw");
+    await addSet(db, a);
+    const result = await updateSets(
+      db,
+      [
+        { set: { ...a, level: "B1" }, expectedEditCount: 0 },
+        { set: storedSet("k2n7w4b8qp"), expectedEditCount: 0 },
+      ],
+      now,
+    );
+    expect(result).toEqual({ ok: false, reason: "missing" });
+    expect(await listSets(db)).toEqual([a]);
   });
 });
 

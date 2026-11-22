@@ -661,3 +661,72 @@ test("Zusammen lernen: Bibliothek mit Zeile, Auswahl der Sets, nichts gewählt (
   expect(findings).toEqual([]);
   expect(errors).toEqual([]);
 });
+
+test("Ordnen: Filter, Auswahl, Lernstufe, Archiv, Vorschau mit Lernstufe (S-60)", async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  const findings: string[] = [];
+  await importSet(page, "Wetter");
+  // Langer Titel und eine zweite Sprache: Filter und Häkchen müssen auch bei 200 % Schrift passen.
+  const title = "Französisch – Tiere, Farben und Jahreszeiten";
+  const french = JSON.parse(setFile(title)) as {
+    set: Record<string, string>;
+    sections: { entries: unknown[] }[];
+  };
+  french.set.termLanguage = "fr";
+  french.set.level = "Klasse 7";
+  french.sections[0]!.entries = [
+    { term: "le chien", meanings: ["der Hund"] },
+    { term: "le chat", meanings: ["die Katze"] },
+    { term: "rouge", meanings: ["rot"] },
+  ];
+  await importText(page, JSON.stringify(french), `„${title}“ mit 3 Einträgen gespeichert.`);
+  await expect(page.getByRole("radiogroup", { name: "Sprache" })).toBeVisible();
+  findings.push(...(await audit(page, "Bibliothek mit Filter")));
+
+  await page.getByRole("button", { name: "Sets auswählen" }).click();
+  await page.getByRole("checkbox", { name: new RegExp(`^${title}`) }).check();
+  findings.push(...(await audit(page, "Bibliothek, Auswahl")));
+
+  await page.getByRole("button", { name: "Lernstufe …" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Lernstufe setzen");
+  findings.push(...(await audit(page, "Lernstufe setzen")));
+  await page.getByRole("radio", { name: "Neue Lernstufe" }).check();
+  await page.getByRole("button", { name: "Übernehmen" }).click();
+  await expect(page.getByText("Gib einen Namen für die Lernstufe ein.")).toBeVisible();
+  findings.push(...(await audit(page, "Lernstufe setzen mit Fehler")));
+  await page.getByRole("textbox", { name: "Name der neuen Lernstufe" }).fill("Kursstufe 1");
+  await page.getByRole("button", { name: "Übernehmen" }).click();
+  await expect(libraryMessage(page)).toHaveText("1 Set jetzt in „Kursstufe 1“.");
+
+  // Beide archivieren: Die Bibliothek sagt es, das Archiv zeigt sie mit Filter nach Lernstufe.
+  await page.getByRole("button", { name: "Sets auswählen" }).click();
+  await page.getByRole("button", { name: "Alle aus Englisch auswählen" }).click();
+  await page.getByRole("button", { name: "Alle aus Französisch auswählen" }).click();
+  await page.getByRole("button", { name: "Archivieren" }).click();
+  await expect(page.getByText("Alle deine Sets liegen im Archiv.")).toBeVisible();
+  findings.push(...(await audit(page, "Bibliothek, alles im Archiv")));
+
+  await page.getByRole("link", { name: /^Archiv/ }).click();
+  await expect(page.getByRole("radiogroup", { name: "Lernstufe" })).toBeVisible();
+  findings.push(...(await audit(page, "Archiv mit Filter")));
+  await page.getByRole("button", { name: "Sets auswählen" }).click();
+  await page.getByRole("checkbox", { name: /^Wetter/ }).check();
+  findings.push(...(await audit(page, "Archiv, Auswahl")));
+  await page.goBack();
+  await page.getByRole("link", { name: "Wetter", exact: true }).click();
+  await expect(page.getByText("Dieses Set liegt im Archiv.", { exact: false })).toBeVisible();
+  findings.push(...(await audit(page, "Set-Ansicht im Archiv")));
+
+  // Ohne Lernstufe in der Datei schlägt die Vorschau eine vor.
+  await page.goto("./#/import");
+  const animals = JSON.parse(setFile("Tiere")) as { sections: { entries: unknown[] }[] };
+  animals.sections[0]!.entries = [{ term: "dog", meanings: ["Hund"] }];
+  await checkText(page, JSON.stringify(animals));
+  await expect(page.getByRole("combobox", { name: "Lernstufe" })).toBeVisible();
+  findings.push(...(await audit(page, "Import-Vorschau mit Lernstufe")));
+
+  expect(findings).toEqual([]);
+  expect(errors).toEqual([]);
+});

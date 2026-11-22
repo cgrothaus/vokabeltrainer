@@ -57,6 +57,47 @@ beforeEach(async () => {
 
 afterEach(() => db.close());
 
+describe("previewImport für ein neues Set", () => {
+  const file = (level?: string) =>
+    JSON.stringify({
+      format: "vokabeltrainer-set",
+      formatVersion: 1,
+      set: {
+        title: "Unit 5",
+        termLanguage: "en",
+        meaningLanguage: "de",
+        ...(level !== undefined && { level }),
+      },
+      sections: [{ title: "Text A", entries: [{ term: "cloud", meanings: ["Wolke"] }] }],
+    });
+  const preview = async (text: string) => {
+    const outcome = await previewImport(db, text);
+    if (!outcome.ok || outcome.kind !== "new") throw new Error("keine Vorschau für ein neues Set");
+    return outcome;
+  };
+
+  it("schlägt ohne Lernstufe in der Datei die des zuletzt hinzugefügten Sets vor (D-72)", async () => {
+    await updateSet(db, { ...set, level: "Klasse 10" }, set.editCount, "2026-11-01T08:00:00.000Z");
+    await addSet(db, {
+      ...set,
+      id: "k2n7w4b8qp",
+      title: "Englisch – Schule",
+      level: "Klasse 11",
+      createdAt: "2026-11-20T08:00:00.000Z",
+    });
+    const outcome = await preview(file());
+    expect(outcome.levels).toEqual(["Klasse 10", "Klasse 11"]);
+    expect(outcome.suggestedLevel).toBe("Klasse 11");
+  });
+
+  it("schlägt nichts vor, wenn die Datei eine Lernstufe nennt", async () => {
+    await updateSet(db, { ...set, level: "Klasse 10" }, set.editCount, "2026-11-01T08:00:00.000Z");
+    const outcome = await preview(file("Klasse 6"));
+    expect(outcome.set.level).toBe("Klasse 6");
+    expect(outcome.suggestedLevel).toBeUndefined();
+  });
+});
+
 describe("previewImport für ein bekanntes Set", () => {
   it("vergleicht mit dem Bestand und schreibt nichts (TAK-06)", async () => {
     const file = exported();

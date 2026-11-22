@@ -8,6 +8,7 @@
 import { FORMAT_EXAMPLE, NEW_SET_SHOWN, newSetPrompt } from "../../content/help";
 import type { ImportMode } from "../../domain/diff";
 import { MAX_IMPORT_SIZE } from "../../domain/importSet";
+import { withLevel } from "../../domain/library";
 import type { ImportDecisions } from "../../domain/merge";
 import type { StoredSet } from "../../domain/model";
 import type { ClipboardResult } from "../../platform/clipboard";
@@ -179,6 +180,27 @@ export function importView(context: ImportContext, signal: AbortSignal): Node {
   const added = (result: ImportPreview): ShownChanges => {
     const { set } = result;
     const duplicate = result.duplicates.length > 0;
+    // Nennt die Datei keine Lernstufe, schlägt die Vorschau eine vorhandene vor (D-72). Eine Auswahl
+    // statt eines Textfelds: Eine neue Lernstufe gibt man in „Angaben bearbeiten“ ein.
+    const levelChoice =
+      result.levels.length > 0
+        ? h(
+            "select",
+            {
+              id: "preview-level",
+              class: "level-select",
+              "aria-describedby": "preview-level-hint",
+            },
+            result.levels.map((level) =>
+              h("option", { value: level, selected: level === result.suggestedLevel }, level),
+            ),
+            h(
+              "option",
+              { value: "", selected: result.suggestedLevel === undefined },
+              "Keine Lernstufe",
+            ),
+          )
+        : null;
     const save = h(
       "button",
       {
@@ -189,7 +211,9 @@ export function importView(context: ImportContext, signal: AbortSignal): Node {
           errors.replaceChildren();
           let outcome: SaveOutcome;
           try {
-            outcome = await context.saveImport(set);
+            outcome = await context.saveImport(
+              levelChoice?.value ? withLevel(set, levelChoice.value) : set,
+            );
           } catch (error) {
             console.error("Set nicht gespeichert", error);
             outcome = { ok: false, error: UNEXPECTED };
@@ -243,6 +267,18 @@ export function importView(context: ImportContext, signal: AbortSignal): Node {
             h("li", null, `${section.title} · ${section.entryCount}`),
           ),
         ),
+        levelChoice &&
+          h(
+            "div",
+            { class: "field" },
+            h("label", { for: "preview-level", class: "field-title" }, "Lernstufe"),
+            levelChoice,
+            h(
+              "p",
+              { id: "preview-level-hint", class: "hint-text" },
+              "Die Datei nennt keine Lernstufe. Vorgeschlagen ist die deines zuletzt hinzugefügten Sets.",
+            ),
+          ),
       ),
       result.trimmed && h("p", null, "Text vor und nach dem Vokabelset wurde weggelassen."),
       result.warnings.length > 0 &&

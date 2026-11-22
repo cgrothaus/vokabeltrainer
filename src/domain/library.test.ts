@@ -1,5 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { groupSets, joinTitles, pairsToCombine, setSize } from "./library";
+import {
+  archiveKey,
+  archivedSetIds,
+  groupByLevel,
+  groupSets,
+  joinTitles,
+  knownLevels,
+  languageFilter,
+  levelFromInput,
+  pairsToCombine,
+  setSize,
+  splitRecent,
+  suggestedLevel,
+  withLevel,
+} from "./library";
 import type { StoredSet } from "./model";
 
 let nextId = 0;
@@ -141,5 +155,110 @@ describe("joinTitles", () => {
   it("zählt die Titel auf", () => {
     expect(joinTitles([set("A")])).toBe("A");
     expect(joinTitles([set("A"), set("B"), set("C")])).toBe("A, B und C");
+  });
+});
+
+describe("Archiv (D-72)", () => {
+  it("legt den Schlüssel pro Set unter `archived:` ab", () => {
+    expect(archiveKey("m4x8c2r9tw")).toBe("archived:m4x8c2r9tw");
+  });
+
+  it("liest archivierte Sets tolerant aus den Einstellungen", () => {
+    const ids = archivedSetIds([
+      { key: "archived:aaaaaaaaaa", value: true },
+      { key: "archived:bbbbbbbbbb", value: "ja" },
+      { key: "practice:cccccccccc", value: true },
+      { key: "theme", value: "dark" },
+    ]);
+    expect([...ids]).toEqual(["aaaaaaaaaa"]);
+  });
+});
+
+describe("languageFilter", () => {
+  it("nimmt die gemerkte Sprache nur, wenn es sie in der Bibliothek noch gibt", () => {
+    expect(languageFilter("fr", ["en", "fr"])).toBe("fr");
+    expect(languageFilter("es", ["en", "fr"])).toBeNull();
+    expect(languageFilter(42, ["en", "fr"])).toBeNull();
+    expect(languageFilter(undefined, ["en", "fr"])).toBeNull();
+  });
+});
+
+describe("splitRecent", () => {
+  const five = ["A", "B", "C", "D", "E"].map((title) => set(title));
+  const ids = (sets: StoredSet[]) => sets.map((s) => s.id);
+
+  it("stellt ab fünf Sets die drei zuletzt gelernten voran, die übrigen bleiben geordnet", () => {
+    const order = [five[3]!.id, "fremd00000", five[0]!.id, five[4]!.id, five[1]!.id];
+    const { recent, rest } = splitRecent(five, order);
+    expect(ids(recent)).toEqual([five[3]!.id, five[0]!.id, five[4]!.id]);
+    expect(titles(rest)).toEqual(["B", "C"]);
+  });
+
+  it("teilt unter fünf Sets nicht auf", () => {
+    const four = five.slice(0, 4);
+    expect(splitRecent(four, [four[2]!.id])).toEqual({ recent: [], rest: four });
+  });
+
+  it("nimmt nur gelernte Sets nach oben", () => {
+    const { recent, rest } = splitRecent(five, [five[2]!.id]);
+    expect(titles(recent)).toEqual(["C"]);
+    expect(titles(rest)).toEqual(["A", "B", "D", "E"]);
+  });
+});
+
+describe("Lernstufen", () => {
+  it("kennt die vorhandenen Lernstufen, Zahlen der Größe nach", () => {
+    const sets = [
+      set("A", { level: "Klasse 10" }),
+      set("B", { level: "Klasse 9" }),
+      set("C"),
+      set("D", { level: "Klasse 10" }),
+    ];
+    expect(knownLevels(sets)).toEqual(["Klasse 9", "Klasse 10"]);
+  });
+
+  it("schlägt die Lernstufe des zuletzt hinzugefügten Sets mit Lernstufe vor", () => {
+    const sets = [
+      set("A", { level: "Klasse 10", createdAt: "2026-09-01T08:00:00.000Z" }),
+      set("B", { level: "Klasse 11", createdAt: "2026-11-01T08:00:00.000Z" }),
+      set("C", { createdAt: "2026-11-20T08:00:00.000Z" }),
+      set("D", { level: "Klasse 9", createdAt: "2026-10-01T08:00:00.000Z" }),
+    ];
+    expect(suggestedLevel(sets)).toBe("Klasse 11");
+    expect(suggestedLevel([set("E")])).toBeUndefined();
+  });
+
+  it("prüft eine eingegebene Lernstufe wie das Formular", () => {
+    expect(levelFromInput("  Kursstufe 1 ")).toEqual({ ok: true, level: "Kursstufe 1" });
+    expect(levelFromInput("   ")).toEqual({
+      ok: false,
+      error: "Gib einen Namen für die Lernstufe ein.",
+    });
+    expect(levelFromInput("x".repeat(201))).toEqual({
+      ok: false,
+      error: "Die Lernstufe ist länger als 200 Zeichen.",
+    });
+  });
+
+  it("setzt oder entfernt die Lernstufe, ohne das Set zu verändern", () => {
+    const original = set("A", { level: "Klasse 9" });
+    expect(withLevel(original, "Klasse 10").level).toBe("Klasse 10");
+    const without = withLevel(original, undefined);
+    expect("level" in without).toBe(false);
+    expect(original.level).toBe("Klasse 9");
+  });
+
+  it("gruppiert das Archiv nach Lernstufe, ohne Lernstufe zuletzt, darin nach Sprache und Titel", () => {
+    const a = set("Unité 2", { termLanguage: "fr", level: "Klasse 10" });
+    const b = set("Unit 2", { level: "Klasse 10" });
+    const c = set("Unit 1", { level: "Klasse 10" });
+    const d = set("Phrasal verbs");
+    const e = set("Unit 3", { level: "Klasse 9" });
+    const groups = groupByLevel([a, b, c, d, e], languageName);
+    expect(groups.map((group) => [group.level, titles(group.sets)])).toEqual([
+      ["Klasse 9", ["Unit 3"]],
+      ["Klasse 10", ["Unit 1", "Unit 2", "Unité 2"]],
+      [undefined, ["Phrasal verbs"]],
+    ]);
   });
 });

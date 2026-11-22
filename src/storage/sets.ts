@@ -1,4 +1,5 @@
 // Sets speichern und lesen (TDD 6.1, 6.2, 6.5). Ein Set ist ein Dokument im Store `sets`.
+import { archiveKey } from "../domain/library";
 import type { StoredSet } from "../domain/model";
 import { settingKey } from "../domain/practiceSetup";
 import { type StorageFailure, storageFailure } from "./errors";
@@ -73,6 +74,49 @@ export async function updateSet(
   }
 }
 
+export type UpdateSetsResult =
+  | { ok: true; sets: StoredSet[] }
+  /** Wie bei `updateSet`; dann ist keines der Sets geändert. */
+  | { ok: false; reason: "missing" | "changed" | StorageFailure };
+
+/**
+ * Speichert Änderungen an mehreren Sets in einer Transaktion, z. B. eine gemeinsame Lernstufe (D-72):
+ * alle oder keine. Jedes Set wird wie bei `updateSet` gegen seinen `editCount` geprüft.
+ */
+export async function updateSets(
+  db: IDBDatabase,
+  changes: readonly { set: StoredSet; expectedEditCount: number }[],
+  now: string,
+): Promise<UpdateSetsResult> {
+  const saved = changes.map(({ set, expectedEditCount }) => ({
+    ...set,
+    editCount: expectedEditCount + 1,
+    updatedAt: now,
+  }));
+  let refused: "missing" | "changed" | null = null;
+  try {
+    await runTransaction(db, "sets", "readwrite", (transaction) => {
+      const sets = transaction.objectStore("sets");
+      changes.forEach(({ set, expectedEditCount }, index) => {
+        const request = sets.get(set.id);
+        request.onsuccess = () => {
+          if (refused) return;
+          const stored = request.result as StoredSet | undefined;
+          if (!stored) refused = "missing";
+          else if (stored.editCount !== expectedEditCount) refused = "changed";
+          if (refused) return transaction.abort();
+          sets.put(saved[index]);
+        };
+      });
+    });
+    return { ok: true, sets: saved };
+  } catch (error) {
+    if (refused) return { ok: false, reason: refused };
+    console.error("Sets nicht gespeichert", error);
+    return { ok: false, reason: storageFailure(error) };
+  }
+}
+
 export type DeleteSetResult = { ok: true } | { ok: false; reason: "missing" | StorageFailure };
 
 /** Lernstand eines Sets für die Ankündigung vor dem Löschen (FR-02). */
@@ -91,8 +135,8 @@ export async function countSetActivity(
 }
 
 /**
- * Löscht das Set mit seinen Sitzungen, Antworten und der gemerkten Einrichtung in einer Transaktion
- * (D-25): Verweise auf ein fehlendes Set machten jedes spätere Backup ungültig (TDD 11.4).
+ * Löscht das Set mit seinen Sitzungen, Antworten, der gemerkten Einrichtung und dem Archivvermerk
+ * (D-72) in einer Transaktion (D-25): Verweise auf ein fehlendes Set machten jedes spätere Backup ungültig (TDD 11.4).
  */
 export async function deleteSet(db: IDBDatabase, id: string): Promise<DeleteSetResult> {
   let missing = false;
@@ -108,6 +152,7 @@ export async function deleteSet(db: IDBDatabase, id: string): Promise<DeleteSetR
         }
         sets.delete(id);
         transaction.objectStore("settings").delete(settingKey(id));
+        transaction.objectStore("settings").delete(archiveKey(id));
         for (const name of ["sessions", "reviewEvents"] as const) {
           const store = transaction.objectStore(name);
           const keys = store.index("setId").getAllKeys(id);

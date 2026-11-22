@@ -2,7 +2,7 @@
 
 ## Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.11 – Vorbereitung auf einen Test zurückgestellt  
+**Version:** 2.12 – Volle Bibliothek ordnen: Filter, Archiv, Lernstufe für mehrere Sets  
 **Stand:** 22. November 2026  
 **Status:** Entwurf für die nächste Entwicklungsiteration  
 **Ausgangspunkt:** Bestehender HTML-Prototyp „Vokabeltrainer Englisch“  
@@ -221,6 +221,9 @@ Die App muss mehrere Lernsprachen und Bedeutungssprachen sowie mehrere Schuljahr
 
 **FR-02 – Vokabelsets (MUST)**  
 Nutzende können mehrere Vokabelsets importieren, als leeres Set anlegen und wieder löschen. Das Löschen eines Sets wird vorab mit Umfang (Sektionen, Einträge, betroffener Lernstand) angekündigt. Sets besitzen Titel und Sprachangaben sowie optionale Metadaten. Die App zeigt Sets und zugehörige Sektionen übersichtlich an, nach Lernsprache gruppiert (siehe Kapitel 4).
+
+**FR-43 – Volle Bibliothek ordnen (SHOULD)**  
+Auch mit mehreren Lernsprachen und vielen Sets in Lektionsgröße finden Lernende ihre aktuellen Sets schnell. Ab zwei Lernsprachen lässt sich die Bibliothek nach Sprache filtern; die Wahl bleibt gemerkt. Bei vielen Sets einer Sprache stehen die zuletzt gelernten oben, die übrigen in der gewohnten Reihenfolge. Sets, die gerade nicht gelernt werden, lassen sich archivieren und wieder zurückholen; das Archiv blendet sie nur aus der Bibliothek aus, Vokabeln und Lernstand bleiben, und es ist nach Lernstufe geordnet. Mehrere Sets lassen sich auf einmal auswählen, um sie zu archivieren oder ihnen dieselbe Lernstufe zu geben. Nennt eine neue Datei keine Lernstufe, schlägt die Vorschau eine vorhandene vor.
 
 **FR-03 – Sektionen und Reihenfolge (MUST)**  
 Sektionen können angezeigt, ausgewählt, erstellt, umbenannt, umsortiert und – unter Beachtung der enthaltenen Einträge – gelöscht werden. Die Reihenfolge bleibt erhalten.
@@ -498,6 +501,7 @@ Die nächste Version gilt als fachlich erfolgreich, wenn mindestens die folgende
 - **AK-34 – Vorlesen** (FR-40): Auf iPhone, iPad und dem Android-Testgerät liest die App englische Vokabeln mit einer englischen Stimme vor, auch offline und als installierte App; ohne passende Stimme erscheint kein Knopf zum Vorlesen.
 - **AK-35 – Schreiben ohne Tastatur** (FR-41): In der Richtung in die Lernsprache lässt sich ein Wort aus angebotenen Buchstaben zusammensetzen, ohne dass die Bildschirmtastatur erscheint; richtige Schreibweisen und akzeptierte Varianten zählen als richtig, die Antwort steht im Protokoll mit dieser Abfrageform.
 - **AK-36 – Lernplan erklären** (FR-42): Die Set-Ansicht eines gelernten Sets nennt unter dem Lernstand die Regel hinter „sicher“ und verweist auf die Hilfeseite „Wie lerne ich mit dem Plan?“; sie erklärt Karteikasten, Abstände, „neu“, „im Aufbau“ und „sicher“ sowie „Wiederholen“, „Neue Vokabeln lernen“ und „Selbst auswählen“, ist ohne Verstöße gegen die Barrierefreiheitsprüfung (NFR-09 bis NFR-13) lesbar und braucht kein Netz. Die Einrichtung und das Ergebnis einer Sitzung nennen, dass für den Lernstand jede Vokabel einmal am Tag zählt.
+- **AK-37 – Volle Bibliothek ordnen** (FR-43): Mit Sets in zwei Lernsprachen zeigt die Bibliothek einen Filter nach Sprache, der nach dem Neuladen gemerkt ist; bei fünf und mehr Sets einer Sprache stehen die drei zuletzt gelernten oben. Ein archiviertes Set erscheint nur im Archiv, nicht in „Zusammen lernen“ und „Weiterlernen“, und lässt sich mit unverändertem Lernstand zurückholen; das Archiv übersteht ein Backup. Zwei ausgewählte Sets bekommen in einem Schritt dieselbe neue Lernstufe.
 
 ### 9.1 Produktindikatoren für spätere Evaluation
 
@@ -570,7 +574,7 @@ Für die Lernsprache in M6 aufgenommen (FR-40), auf Wunsch von Nutzenden vor dem
 - Optionale geräteübergreifende Synchronisierung, falls später ein geeigneter, datenschutzbewusster Mechanismus gewünscht ist.
 - Zusätzliche Sprachen, grammatische Merkmale und spezifische Lernmodi.
 - Komfortfunktionen zur Unterstützung der externen Erstellung und Qualitätskontrolle von Lernmaterial, ohne die lokale und einfache Grundarchitektur aufzugeben.
-- Eine übersichtlichere Bibliothek bei vielen Sets in Lektionsgröße, etwa gruppiert nach Lehrwerk. Das Lernen über mehrere Sets hinweg ist in M6 aufgenommen (FR-39).
+- Die Bibliothek nach Lehrwerk gruppieren. Das Lernen über mehrere Sets hinweg ist in M6 aufgenommen (FR-39), Filter nach Sprache und Archiv mit FR-43.
 
 ---
 
@@ -597,3 +601,4 @@ Das TDD muss insbesondere sicherstellen, dass die zentrale Produktanforderung er
 | 2.9 | 20. November 2026 | Bei der Planung von S-49 präzisiert: Die Set-Ansicht zeigt den Lernstand je Richtung, die Bibliothek knapp für beide zusammen (FR-36) | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.10 | 20. November 2026 | Lernplan erklären: FR-42 und AK-36 (Sätze am Ort und eine kurze Hilfeseite zu Karteikasten, Stufen und „Selbst auswählen“), ausgelöst durch die Beobachtung, dass „fällig“, „im Aufbau“ und „Frei lernen“ unerklärt dastanden | Claude (Anthropic), Modell Claude Sonnet 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.11 | 22. November 2026 | Vorbereitung auf einen Test (FR-38, AK-32) zurückgestellt und in den Ausblick übernommen (5.1, 5.3, 11); FR-39 nennt sie nur noch als spätere Ergänzung. Entscheidung des Nutzers: weniger wichtig als die übrigen Teile von M6 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.12 | 22. November 2026 | Volle Bibliothek ordnen: FR-43 und AK-37 (Filter nach Sprache, zuletzt gelernte Sets oben, Archiv nach Lernstufe, Auswahl mehrerer Sets für Lernstufe und Archiv, Vorschlag der Lernstufe beim Hinzufügen); Ausblick angepasst (11). Ausgelöst durch die Frage des Nutzers, wie eine Bibliothek mit drei Fremdsprachen in der Oberstufe handhabbar bleibt; Brainstorming und klickbarer Entwurf | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |

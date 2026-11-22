@@ -29,6 +29,13 @@ import { previewImport, saveImport, saveKnownImport } from "./app/importText";
 import { loadSampleSet } from "./app/sampleSet";
 import { loadLibraryStart } from "./app/library";
 import {
+  archiveSets,
+  loadLanguageFilter,
+  readArchived,
+  saveLanguageFilter,
+  setLevel,
+} from "./app/archive";
+import {
   beginPlanned,
   beginPlannedTogether,
   beginPractice,
@@ -39,7 +46,9 @@ import {
   rememberedSetup,
   rememberedTogether,
 } from "./app/practice";
-import { replaceRoute, type Router, startRouter } from "./app/router";
+import { goBack, historyDepth, replaceRoute, type Router, startRouter } from "./app/router";
+import { archiveView } from "./app/views/archive";
+import { levelView } from "./app/views/level";
 import { loadSpeakAloud, saveSpeakAloud } from "./app/speech";
 import { applyTheme, loadTheme, saveTheme } from "./app/theme";
 import { backupView } from "./app/views/backup";
@@ -220,6 +229,10 @@ async function start(): Promise<void> {
         saveBackup: (prepared) => saveBackup(db, prepared),
         snoozeReminder: () => snoozeReminder(db),
         loadSets: () => listSets(db),
+        loadArchived: () => readArchived(db),
+        loadLanguageFilter: () => loadLanguageFilter(db),
+        saveLanguageFilter: (language) => saveLanguageFilter(db, language),
+        archive: (setIds) => archiveSets(db, setIds, true),
         loadStart: (sets) => loadLibraryStart(db, sets),
         loadOverview: (set) => loadOverview(db, set),
         startLearning: async (set) => {
@@ -284,6 +297,8 @@ async function start(): Promise<void> {
       },
       takeMessage,
       speaker: speakerFor,
+      loadArchived: async (set) => (await readArchived(db)).has(set.id),
+      setArchived: (set, archived) => archiveSets(db, [set.id], archived, set.title),
       startPlanned: async (set) => {
         // Inzwischen nichts mehr dran (z. B. in einem anderen Tab gelernt): zur Einrichtung.
         location.hash = (await beginPlanned(db, set))
@@ -365,10 +380,43 @@ async function start(): Promise<void> {
       },
       id,
     );
+  // Archivierte Sets fehlen in „Zusammen lernen“ wie in der Bibliothek (D-72).
+  const activeSets = async () => {
+    const [sets, archived] = await Promise.all([listSets(db), readArchived(db)]);
+    return sets.filter((set) => !archived.has(set.id));
+  };
+  const archivePage = (signal: AbortSignal) =>
+    archiveView(
+      {
+        loadSets: () => listSets(db),
+        loadArchived: () => readArchived(db),
+        unarchive: (setIds) => archiveSets(db, setIds, false),
+        takeMessage,
+      },
+      signal,
+    );
+  const levelPage = (_signal: AbortSignal, from: string, ids: string) => {
+    const parent = from === "archive" ? "#/archive" : "#/";
+    return levelView(
+      {
+        parent,
+        loadSets: () => listSets(db),
+        setLevel: (setIds, level) => setLevel(db, setIds, level),
+        onDone: (done) => {
+          message = done;
+          // Vorbei am Zusatzeintrag der Auswahl zurück zur Liste (D-72).
+          if (historyDepth() >= 2) history.go(-2);
+          else replaceRoute(parent);
+        },
+        onCancel: () => goBack(parent),
+      },
+      ids.split(",").filter((id) => id !== ""),
+    );
+  };
   const togetherPage = (_signal: AbortSignal, term: string, meaning: string) =>
     togetherView(
       {
-        loadSets: () => listSets(db),
+        loadSets: activeSets,
         loadOverview: (set) => loadOverview(db, set),
         loadSetup: (candidates) => rememberedTogether(db, candidates),
         startPlanned: async (sets) => {
@@ -462,13 +510,15 @@ async function start(): Promise<void> {
       "/help/learning": learningHelpView,
       "/learn/*": learnPage,
       "/together/*/*": togetherPage,
+      "/archive": archivePage,
+      "/level/*/*": levelPage,
       "/practice": practicePage,
       "/backup": backupPage,
       "/settings": settingsPage,
     },
     notFoundView,
     // Reine Leseansichten; Formulare, Sitzung, Import und Backup behalten ihren Stand (D-43).
-    ["/", "/set/*", "/edit/*"],
+    ["/", "/set/*", "/edit/*", "/archive"],
   );
   onAnswersElsewhere(forgetAllOverviews);
   onChangeElsewhere(() => {

@@ -88,6 +88,8 @@ test("E2E-02 Backup → frisches Gerät → Wiederherstellen ergibt denselben Be
   await expect(page.getByText("1 von 3 geschafft")).toBeVisible();
   await endPractice(page);
 
+  // Seit S-60 über die Einstellungen (D-72).
+  await page.getByRole("link", { name: "Einstellungen" }).click();
   await page.getByRole("link", { name: "Backup und Wiederherstellung" }).click();
   await expect(page.getByText("Noch kein Backup gespeichert.")).toBeVisible();
   const before = await readAll(page);
