@@ -85,15 +85,23 @@ describe("startPlannedPractice", () => {
     expect(state.queue.every((card) => card.mode === "flashcard" && card.firstAttempt)).toBe(true);
   });
 
-  it("stellt den Anteil an Multiple Choice wie beim freien Start, nur mit geeigneten Karten", () => {
+  it("stellt jede Karte in der Form, die der Plan wünscht, ohne Kandidaten als Karteikarte", () => {
     const state = startPlannedPractice(
-      planned,
-      { mcShare: 50, canChoose: (id) => id !== "a" },
-      sequence(0.7, 0.1, 0.4),
+      [
+        { entryId: "a", direction: "termToMeaning", mode: "multipleChoice" },
+        { entryId: "b", direction: "meaningToTerm", mode: "multipleChoice" },
+        { entryId: "c", direction: "meaningToTerm", mode: "flashcard" },
+        { entryId: "d", direction: "termToMeaning" },
+      ],
+      { canChoose: (id) => id !== "a" },
+      sequence(0),
     );
-    const choices = state.queue.filter((card) => card.mode === "multipleChoice");
-    expect(choices).toHaveLength(2);
-    expect(choices.map((card) => card.entryId)).not.toContain("a");
+    expect(Object.fromEntries(state.queue.map((card) => [card.entryId, card.mode]))).toEqual({
+      a: "flashcard",
+      b: "multipleChoice",
+      c: "flashcard",
+      d: "flashcard",
+    });
   });
 });
 

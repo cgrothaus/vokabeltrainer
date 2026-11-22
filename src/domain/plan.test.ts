@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { cardKey, type CardState, type Phase } from "./learningState";
 import type { Direction, StoredSet } from "./model";
-import { nextDueIn, planSelection, planSummary } from "./plan";
+import { nextDueIn, planMode, planSelection, planSummary } from "./plan";
 
 const TODAY = 20_000;
 
@@ -135,5 +135,49 @@ describe("planSelection", () => {
     const states = cards([0, 1, 1], [9, 1, 1]);
     expect(ids(planSelection(set(1), states, TODAY))).toEqual(["e0:→"]);
     expect(planSummary(set(1), states, TODAY).due).toBe(1);
+  });
+});
+
+describe("Abfrageform nach Lernstand", () => {
+  const modes = (selection: ReturnType<typeof planSelection>) =>
+    Object.fromEntries(
+      selection.cards.map(({ entryId, direction, mode }) => [
+        `${entryId}:${direction === "termToMeaning" ? "→" : "←"}`,
+        mode,
+      ]),
+    );
+
+  it("stellt Phase 0 und 1 als Multiple Choice, ab Phase 2 als Karteikarte", () => {
+    expect(([0, 1, 2, 3, 4, 5] as const).map((phase) => planMode(phase))).toEqual([
+      "multipleChoice",
+      "multipleChoice",
+      "flashcard",
+      "flashcard",
+      "flashcard",
+      "flashcard",
+    ]);
+  });
+
+  it("richtet die Form fälliger Karten nach ihrer Phase, neue Karten sind Multiple Choice", () => {
+    // Fällig: e0 in Phase 1, e1 in Phase 2, e2 in Phase 5; e3 in Phase 2 macht die Gegenrichtung neu.
+    const states = cards([0, 1, 1], [1, 2, 3], [2, 5, 30], [3, 2, 0]);
+    expect(modes(planSelection(set(5), states, TODAY))).toEqual({
+      "e0:→": "multipleChoice",
+      "e1:→": "flashcard",
+      "e2:→": "flashcard",
+      "e3:←": "multipleChoice",
+      "e4:→": "multipleChoice",
+    });
+  });
+
+  it("behält bei geänderten Einträgen die Form ihrer Phase", () => {
+    const states = new Map<string, CardState>([
+      [cardKey("e0", "termToMeaning"), { phase: 3, lastDay: TODAY, stale: true }],
+      [cardKey("e1", "termToMeaning"), { phase: 1, lastDay: TODAY, stale: true }],
+    ]);
+    expect(modes(planSelection(set(2), states, TODAY))).toEqual({
+      "e0:→": "flashcard",
+      "e1:→": "multipleChoice",
+    });
   });
 });

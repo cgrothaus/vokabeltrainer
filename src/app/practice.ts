@@ -20,7 +20,6 @@ import {
 } from "../domain/practice";
 import { planSelection } from "../domain/plan";
 import {
-  DEFAULT_MC_SHARE,
   type PracticeSetup,
   pickEntries,
   restoreSetup,
@@ -119,15 +118,14 @@ export async function recommendedStart(
 }
 
 /**
- * „Jetzt wiederholen“ bzw. „Neue Vokabeln lernen“ (TDD 12.8): Auswahl nach Plan, Anteil an Multiple
- * Choice aus der gemerkten Einrichtung (bis S-51). Die Einrichtung bleibt unverändert. `false`, wenn
- * weder etwas fällig noch etwas neu ist.
+ * „Jetzt wiederholen“ bzw. „Neue Vokabeln lernen“ (TDD 12.8): Auswahl und Abfrageform nach Plan
+ * (D-66); die gemerkte Einrichtung wirkt hier nicht und bleibt unverändert. `false`, wenn weder etwas
+ * fällig noch etwas neu ist.
  */
 export async function beginPlanned(db: IDBDatabase, set: StoredSet): Promise<boolean> {
   const stats = await loadOverview(db, set);
   const selection = planSelection(set, stats.cards, dayNumber(new Date()));
   if (selection.kind === null) return false;
-  const remembered = await rememberedSetup(db, set);
   const chosen = new Set(selection.cards.map((card) => card.entryId));
   const sectionIds = set.sections
     .filter((section) => section.entries.some((entry) => chosen.has(entry.id)))
@@ -135,10 +133,7 @@ export async function beginPlanned(db: IDBDatabase, set: StoredSet): Promise<boo
   const material = gather(set, chosen, sectionIds);
   const state = startPlannedPractice(
     selection.cards,
-    {
-      mcShare: remembered?.mcShare ?? DEFAULT_MC_SHARE,
-      canChoose: canChoose(material),
-    },
+    { canChoose: canChoose(material) },
     Math.random,
   );
   const choices = state.queue.filter((card) => card.mode === "multipleChoice").length;

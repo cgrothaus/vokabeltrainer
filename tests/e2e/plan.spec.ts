@@ -1,6 +1,6 @@
 // Wiederholen nach Plan (S-50): Mit fester Uhr und Antworten über mehrere Tage zeigen Bibliothek und
-// Set-Ansicht, was fällig ist; „Jetzt wiederholen“ fragt genau die fälligen und wenige neue ab, „Frei
-// lernen“ bleibt erreichbar (TDD 12.8, FR-37, AK-31, D-63).
+// Set-Ansicht, was fällig ist; „Jetzt wiederholen“ fragt genau die fälligen und wenige neue ab, in der
+// Form nach ihrer Phase (S-51), „Selbst auswählen“ bleibt erreichbar (TDD 12.8, FR-37, AK-31, D-63, D-66).
 import { expect, test } from "@playwright/test";
 import { entryRev } from "../../src/domain/hash";
 import type { Direction, ReviewEvent, Session, StoredSet } from "../../src/domain/model";
@@ -82,7 +82,7 @@ function backup(): string {
     result: "correct",
     firstAttempt: true,
   }));
-  // Gemerkte Einrichtung ohne Multiple Choice: Der Plan übernimmt ihren Anteil (TDD 12.8).
+  // Gemerkte Einrichtung ohne Multiple Choice: Der Plan fragt trotzdem nach der Phase ab (D-66).
   const settings = [
     {
       key: `practice:${SET.id}`,
@@ -132,21 +132,44 @@ test("E2E-33 Fälliges in Bibliothek und Set-Ansicht, „Jetzt wiederholen“ fr
   await dock.getByRole("button", { name: "Wiederholen (2)" }).click();
 
   // Genau die fälligen (sun, rain) und fünf neue: die Gegenrichtung von wind und vier neue Wörter.
+  // Neue und Karten in Phase 1 als Multiple Choice, sun in Phase 2 als Karteikarte (S-51).
   await expect(page.getByText("0 von 7 geschafft")).toBeVisible();
-  const prompts: string[] = [];
+  const answers = new Map(
+    WORDS.flatMap(([term, meaning]) => [
+      [term, meaning],
+      [meaning, term],
+    ]),
+  );
+  const modes: Record<string, string> = {};
   for (let i = 0; i < 7; i++) {
-    const front = page.locator(".flash:not(.flipped) .front");
-    prompts.push((await front.locator(".prompt").textContent())!);
-    await front.click();
-    await page.getByRole("button", { name: "Gewusst", exact: true }).click();
+    const prompt = page.locator(".question .prompt, .flash:not(.flipped) .front .prompt");
+    const text = (await prompt.textContent())!;
+    if ((await page.locator(".question").count()) > 0) {
+      modes[text] = "multipleChoice";
+      await page.getByRole("button", { name: "Antworten zeigen" }).click();
+      await page.locator(".options button", { hasText: answers.get(text)! }).click();
+      await page.getByRole("button", { name: "Weiter" }).click();
+    } else {
+      modes[text] = "flashcard";
+      await page.locator(".flash:not(.flipped) .front").click();
+      await page.getByRole("button", { name: "Gewusst", exact: true }).click();
+    }
     // Nach der letzten Karte kommt das Ergebnis statt des Zählers.
     if (i < 6) await expect(page.getByText(`${i + 1} von 7 geschafft`)).toBeVisible();
   }
   await expect(page.getByRole("heading", { name: "Geschafft" })).toBeVisible();
-  expect(prompts.sort()).toEqual(["Brise", "cloud", "fog", "ice", "rain", "storm", "sun"]);
+  expect(modes).toEqual({
+    Brise: "multipleChoice",
+    cloud: "multipleChoice",
+    fog: "multipleChoice",
+    ice: "multipleChoice",
+    rain: "multipleChoice",
+    storm: "multipleChoice",
+    sun: "flashcard",
+  });
   const sessions = await readStore<Session>(page, "sessions");
   const planned = sessions.find((session) => session.startedAt.startsWith("2026-11-20T12:30"));
-  expect(planned?.config).toEqual({ direction: "mixed", count: 7, mcShare: 0 });
+  expect(planned?.config).toEqual({ direction: "mixed", count: 7, mcShare: 86 });
   // Die gemerkte Einrichtung bleibt, wie sie war.
   expect(await readStore(page, "settings")).toContainEqual({
     key: `practice:${SET.id}`,

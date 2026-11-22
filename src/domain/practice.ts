@@ -81,20 +81,28 @@ export function startPractice(
 export interface PlannedCard {
   readonly entryId: string;
   readonly direction: Direction;
+  /** Gewünschte Form; ohne Angabe Karteikarte. */
+  readonly mode?: Mode;
 }
 
 /**
- * Sitzung nach Plan (TDD 12.8, D-63): Die Richtung kommt von jeder Karte, der Anteil an Multiple Choice
- * gilt wie beim freien Start.
+ * Sitzung nach Plan (TDD 12.8, D-63, D-66): Richtung und Form kommen von jeder Karte; Multiple Choice
+ * nur mit genug Kandidaten, sonst Karteikarte (D-28). Einen Anteil gibt es hier nicht.
  */
 export function startPlannedPractice(
   cards: readonly PlannedCard[],
-  options: Omit<PracticeOptions, "direction">,
+  options: Pick<PracticeOptions, "canChoose">,
   random: () => number,
 ): PracticeState {
-  const { mcShare = 0, canChoose = () => true } = options;
-  const shuffled = shuffle(cards, random).map(({ entryId, direction }) => ({ entryId, direction }));
-  return fresh(withModes(shuffled, mcShare, canChoose, random));
+  const { canChoose = () => true } = options;
+  return fresh(
+    shuffle(cards, random).map(({ entryId, direction, mode }): Card => ({
+      entryId,
+      direction,
+      mode: mode === "multipleChoice" && canChoose(entryId, direction) ? mode : "flashcard",
+      firstAttempt: true,
+    })),
+  );
 }
 
 /** Feste Quote (D-28): genau so viele geeignete Karten wie der Anteil ergibt, zufällig gewählt. */

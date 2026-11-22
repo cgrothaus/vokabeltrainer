@@ -62,6 +62,11 @@ export function learningHelpView(): Node {
       h(
         "p",
         null,
+        "Deshalb fragt dich der Plan neue Vokabeln und solche im ersten Fach als Multiple Choice ab. Ab dem zweiten Fach kommen sie als Karteikarte: Dann sagst du die Antwort selbst, bevor du aufdeckst.",
+      ),
+      h(
+        "p",
+        null,
         "Beide Richtungen zählen getrennt, zum Beispiel Englisch → Deutsch und Deutsch → Englisch. Im Plan lernst du neue Vokabeln zuerst von der Fremdsprache in deine Sprache. Die Gegenrichtung kommt dazu, sobald die Vokabel im zweiten Fach liegt, du sie also nach einem Tag Pause noch wusstest.",
       ),
     ),
@@ -88,7 +93,7 @@ export function learningHelpView(): Node {
           "li",
           null,
           h("b", null, "Selbst auswählen"),
-          ": Du bestimmst Sektionen, Richtung und Anzahl, zum Beispiel vor einer Klassenarbeit. Auch das zählt für den Lernstand: Weißt du eine Vokabel nicht, geht sie zurück ins erste Fach. Weißt du eine, die noch nicht fällig ist, rückt sie dadurch aber nicht weiter.",
+          ": Du bestimmst Sektionen, Richtung, Anzahl und den Anteil an Multiple Choice, zum Beispiel vor einer Klassenarbeit. Auch das zählt für den Lernstand: Weißt du eine Vokabel nicht, geht sie zurück ins erste Fach. Weißt du eine, die noch nicht fällig ist, rückt sie dadurch aber nicht weiter.",
         ),
       ),
       h(

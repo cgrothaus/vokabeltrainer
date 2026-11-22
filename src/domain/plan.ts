@@ -1,8 +1,9 @@
 // Wiederholen nach Plan (TDD 12.8, FR-37, D-57, D-63): was heute fällig ist und was „Jetzt wiederholen“
 // bzw. „Neue Vokabeln lernen“ abfragt. Grundlage ist der Lernstand je Karte (learningState.ts); `today`
 // ist der Tag in Ortszeit (`dayNumber`), damit Tests mit fester Uhr rechnen.
-import { cardKey, type CardState, dueIn } from "./learningState";
+import { cardKey, type CardState, dueIn, type Phase } from "./learningState";
 import type { Direction, StoredSet } from "./model";
+import type { Mode } from "./practice";
 
 /** Höchstens so viele Karten in einer Sitzung nach Plan; fällige zuerst. */
 export const PLAN_LIMIT = 30;
@@ -12,10 +13,22 @@ export const FILL_FRESH = 5;
 export const FRESH_ONLY = 10;
 /** Ab dieser Phase der ersten Richtung ist die Gegenrichtung als neu dran. */
 export const REVERSE_FROM_PHASE = 2;
+/** Bis zu dieser Phase fragt der Plan als Multiple Choice ab, danach als Karteikarte (D-66). */
+export const PLAN_CHOICE_MAX_PHASE = 1;
 
 export interface PlanCard {
   readonly entryId: string;
   readonly direction: Direction;
+  /** Gewünschte Form; Multiple Choice nur, wenn es genug Kandidaten gibt (TDD 12.3). */
+  readonly mode: Mode;
+}
+
+/**
+ * Abfrageform nach Lernstand (TDD 12.8, FR-37, D-66): Neue und unsichere Karten als Multiple Choice,
+ * sicherere als Karteikarte, damit sie ohne Auswahl erinnert werden.
+ */
+export function planMode(phase: Phase): Mode {
+  return phase <= PLAN_CHOICE_MAX_PHASE ? "multipleChoice" : "flashcard";
 }
 
 export interface PlanSummary {
@@ -50,7 +63,10 @@ function dueCards(set: StoredSet, cards: ReadonlyMap<string, CardState>, today: 
       const card = cards.get(cardKey(entryId, direction));
       if (!card) continue;
       const days = dueIn(card, today);
-      if (days <= 0) due.push({ entryId, direction, days, phase: card.phase, order: due.length });
+      if (days <= 0) {
+        const { phase } = card;
+        due.push({ entryId, direction, mode: planMode(phase), days, phase, order: due.length });
+      }
     }
   }
   return due.sort((a, b) => a.days - b.days || a.phase - b.phase || a.order - b.order);
@@ -68,9 +84,9 @@ function freshCards(set: StoredSet, cards: ReadonlyMap<string, CardState>): Plan
   const fresh: PlanCard[] = [];
   for (const entryId of entryIds(set)) {
     const first = cards.get(cardKey(entryId, "termToMeaning"));
-    if (!first) fresh.push({ entryId, direction: "termToMeaning" });
+    if (!first) fresh.push({ entryId, direction: "termToMeaning", mode: planMode(0) });
     else if (first.phase >= REVERSE_FROM_PHASE && !cards.has(cardKey(entryId, "meaningToTerm")))
-      fresh.push({ entryId, direction: "meaningToTerm" });
+      fresh.push({ entryId, direction: "meaningToTerm", mode: planMode(0) });
   }
   return fresh;
 }
@@ -118,7 +134,7 @@ export function planSelection(
     if (chosen.length === PLAN_LIMIT) break;
     if (used.has(card.entryId)) continue;
     used.add(card.entryId);
-    chosen.push({ entryId: card.entryId, direction: card.direction });
+    chosen.push({ entryId: card.entryId, direction: card.direction, mode: card.mode });
   }
   const review = chosen.length > 0;
   const room = review ? Math.min(FILL_FRESH, PLAN_LIMIT - chosen.length) : FRESH_ONLY;

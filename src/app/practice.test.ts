@@ -102,11 +102,12 @@ afterEach(() => {
 });
 
 describe("recommendedStart", () => {
-  it("startet ohne Gelerntes zehn neue Vokabeln, ohne die Einrichtung zu merken", async () => {
+  it("startet ohne Gelerntes zehn neue Vokabeln als Multiple Choice, ohne die Einrichtung zu merken", async () => {
     await remember(large, 0);
     expect(await recommendedStart(db, large)).toBe("started");
     expect(queued()).toHaveLength(10);
     expect(new Set(queued().map((card) => card.direction))).toEqual(new Set(["termToMeaning"]));
+    expect(new Set(queued().map((card) => card.mode))).toEqual(new Set(["multipleChoice"]));
     expect(
       queued()
         .map((card) => card.entryId)
@@ -120,7 +121,7 @@ describe("recommendedStart", () => {
     const [session] = await sessions();
     expect(session).toMatchObject({
       sectionIds: ["q7h3kd", "z2m8vt"],
-      config: { direction: "mixed", count: 10, mcShare: 0 },
+      config: { direction: "mixed", count: 10, mcShare: 100 },
     });
   });
 
@@ -135,11 +136,33 @@ describe("recommendedStart", () => {
     ).toEqual(["e00000", "e00001", "e00002", "e00003", "e00004", "e00005", "e00006", "e00007"]);
   });
 
-  it("nimmt den Anteil an Multiple Choice aus der gemerkten Einrichtung, sonst 25 %, und speichert den tatsächlichen", async () => {
+  it("fragt nach der Phase ab, nicht nach der gemerkten Einrichtung, und speichert den tatsächlichen Anteil", async () => {
+    await remember(large, 0);
+    // Zwei Tage gewusst: Phase 2, nach drei Tagen heute fällig und als Karteikarte gestellt.
+    await answered(large, 3, "2026-11-16T08:00:00.000Z");
+    await answered(large, 3, "2026-11-17T08:00:00.000Z");
     expect(await recommendedStart(db, large)).toBe("started");
-    const choices = queued().filter((card) => card.mode === "multipleChoice");
-    expect(choices).toHaveLength(3);
-    expect((await sessions())[0]!.config.mcShare).toBe(30);
+    expect(Object.fromEntries(queued().map((card) => [card.entryId, card.mode]))).toEqual({
+      e00000: "flashcard",
+      e00001: "flashcard",
+      e00002: "flashcard",
+      e00003: "multipleChoice",
+      e00004: "multipleChoice",
+      e00005: "multipleChoice",
+      e00006: "multipleChoice",
+      e00007: "multipleChoice",
+    });
+    const planned = (await sessions()).find((session) => session.config.direction === "mixed");
+    expect(planned?.config.mcShare).toBe(63);
+    // Die gemerkte Einrichtung bleibt, wie sie war.
+    const stored = await new Promise((resolve) => {
+      const request = db.transaction("settings").objectStore("settings").get(settingKey(large.id));
+      request.onsuccess = () => resolve(request.result);
+    });
+    expect(stored).toEqual({
+      key: settingKey(large.id),
+      value: { sections: "all", direction: "termToMeaning", count: 10, mcShare: 0 },
+    });
   });
 
   it("startet ohne Fälliges und ohne Neues wie bisher den Schnellstart", async () => {
