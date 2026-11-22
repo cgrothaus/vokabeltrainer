@@ -16,21 +16,27 @@ export const FRESH_ONLY = 10;
 export const REVERSE_FROM_PHASE = 2;
 /** Bis zu dieser Phase fragt der Plan als Multiple Choice ab, danach als Karteikarte (D-66). */
 export const PLAN_CHOICE_MAX_PHASE = 1;
+/** Ab dieser Phase fragt der Plan in Richtung Lernsprache mit Buchstaben ab (D-70). */
+export const PLAN_LETTERS_FROM_PHASE = 4;
 
 export interface PlanCard {
   readonly setId: string;
   readonly entryId: string;
   readonly direction: Direction;
-  /** Gewünschte Form; Multiple Choice nur, wenn es genug Kandidaten gibt (TDD 12.3). */
+  /** Gewünschte Form; Multiple Choice bzw. Buchstaben nur, wenn es geht (TDD 12.3). */
   readonly mode: Mode;
 }
 
 /**
- * Abfrageform nach Lernstand (TDD 12.8, FR-37, D-66): Neue und unsichere Karten als Multiple Choice,
- * sicherere als Karteikarte, damit sie ohne Auswahl erinnert werden.
+ * Abfrageform nach Lernstand (TDD 12.8, FR-37, D-66, D-70): Neue und unsichere Karten als Multiple
+ * Choice, sicherere als Karteikarte, damit sie ohne Auswahl erinnert werden; sichere in Richtung
+ * Lernsprache aus Buchstaben, damit die Schreibweise geübt wird.
  */
-export function planMode(phase: Phase): Mode {
-  return phase <= PLAN_CHOICE_MAX_PHASE ? "multipleChoice" : "flashcard";
+export function planMode(phase: Phase, direction: Direction): Mode {
+  if (phase <= PLAN_CHOICE_MAX_PHASE) return "multipleChoice";
+  return phase >= PLAN_LETTERS_FROM_PHASE && direction === "meaningToTerm"
+    ? "letters"
+    : "flashcard";
 }
 
 export interface PlanSummary {
@@ -77,7 +83,7 @@ function dueCards(parts: readonly PlanPart[], today: number): Due[] {
         const days = dueIn(card, today);
         if (days <= 0) {
           const { phase } = card;
-          const mode = planMode(phase);
+          const mode = planMode(phase, direction);
           due.push({ setId: set.id, entryId, direction, mode, days, phase, order: due.length });
         }
       }
@@ -99,9 +105,20 @@ function freshCards(set: StoredSet, cards: ReadonlyMap<string, CardState>): Plan
   for (const entryId of entryIds(set)) {
     const first = cards.get(cardKey(entryId, "termToMeaning"));
     const setId = set.id;
-    if (!first) fresh.push({ setId, entryId, direction: "termToMeaning", mode: planMode(0) });
+    if (!first)
+      fresh.push({
+        setId,
+        entryId,
+        direction: "termToMeaning",
+        mode: planMode(0, "termToMeaning"),
+      });
     else if (first.phase >= REVERSE_FROM_PHASE && !cards.has(cardKey(entryId, "meaningToTerm")))
-      fresh.push({ setId, entryId, direction: "meaningToTerm", mode: planMode(0) });
+      fresh.push({
+        setId,
+        entryId,
+        direction: "meaningToTerm",
+        mode: planMode(0, "meaningToTerm"),
+      });
   }
   return fresh;
 }

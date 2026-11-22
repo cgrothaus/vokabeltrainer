@@ -62,7 +62,7 @@ export function learningHelpView(): Node {
       h(
         "p",
         null,
-        "Deshalb fragt dich der Plan neue Vokabeln und solche im ersten Fach als Multiple Choice ab. Ab dem zweiten Fach kommen sie als Karteikarte: Dann sagst du die Antwort selbst, bevor du aufdeckst.",
+        "Deshalb fragt dich der Plan neue Vokabeln und solche im ersten Fach als Multiple Choice ab. Ab dem zweiten Fach kommen sie als Karteikarte: Dann sagst du die Antwort selbst, bevor du aufdeckst. Ab dem vierten Fach setzt du sie in Richtung Fremdsprache aus Buchstaben zusammen und übst so die Schreibweise, wie sie im Vokabeltest verlangt wird.",
       ),
       h(
         "p",
@@ -93,7 +93,7 @@ export function learningHelpView(): Node {
           "li",
           null,
           h("b", null, "Selbst auswählen"),
-          ": Du bestimmst Sektionen, Richtung, Anzahl und den Anteil an Multiple Choice, zum Beispiel vor einer Klassenarbeit. Auch das zählt für den Lernstand: Weißt du eine Vokabel nicht, geht sie zurück ins erste Fach. Weißt du eine, die noch nicht fällig ist, rückt sie dadurch aber nicht weiter.",
+          ": Du bestimmst Sektionen, Richtung, Anzahl und den Anteil an Multiple Choice, zum Beispiel vor einer Klassenarbeit. Mit „Schreiben mit Buchstaben“ setzt du in Richtung Fremdsprache die Wörter zusammen, statt Karten aufzudecken. Auch das zählt für den Lernstand: Weißt du eine Vokabel nicht, geht sie zurück ins erste Fach. Weißt du eine, die noch nicht fällig ist, rückt sie dadurch aber nicht weiter.",
         ),
       ),
       h(

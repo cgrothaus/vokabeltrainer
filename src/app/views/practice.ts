@@ -1,10 +1,20 @@
-// Lernsitzung (TDD 12.2, 12.3, FR-09, FR-10, FR-12) mit Karteikarten und Multiple Choice. Karteikarte:
-// Tippen, Enter, Leertaste oder Wischen deckt auf, die Karte wendet sich; erst danach bewerten die
-// Schaltflächen unten, Pfeil links/rechts oder Wischen. Jede Eingabe löst genau eine Aktion aus.
+// Lernsitzung (TDD 12.2, 12.3, FR-09, FR-10, FR-12) mit Karteikarten, Multiple Choice und Buchstaben.
+// Karteikarte: Tippen, Enter, Leertaste oder Wischen deckt auf, die Karte wendet sich; erst danach
+// bewerten die Schaltflächen unten, Pfeil links/rechts oder Wischen. Jede Eingabe löst genau eine
+// Aktion aus. Buchstaben (FR-41): Kacheln antippen oder Buchstaben tippen, ohne Eingabefeld und damit
+// ohne Bildschirmtastatur; „Prüfen“ wertet aus.
 // „Beenden“ und die Zurück-Taste zeigen den Zwischenstand als Blatt über der Karte (D-51); das
 // Ergebnis listet die Fehler mit „Nur Fehler üben“ (D-29).
 import type { StoredEntry } from "../../domain/model";
-import { cardFaces, currentCard, responseTime, type Result, sideText } from "../../domain/practice";
+import { composeWord, spelled } from "../../domain/letters";
+import {
+  cardFaces,
+  comparable,
+  currentCard,
+  responseTime,
+  type Result,
+  sideText,
+} from "../../domain/practice";
 import { entryDetails, hasDetails } from "../components/entryDetails";
 import { frame } from "../components/frame";
 import { openSheet, type Sheet } from "../components/sheet";
@@ -344,6 +354,34 @@ export function practiceView(
       focusSoon(front);
     };
 
+    /**
+     * Rückmeldung nach Multiple Choice und Buchstaben (TDD 12.3): Satz im Live-Bereich, speichern, dann
+     * Details und „Weiter“. Richtig geht es nach kurzer Zeit von selbst weiter, „Weiter“ geht sofort
+     * (D-67). Ein Fehler wartet, damit die richtige Antwort und die Details gelesen werden können.
+     */
+    const respond = async (
+      right: boolean,
+      correct: string,
+      feedback: HTMLElement,
+      after: HTMLElement,
+    ) => {
+      feedback.classList.add(right ? "good" : "bad");
+      feedback.textContent = right ? "Richtig." : `Leider falsch. Richtig ist: ${correct}`;
+      if (!asksTerm) offerSpeech(speakSlot, term);
+      if (!(await save(right ? "correct" : "incorrect"))) return;
+      const next = h("button", { type: "button", onclick: proceed }, "Weiter");
+      after.replaceChildren(...details(entry));
+      page.setDock(next);
+      focusSoon(next);
+      if (right) {
+        const at = shown;
+        const advance = setTimeout(() => {
+          if (screen === "cards" && shown === at) proceed();
+        }, CORRECT_ADVANCE);
+        signal.addEventListener("abort", () => clearTimeout(advance));
+      }
+    };
+
     const showChoice = (question: Extract<Question, { mode: "multipleChoice" }>) => {
       const prompt = h(
         "div",
@@ -354,8 +392,7 @@ export function practiceView(
       );
       const feedback = h("p", { class: "feedback", "aria-live": "polite" });
       const after = h("div", null);
-      let advance: ReturnType<typeof setTimeout> | undefined;
-      const pick = async (index: number) => {
+      const pick = (index: number) => {
         measure();
         for (const option of options) option.disabled = true;
         const right = index === question.correct;
@@ -366,24 +403,7 @@ export function practiceView(
           options[index]!.classList.add("wrong");
           options[index]!.prepend(h("span", { class: "mark" }, "✗ "));
         }
-        feedback.classList.add(right ? "good" : "bad");
-        feedback.textContent = right
-          ? "Richtig."
-          : `Leider falsch. Richtig ist: ${question.options[question.correct]}`;
-        if (!asksTerm) offerSpeech(speakSlot, term);
-        if (!(await save(right ? "correct" : "incorrect"))) return;
-        const next = h("button", { type: "button", onclick: proceed }, "Weiter");
-        after.replaceChildren(...details(entry));
-        page.setDock(next);
-        focusSoon(next);
-        // Richtig: nach kurzer Zeit von selbst weiter, „Weiter“ geht sofort (D-67). Ein Fehler wartet,
-        // damit die richtige Antwort und die Details gelesen werden können.
-        if (right) {
-          const at = shown;
-          advance = setTimeout(() => {
-            if (screen === "cards" && shown === at) proceed();
-          }, CORRECT_ADVANCE);
-        }
+        void respond(right, question.options[question.correct]!, feedback, after);
       };
       const options = question.options.map((option, index) =>
         h(
@@ -392,7 +412,7 @@ export function practiceView(
             type: "button",
             class: "option",
             lang: answerLanguage,
-            onclick: () => void pick(index),
+            onclick: () => pick(index),
           },
           option,
         ),
@@ -433,7 +453,6 @@ export function practiceView(
       signal.addEventListener("abort", () => {
         clearTimeout(timer);
         clearTimeout(lock);
-        clearTimeout(advance);
       });
       page.setDock(showNow);
       show(
@@ -456,8 +475,163 @@ export function practiceView(
       focusSoon(prompt);
     };
 
+    const showLetters = (question: Extract<Question, { mode: "letters" }>) => {
+      const { pattern, tiles } = question;
+      const prompt = h(
+        "div",
+        { class: "question", tabindex: -1 },
+        h("span", { class: "lang-tag" }, languageName(promptLanguage)),
+        h("span", { class: "prompt", lang: promptLanguage }, faces.prompt),
+        speakSlot,
+      );
+      const feedback = h("p", { class: "feedback", "aria-live": "polite" });
+      const after = h("div", null);
+      // Je Stelle die Kachel, die dort liegt; Antippen im Wort nimmt sie zurück.
+      const placed: (number | null)[] = pattern.filter((part) => part === null).map(() => null);
+      let checked = false;
+      const letters = () => placed.flatMap((tile) => (tile === null ? [] : [tiles[tile]!]));
+      const complete = () => placed.every((tile) => tile !== null);
+
+      const tileButtons = tiles.map((tile, index) =>
+        h("button", { type: "button", class: "tile", onclick: () => place(index) }, tile),
+      );
+      const tileBox = h("div", { class: "letter-tiles", lang: answerLanguage }, tileButtons);
+      const slots = placed.map(() => h("span", { class: "slot" }));
+      // Je Wort eine Gruppe: Bei wenig Platz bricht die Zeile so zuerst an den Leerzeichen um.
+      const groups: Node[][] = [[]];
+      let next = 0;
+      for (const part of pattern) {
+        if (part !== null && part.trim() === "") groups.push([]);
+        else
+          groups.at(-1)!.push(part === null ? slots[next++]! : h("span", { class: "fixed" }, part));
+      }
+      const word = h(
+        "div",
+        { class: "word", lang: answerLanguage },
+        groups.map((group) => h("span", { class: "part" }, group)),
+      );
+      // Für Screenreader: was bisher zusammengesetzt ist.
+      const sofar = h("p", { class: "visually-hidden", "aria-live": "polite" });
+      const check = h(
+        "button",
+        { type: "button", "aria-disabled": "true", onclick: () => void submit() },
+        "Prüfen",
+      );
+
+      const render = () => {
+        placed.forEach((tile, slot) => {
+          slots[slot]!.replaceChildren(
+            ...(tile === null
+              ? []
+              : [
+                  h(
+                    "button",
+                    {
+                      type: "button",
+                      "aria-label": `„${tiles[tile]}“ zurücknehmen`,
+                      disabled: checked,
+                      onclick: () => take(slot),
+                    },
+                    tiles[tile]!,
+                  ),
+                ]),
+          );
+        });
+        const used = new Set(placed);
+        tileButtons.forEach((button, index) => {
+          button.disabled = checked || used.has(index);
+          button.classList.toggle("used", used.has(index));
+        });
+        if (complete()) check.removeAttribute("aria-disabled");
+        else check.setAttribute("aria-disabled", "true");
+        sofar.textContent = letters().length === 0 ? "" : `Bisher: ${letters().join(" ")}`;
+      };
+      // Eine verschwundene Kachel nähme den Fokus mit: weiter zur nächsten bzw. zu „Prüfen“.
+      const keepFocus = (from: HTMLButtonElement | null) => {
+        if (from === null || !from.disabled) return;
+        const target = complete() ? check : tileButtons.find((button) => !button.disabled);
+        target?.focus();
+      };
+      const place = (index: number) => {
+        const slot = placed.indexOf(null);
+        if (checked || slot < 0 || placed.includes(index)) return;
+        const button = tileButtons[index]!;
+        const focused = document.activeElement === button ? button : null;
+        placed[slot] = index;
+        render();
+        keepFocus(focused);
+      };
+      const take = (slot: number) => {
+        const tile = placed[slot];
+        if (checked || tile === null || tile === undefined) return;
+        placed[slot] = null;
+        render();
+        tileButtons[tile]!.focus();
+      };
+      const takeLast = () => {
+        const slot = placed.findLastIndex((tile) => tile !== null);
+        if (slot >= 0) take(slot);
+      };
+      /** Eine getippte Taste: dieselbe Kachel, sonst eine, die ohne Groß-/Kleinschreibung passt. */
+      const typed = (key: string) => {
+        const free = tiles.map((_, index) => index).filter((index) => !placed.includes(index));
+        const index =
+          free.find((i) => tiles[i] === key) ??
+          free.find((i) => comparable(tiles[i]!) === comparable(key));
+        if (index === undefined) return false;
+        place(index);
+        return true;
+      };
+
+      const submit = async () => {
+        if (checked || !complete()) return;
+        measure();
+        checked = true;
+        onKey = null;
+        render();
+        const right = spelled(entry, pattern, letters()) === "correct";
+        // Markiert mit Zeichen und Rahmen, nicht nur mit Farbe (TDD 13.4).
+        word.classList.add(right ? "right" : "wrong");
+        word.prepend(
+          h("span", { class: "mark", "aria-hidden": "true" }, right ? "✓" : "✗"),
+          h(
+            "span",
+            { class: "visually-hidden" },
+            `Deine Antwort: ${composeWord(pattern, letters())}`,
+          ),
+        );
+        // Die übrigen Kacheln braucht es nicht mehr.
+        tileBox.hidden = true;
+        page.setDock();
+        await respond(right, sideText(entry, "term"), feedback, after);
+      };
+
+      page.setDock(check);
+      show(
+        "cards",
+        h("p", { class: "kind" }, "Buchstaben"),
+        prompt,
+        word,
+        sofar,
+        feedback,
+        after,
+        tileBox,
+        problem,
+      );
+      if (asksTerm) offerSpeech(speakSlot, term);
+      onKey = (event) => {
+        if (event.key === "Backspace") takeLast();
+        else if (event.key === "Enter" && !handledByTarget(event)) void submit();
+        else if (event.key.length > 2 || !/[\p{L}\p{N}]/u.test(event.key) || !typed(event.key))
+          return false;
+        return true;
+      };
+      focusSoon(prompt);
+    };
+
     const question = practice.question();
     if (question.mode === "multipleChoice") showChoice(question);
+    else if (question.mode === "letters") showLetters(question);
     else showFlashcard();
   };
 

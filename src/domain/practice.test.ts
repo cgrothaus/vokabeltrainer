@@ -105,6 +105,23 @@ describe("startPlannedPractice", () => {
       d: "flashcard",
     });
   });
+
+  it("stellt Buchstaben nur in Richtung Lernsprache und bei passender Länge", () => {
+    const state = startPlannedPractice(
+      [
+        { entryId: "a", direction: "meaningToTerm", mode: "letters" },
+        { entryId: "b", direction: "meaningToTerm", mode: "letters" },
+        { entryId: "c", direction: "termToMeaning", mode: "letters" },
+      ],
+      { canSpell: (id) => id !== "b" },
+      sequence(0),
+    );
+    expect(Object.fromEntries(state.queue.map((card) => [card.entryId, card.mode]))).toEqual({
+      a: "letters",
+      b: "flashcard",
+      c: "flashcard",
+    });
+  });
 });
 
 describe("startPractice mit Multiple Choice", () => {
@@ -162,6 +179,25 @@ describe("startPractice mit Multiple Choice", () => {
     for (const card of state.queue) {
       expect(card.mode).toBe(card.direction === "meaningToTerm" ? "multipleChoice" : "flashcard");
     }
+  });
+
+  it("stellt mit Buchstaben die übrigen Karten in Richtung Lernsprache so, wo es geht", () => {
+    const canSpell = (entryId: string) => entryId !== "c";
+    const options = { direction: "mixed", mcShare: 30, letters: true, canSpell } as const;
+    const state = startPractice(entryIds, options, sequence(0.2, 0.7, 0.4));
+    // Der Anteil an Multiple Choice bleibt.
+    expect(choices(state)).toHaveLength(3);
+    for (const card of state.queue) {
+      if (card.mode === "multipleChoice") continue;
+      const spellable = card.direction === "meaningToTerm" && card.entryId !== "c";
+      expect(card.mode).toBe(spellable ? "letters" : "flashcard");
+    }
+    expect(state.queue.some((card) => card.mode === "letters")).toBe(true);
+  });
+
+  it("stellt ohne Buchstaben in Richtung Lernsprache Karteikarten", () => {
+    const state = startPractice(entryIds, { direction: "meaningToTerm" }, sequence(0.5));
+    expect(state.queue.every((card) => card.mode === "flashcard")).toBe(true);
   });
 
   it("stellt eine falsch beantwortete Karte wieder in derselben Form", () => {
@@ -306,13 +342,14 @@ describe("repeatMistakes", () => {
     { entryId: "a", direction: "termToMeaning", mode: "flashcard", firstAttempt: true },
     { entryId: "b", direction: "meaningToTerm", mode: "multipleChoice", firstAttempt: true },
     { entryId: "c", direction: "termToMeaning", mode: "multipleChoice", firstAttempt: true },
+    { entryId: "d", direction: "meaningToTerm", mode: "letters", firstAttempt: true },
   ];
 
   it("stellt jede Karte in Richtung und Form wie beim Fehler, neu gemischt", () => {
-    // Wie bei startPractice: [a, b, c] → [c, b, a] → [b, c, a].
+    // Wie bei startPractice: [a, b, c, d] → [d, b, c, a] → [c, b, d, a] → [b, c, d, a].
     const state = repeatMistakes(missed, sequence(0));
-    expect(state.queue).toEqual([missed[1], missed[2], missed[0]]);
-    expect(state).toMatchObject({ total: 3, done: 0, firstAttempts: 0, firstCorrect: 0 });
+    expect(state.queue).toEqual([missed[1], missed[2], missed[3], missed[0]]);
+    expect(state).toMatchObject({ total: 4, done: 0, firstAttempts: 0, firstCorrect: 0 });
     expect(state.missed).toEqual([]);
   });
 

@@ -20,6 +20,8 @@ export interface PracticeSetup {
   readonly count: CountChoice;
   /** Anteil an Multiple Choice in ganzen Prozent. */
   readonly mcShare: number;
+  /** In Richtung Lernsprache Buchstaben statt Karteikarten (TDD 12.3, D-70). */
+  readonly letters: boolean;
 }
 
 /** Gemerkte Form: „alle Sektionen“ bleibt „alle“, auch wenn später Sektionen hinzukommen. */
@@ -28,6 +30,7 @@ export interface StoredPracticeSetup {
   readonly direction: Direction | "mixed";
   readonly count: CountChoice;
   readonly mcShare: number;
+  readonly letters: boolean;
 }
 
 const DIRECTIONS: readonly unknown[] = ["termToMeaning", "meaningToTerm", "mixed"];
@@ -44,6 +47,7 @@ export function defaultSetup(set: StoredSet): PracticeSetup {
     // Bei weniger Einträgen ergibt das „alle“ (`fitCount`, D-47).
     count: 20,
     mcShare: DEFAULT_MC_SHARE,
+    letters: false,
   };
 }
 
@@ -58,13 +62,15 @@ function restoreOptions(
   stored: Record<string, unknown>,
   fallback: Omit<PracticeSetup, "sectionIds">,
 ): Omit<PracticeSetup, "sectionIds"> {
-  const { direction, count, mcShare } = stored;
+  const { direction, count, mcShare, letters } = stored;
   return {
     direction: DIRECTIONS.includes(direction)
       ? (direction as PracticeSetup["direction"])
       : fallback.direction,
     count: COUNTS.includes(count) ? (count as CountChoice) : fallback.count,
     mcShare: isMcShare(mcShare) ? mcShare : fallback.mcShare,
+    // Ältere Einrichtungen kennen den Schalter nicht: dann aus.
+    letters: letters === true,
   };
 }
 
@@ -90,6 +96,7 @@ export function storedSetup(set: StoredSet, setup: PracticeSetup): StoredPractic
     direction: setup.direction,
     count: setup.count,
     mcShare: setup.mcShare,
+    letters: setup.letters,
   };
 }
 
@@ -135,6 +142,7 @@ export interface TogetherSetup {
   readonly direction: Direction | "mixed";
   readonly count: CountChoice;
   readonly mcShare: number;
+  readonly letters: boolean;
 }
 
 /** Ein Eintrag in einem bestimmten Set; Eintrags-IDs sind nur innerhalb eines Sets eindeutig. */
@@ -198,7 +206,8 @@ export function pickAcross(
 
 /**
  * Zusammenfassung für „Wie beim letzten Mal“ (TDD 12.1), z. B. „20 Vokabeln“, „Englisch → Deutsch“,
- * „alle Sektionen“, „25 % Multiple Choice“. Bei nur einer Sektion entfällt die Angabe dazu.
+ * „alle Sektionen“, „25 % Multiple Choice“, „mit Buchstaben“. Bei nur einer Sektion entfällt die Angabe
+ * dazu, Buchstaben nennt sie nur, wo sie in dieser Richtung vorkommen.
  */
 export function describeSetup(
   set: StoredSet,
@@ -229,5 +238,15 @@ export function describeSetup(
       : setup.mcShare === 100
         ? "nur Multiple Choice"
         : `${setup.mcShare} % Multiple Choice`;
-  return [cards === 1 ? "1 Vokabel" : `${cards} Vokabeln`, direction, ...sections, share];
+  const letters =
+    setup.letters && setup.direction !== "termToMeaning" && setup.mcShare < 100
+      ? ["mit Buchstaben"]
+      : [];
+  return [
+    cards === 1 ? "1 Vokabel" : `${cards} Vokabeln`,
+    direction,
+    ...sections,
+    share,
+    ...letters,
+  ];
 }

@@ -155,13 +155,26 @@ describe("Abfrageform nach Lernstand", () => {
     );
 
   it("stellt Phase 0 und 1 als Multiple Choice, ab Phase 2 als Karteikarte", () => {
-    expect(([0, 1, 2, 3, 4, 5] as const).map((phase) => planMode(phase))).toEqual([
+    const phases = [0, 1, 2, 3, 4, 5] as const;
+    expect(phases.map((phase) => planMode(phase, "termToMeaning"))).toEqual([
       "multipleChoice",
       "multipleChoice",
       "flashcard",
       "flashcard",
       "flashcard",
       "flashcard",
+    ]);
+  });
+
+  it("stellt in Richtung Lernsprache ab Phase 4 Buchstaben", () => {
+    const phases = [0, 1, 2, 3, 4, 5] as const;
+    expect(phases.map((phase) => planMode(phase, "meaningToTerm"))).toEqual([
+      "multipleChoice",
+      "multipleChoice",
+      "flashcard",
+      "flashcard",
+      "letters",
+      "letters",
     ]);
   });
 
@@ -174,6 +187,15 @@ describe("Abfrageform nach Lernstand", () => {
       "e2:→": "flashcard",
       "e3:←": "multipleChoice",
       "e4:→": "multipleChoice",
+    });
+  });
+
+  it("fragt fällige sichere Karten nur in Richtung Lernsprache mit Buchstaben ab", () => {
+    // e0 und e1 in Phase 4 fällig, e0 Lernsprache → Muttersprache, e1 umgekehrt.
+    const states = cards([0, 4, 14], [1, 4, 14, "meaningToTerm"], [1, 5, 1]);
+    expect(modes(planSelection(set(2), states, TODAY))).toEqual({
+      "e0:→": "flashcard",
+      "e1:←": "letters",
     });
   });
 

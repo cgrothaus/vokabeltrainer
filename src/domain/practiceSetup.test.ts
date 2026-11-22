@@ -64,6 +64,7 @@ describe("defaultSetup", () => {
       direction: "termToMeaning",
       count: 20,
       mcShare: 25,
+      letters: false,
     });
   });
 
@@ -87,9 +88,19 @@ describe("restoreSetup", () => {
       direction: "mixed",
       count: 20,
       mcShare: 40,
+      letters: false,
     });
     expect(restoreSetup(set, { ...stored, mcShare: 0 }).mcShare).toBe(0);
     expect(restoreSetup(set, { ...stored, mcShare: 100 }).mcShare).toBe(100);
+  });
+
+  it("übernimmt den Schalter für Buchstaben nur, wenn er an ist", () => {
+    const stored = { sections: "all", direction: "meaningToTerm", count: 10, mcShare: 0 };
+    expect(restoreSetup(set, { ...stored, letters: true }).letters).toBe(true);
+    // Ältere Einrichtungen kennen ihn nicht.
+    for (const letters of [undefined, false, "true", 1, null])
+      expect(restoreSetup(set, { ...stored, letters }).letters).toBe(false);
+    expect(storedSetup(set, { ...restoreSetup(set, stored), letters: true }).letters).toBe(true);
   });
 
   it("wählt bei „alle Sektionen“ auch später hinzugekommene", () => {
@@ -117,6 +128,7 @@ describe("restoreSetup", () => {
       direction: "termToMeaning",
       count: 20,
       mcShare: 25,
+      letters: false,
     });
     // Nur ganze Prozent in Schritten des Reglers.
     for (const mcShare of [-5, 105, 33, 12.5, "25", null, Number.NaN]) {
@@ -135,24 +147,28 @@ describe("storedSetup", () => {
       direction: "mixed",
       count: 10,
       mcShare: 25,
+      letters: false,
     };
     expect(storedSetup(set, all)).toEqual({
       sections: "all",
       direction: "mixed",
       count: 10,
       mcShare: 25,
+      letters: false,
     });
     const some: PracticeSetup = {
       sectionIds: ["b"],
       direction: "termToMeaning",
       count: "all",
       mcShare: 0,
+      letters: false,
     };
     expect(storedSetup(set, some)).toEqual({
       sections: ["b"],
       direction: "termToMeaning",
       count: "all",
       mcShare: 0,
+      letters: false,
     });
   });
 
@@ -162,6 +178,7 @@ describe("storedSetup", () => {
       direction: "meaningToTerm",
       count: 30,
       mcShare: 55,
+      letters: false,
     };
     expect(restoreSetup(set, storedSetup(set, setup))).toEqual(setup);
   });
@@ -208,6 +225,7 @@ describe("pickEntries", () => {
       direction: "termToMeaning",
       count: "all",
       mcShare: 25,
+      letters: false,
     };
     expect(pickEntries(set, setup, sequence(0.5))).toEqual([...ids("a"), ...ids("c")]);
   });
@@ -218,6 +236,7 @@ describe("pickEntries", () => {
       direction: "mixed",
       count: 10,
       mcShare: 25,
+      letters: false,
     };
     const picked = pickEntries(set, setup, sequence(0.7, 0.1, 0.4, 0.9, 0.3));
     expect(picked).toHaveLength(10);
@@ -234,6 +253,7 @@ describe("pickEntries", () => {
       direction: "termToMeaning",
       count: 10,
       mcShare: 25,
+      letters: false,
     };
     expect(pickEntries(set, setup, sequence(0.5))).toEqual(ids("c"));
   });
@@ -246,6 +266,7 @@ describe("describeSetup", () => {
     direction: "termToMeaning",
     count: 20,
     mcShare: 25,
+    letters: false,
   };
 
   it("fasst die gemerkte Einrichtung zusammen", () => {
@@ -269,6 +290,20 @@ describe("describeSetup", () => {
       ),
     ).toEqual(["17 Vokabeln", "Gemischt", "2 Sektionen", "nur Karteikarten"]);
     expect(describeSetup(set, { ...base, mcShare: 100 }, names).at(-1)).toBe("nur Multiple Choice");
+  });
+
+  it("nennt Buchstaben nur, wo sie vorkommen", () => {
+    const letters = { ...base, letters: true };
+    expect(describeSetup(set, { ...letters, direction: "meaningToTerm" }, names).at(-1)).toBe(
+      "mit Buchstaben",
+    );
+    expect(describeSetup(set, { ...letters, direction: "mixed" }, names).at(-1)).toBe(
+      "mit Buchstaben",
+    );
+    expect(describeSetup(set, letters, names)).not.toContain("mit Buchstaben");
+    expect(
+      describeSetup(set, { ...letters, direction: "mixed", mcShare: 100 }, names),
+    ).not.toContain("mit Buchstaben");
   });
 
   it("lässt die Sektionen bei nur einer weg", () => {
@@ -299,12 +334,14 @@ describe("Zusammen lernen (TDD 12.10)", () => {
       direction: "mixed",
       count: 10,
       mcShare: 50,
+      letters: true,
     };
     expect(restoreTogether(candidates, stored)).toEqual({
       setIds: [first.id, third.id],
       direction: "mixed",
       count: 10,
       mcShare: 50,
+      letters: true,
     });
   });
 
@@ -315,6 +352,7 @@ describe("Zusammen lernen (TDD 12.10)", () => {
       direction: "termToMeaning",
       count: 20,
       mcShare: 25,
+      letters: false,
     });
     expect(restoreTogether(candidates, undefined).setIds).toHaveLength(3);
   });
@@ -325,6 +363,7 @@ describe("Zusammen lernen (TDD 12.10)", () => {
       direction: "termToMeaning",
       count: "all",
       mcShare: 0,
+      letters: false,
     } as const;
     expect(togetherEntryCount(candidates, setup.setIds)).toBe(9);
     const all = pickAcross(candidates, setup, sequence(0.5));
@@ -344,6 +383,7 @@ describe("Zusammen lernen (TDD 12.10)", () => {
       direction: "termToMeaning",
       count: 10,
       mcShare: 0,
+      letters: false,
     } as const;
     const drawn = pickAcross([big, second], setup, sequence(0.1, 0.9, 0.4));
     expect(drawn).toHaveLength(10);

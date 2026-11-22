@@ -4,7 +4,8 @@
 // Arbeitsspeicher. Dazu die Auswahl plausibler Antworten für Multiple Choice (D-18, FR-09).
 import type { Direction, StoredEntry } from "./model";
 
-export type Mode = "flashcard" | "multipleChoice";
+/** `letters`: aus Kacheln zusammensetzen, nur in Richtung Lernsprache (TDD 12.3, ab S-55). */
+export type Mode = "flashcard" | "multipleChoice" | "letters";
 
 export interface Card {
   readonly entryId: string;
@@ -74,6 +75,10 @@ export interface PracticeOptions {
   readonly mcShare?: number;
   /** Ob der Eintrag in dieser Richtung genug Antwortmöglichkeiten hat; ohne Angabe immer. */
   readonly canChoose?: (entryId: string, direction: Direction) => boolean;
+  /** Karten in Richtung Lernsprache ohne Multiple Choice aus Buchstaben statt als Karteikarte. */
+  readonly letters?: boolean;
+  /** Ob sich der Eintrag in dieser Richtung aus Buchstaben zusammensetzen lässt; ohne Angabe immer. */
+  readonly canSpell?: (entryId: string, direction: Direction) => boolean;
 }
 
 /** `random` liefert Werte in `[0, 1)`, z. B. `Math.random`; Tests übergeben eine feste Folge. */
@@ -82,7 +87,7 @@ export function startPractice(
   options: PracticeOptions,
   random: () => number,
 ): PracticeState {
-  const { direction, mcShare = 0, canChoose = () => true } = options;
+  const { direction } = options;
   const cards = shuffle(entryIds, random).map((entryId) => ({
     entryId,
     direction:
@@ -92,7 +97,7 @@ export function startPractice(
           : ("meaningToTerm" as const)
         : direction,
   }));
-  return fresh(withModes(cards, mcShare, canChoose, random));
+  return fresh(withModes(cards, options, random));
 }
 
 /** Eine Karte mit fester Richtung, z. B. aus dem Plan (TDD 12.8). */
@@ -104,32 +109,40 @@ export interface PlannedCard {
 }
 
 /**
- * Sitzung nach Plan (TDD 12.8, D-63, D-66): Richtung und Form kommen von jeder Karte; Multiple Choice
- * nur mit genug Kandidaten, sonst Karteikarte (D-28). Einen Anteil gibt es hier nicht.
+ * Sitzung nach Plan (TDD 12.8, D-63, D-66, D-70): Richtung und Form kommen von jeder Karte; Multiple
+ * Choice nur mit genug Kandidaten, Buchstaben nur in Richtung Lernsprache und bei passender Länge,
+ * sonst Karteikarte (D-28). Einen Anteil gibt es hier nicht.
  */
 export function startPlannedPractice(
   cards: readonly PlannedCard[],
-  options: Pick<PracticeOptions, "canChoose">,
+  options: Pick<PracticeOptions, "canChoose" | "canSpell">,
   random: () => number,
 ): PracticeState {
-  const { canChoose = () => true } = options;
+  const { canChoose = () => true, canSpell = () => true } = options;
+  const possible = (entryId: string, direction: Direction, mode: Mode | undefined) =>
+    mode === "multipleChoice"
+      ? canChoose(entryId, direction)
+      : mode === "letters" && direction === "meaningToTerm" && canSpell(entryId, direction);
   return fresh(
     shuffle(cards, random).map(({ entryId, direction, mode }): Card => ({
       entryId,
       direction,
-      mode: mode === "multipleChoice" && canChoose(entryId, direction) ? mode : "flashcard",
+      mode: mode && possible(entryId, direction, mode) ? mode : "flashcard",
       firstAttempt: true,
     })),
   );
 }
 
-/** Feste Quote (D-28): genau so viele geeignete Karten wie der Anteil ergibt, zufällig gewählt. */
+/**
+ * Feste Quote (D-28): genau so viele geeignete Karten wie der Anteil ergibt, zufällig gewählt. Die
+ * übrigen sind Karteikarten, mit `letters` in Richtung Lernsprache Buchstaben, wo es geht (D-70).
+ */
 function withModes(
   cards: readonly PlannedCard[],
-  mcShare: number,
-  canChoose: (entryId: string, direction: Direction) => boolean,
+  options: PracticeOptions,
   random: () => number,
 ): Card[] {
+  const { mcShare = 0, canChoose = () => true, letters = false, canSpell = () => true } = options;
   const quota = Math.round((cards.length * mcShare) / 100);
   // Nur so viele Karten prüfen, bis die Quote voll ist: Die Prüfung durchsucht das Set.
   const chosen = new Set<PlannedCard>();
@@ -141,7 +154,11 @@ function withModes(
   }
   return cards.map((card): Card => ({
     ...card,
-    mode: chosen.has(card) ? "multipleChoice" : "flashcard",
+    mode: chosen.has(card)
+      ? "multipleChoice"
+      : letters && card.direction === "meaningToTerm" && canSpell(card.entryId, card.direction)
+        ? "letters"
+        : "flashcard",
     firstAttempt: true,
   }));
 }
@@ -219,10 +236,10 @@ export function cardFaces(
 }
 
 /** Für Vergleiche: getrimmt, kleingeschrieben, NFC. */
-const comparable = (text: string) => text.normalize("NFC").trim().toLowerCase();
+export const comparable = (text: string) => text.normalize("NFC").trim().toLowerCase();
 
 /** Alle `text`- und `acceptedVariants`-Werte der Seite, vergleichbar gemacht. */
-function acceptedAnswers(entry: StoredEntry, side: Side): Set<string> {
+export function acceptedAnswers(entry: StoredEntry, side: Side): Set<string> {
   const answers = side === "term" ? [entry.term] : entry.meanings;
   return new Set(
     answers.flatMap((answer) => [answer.text, ...(answer.acceptedVariants ?? [])]).map(comparable),

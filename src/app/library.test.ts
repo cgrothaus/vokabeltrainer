@@ -156,6 +156,7 @@ describe("loadLibraryStart", () => {
       // Alle: Bei einer zufälligen Teilmenge könnten alle Karten aus einem Set stammen.
       count: "all",
       mcShare: 0,
+      letters: false,
     } as const;
     await beginTogether(db, [large, small], setup);
     // Erst mit einer Antwort zählt die Sitzung.

@@ -363,6 +363,50 @@ test("Beispielset: Set-Ansicht mit Lernstand, Multiple Choice mit Rückmeldung",
   expect(errors).toEqual([]);
 });
 
+test("Beispielset: Einrichtung mit Buchstaben, Buchstaben mit Rückmeldung (S-55)", async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  const findings: string[] = [];
+  await page.goto("./");
+  await page.getByRole("button", { name: "Beispielset ausprobieren" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Beispielset");
+  await page.getByRole("link", { name: /selbst auswählen$/ }).click();
+  await page.getByRole("radio", { name: "Deutsch → Englisch", exact: true }).check();
+  await page.getByRole("slider", { name: "Multiple Choice" }).fill("0");
+  await page.getByRole("switch", { name: /Schreiben mit Buchstaben/ }).check();
+  findings.push(...(await audit(page, "Einrichtung mit Buchstaben")));
+  await page.getByRole("radio", { name: "10", exact: true }).check();
+  await page.getByRole("button", { name: "10 Vokabeln lernen" }).click();
+  await expect(page.locator(".letter-tiles")).toBeVisible();
+  findings.push(...(await audit(page, "Buchstaben")));
+
+  // Das Wort rückwärts, damit die Antwort falsch ist: Nach einer richtigen ginge es von selbst weiter.
+  const prompt = await page.locator(".question .prompt").textContent();
+  const entries = (await readStore<StoredSet>(page, "sets")).flatMap((set) =>
+    set.sections.flatMap((section) => section.entries),
+  );
+  const entry = entries.find(
+    (candidate) => candidate.meanings.map((meaning) => meaning.text).join("; ") === prompt,
+  )!;
+  const letters = [...entry.term.text].filter((char) => /[\p{L}\p{N}]/u.test(char)).reverse();
+  await page.locator(".letter-tiles .tile:not(.used)", { hasText: letters[0] }).first().click();
+  findings.push(...(await audit(page, "Buchstaben, eine Kachel gesetzt")));
+  for (const letter of letters.slice(1))
+    await page
+      .locator(".letter-tiles .tile:not(.used)")
+      .filter({ hasText: new RegExp(`^${letter}$`) })
+      .first()
+      .click();
+  await page.getByRole("button", { name: "Prüfen" }).click();
+  await expect(page.getByText(/^Leider falsch/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Weiter" })).toBeVisible();
+  findings.push(...(await audit(page, "Buchstaben mit Rückmeldung")));
+
+  expect(findings).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
 test("Tablet: Set-Ansicht, Bibliothek und Karteikarte bei 768 px (TDD 13.7)", async ({ page }) => {
   await page.setViewportSize({ width: 768, height: 1024 });
   const errors = collectErrors(page);

@@ -7,6 +7,7 @@
 import { entryRev } from "../domain/hash";
 import { createId, ID_LENGTH } from "../domain/ids";
 import { dayNumber } from "../domain/learningState";
+import { canSpell, letterPuzzle, type PatternPart } from "../domain/letters";
 import { joinTitles } from "../domain/library";
 import type { Direction, ReviewEvent, Session, StoredEntry, StoredSet } from "../domain/model";
 import {
@@ -45,6 +46,12 @@ import { failureMessage, SET_MISSING } from "./storageMessages";
 /** Wie die aktuelle Karte gestellt wird (TDD 12.3). */
 export type Question =
   | { readonly mode: "flashcard" }
+  | {
+      readonly mode: "letters";
+      /** `null` ist eine Stelle für eine Kachel, ein Text steht fest. */
+      readonly pattern: readonly PatternPart[];
+      readonly tiles: readonly string[];
+    }
   | {
       readonly mode: "multipleChoice";
       readonly options: readonly string[];
@@ -214,7 +221,7 @@ async function beginPlannedAcross(
   const material = gather(sets, selection.cards, sectionIds);
   const state = startPlannedPractice(
     selection.cards.map((card) => ({ ...card, entryId: keyOf(sets, card) })),
-    { canChoose: canChoose(material) },
+    { canChoose: canChoose(material), canSpell: spellable(material) },
     Math.random,
   );
   const choices = state.queue.filter((card) => card.mode === "multipleChoice").length;
@@ -274,6 +281,11 @@ const canChoose = ({ items, preferred, rest }: Material) => {
   return (key: string, direction: Direction) =>
     hasChoices(items.get(key)!.entry, direction, everything);
 };
+
+const spellable =
+  ({ items }: Material) =>
+  (key: string, direction: Direction) =>
+    canSpell(items.get(key)!.entry, direction);
 
 /**
  * Je Set mit Karten ein Datensatz, alle mit demselben Beginn; bei mehreren eine gemeinsame `groupId`
@@ -337,13 +349,19 @@ async function beginChosen(
   sets: readonly StoredSet[],
   chosen: readonly EntryRef[],
   sectionIds: ReadonlyMap<string, readonly string[]>,
-  setup: Pick<PracticeSetup, "direction" | "mcShare">,
+  setup: Pick<PracticeSetup, "direction" | "mcShare" | "letters">,
   remember: { key: string; value: unknown },
 ): Promise<void> {
   const material = gather(sets, chosen, sectionIds);
   const state = startPractice(
     [...material.items.keys()],
-    { direction: setup.direction, mcShare: setup.mcShare, canChoose: canChoose(material) },
+    {
+      direction: setup.direction,
+      mcShare: setup.mcShare,
+      canChoose: canChoose(material),
+      letters: setup.letters,
+      canSpell: spellable(material),
+    },
     Math.random,
   );
   const records = sessionRecords(material, sectionIds, {
@@ -376,10 +394,18 @@ function run(
         card.mode === "multipleChoice"
           ? multipleChoice(entry, card.direction, preferred, rest, Math.random)
           : null;
-      // Ohne genug falsche Antworten als Karteikarte; beim Start geprüft, also nur zur Sicherheit.
+      // Zusätzliche Buchstaben aus den Wörtern der Sitzung und ihrer Sets (TDD 12.3).
+      const puzzle =
+        card.mode === "letters" ? letterPuzzle(entry, [...preferred, ...rest], Math.random) : null;
+      // Ohne genug falsche Antworten bzw. bei ungeeigneter Länge als Karteikarte; beim Start geprüft,
+      // also nur zur Sicherheit.
       asked = {
         state,
-        question: choice ? { mode: "multipleChoice", ...choice } : { mode: "flashcard" },
+        question: choice
+          ? { mode: "multipleChoice", ...choice }
+          : puzzle
+            ? { mode: "letters", ...puzzle }
+            : { mode: "flashcard" },
       };
     }
     return asked.question;

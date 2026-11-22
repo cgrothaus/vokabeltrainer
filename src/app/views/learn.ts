@@ -226,6 +226,7 @@ function form(
       options.direction,
       options.count,
       options.share,
+      options.letters,
       status,
     ),
     problem,

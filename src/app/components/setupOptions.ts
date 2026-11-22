@@ -1,5 +1,6 @@
 // Richtung, Anzahl und Anteil an Multiple Choice für die Einrichtung (TDD 12.1) und „Zusammen lernen“
-// (12.10): Richtung und Anzahl als Segmentschalter, der Anteil als Regler in Schritten von 5.
+// (12.10): Richtung und Anzahl als Segmentschalter, der Anteil als Regler in Schritten von 5, dazu der
+// Schalter für Buchstaben in Richtung Lernsprache (12.3, D-70).
 import type { Direction } from "../../domain/model";
 import {
   type CountChoice,
@@ -10,12 +11,14 @@ import {
 } from "../../domain/practiceSetup";
 import { h } from "../dom";
 
-type Options = Pick<PracticeSetup, "direction" | "count" | "mcShare">;
+type Options = Pick<PracticeSetup, "direction" | "count" | "mcShare" | "letters">;
 
 export interface SetupOptions {
   readonly direction: HTMLElement;
   readonly count: HTMLElement;
   readonly share: HTMLElement;
+  /** Nur sichtbar, wenn die Richtung Karten in die Lernsprache enthält. */
+  readonly letters: HTMLElement;
   /** Die gewählte Stufe bleibt, auch wenn sie bei kleinerer Auswahl zeitweise als „alle“ erscheint. */
   value(): Options;
   /** Baut die Stufen der Anzahl für so viele verfügbare Einträge, wenn sich die Zahl geändert hat. */
@@ -31,7 +34,7 @@ export function setupOptions(
   languages: { term: string; meaning: string },
   onChange: () => void,
 ): SetupOptions {
-  let { direction, count: chosenCount, mcShare } = initial;
+  let { direction, count: chosenCount, mcShare, letters } = initial;
   const { term, meaning } = languages;
   const directions: [Direction | "mixed", string][] = [
     ["termToMeaning", `${term} → ${meaning}`],
@@ -55,7 +58,10 @@ export function setupOptions(
             name: "direction",
             value,
             checked: value === direction,
-            onchange: () => (direction = value),
+            onchange: () => {
+              direction = value;
+              showLetters();
+            },
           }),
           h("span", null, label),
         ),
@@ -65,7 +71,14 @@ export function setupOptions(
 
   const countChoices = h("div", { class: "seg" });
   const countChoice = h("fieldset", null, h("legend", null, "Anzahl"), countChoices);
-  const shareText = () => `${mcShare} % (Rest: Karteikarten)`;
+  // Was neben Multiple Choice gestellt wird: mit Buchstaben je nach Richtung.
+  const restText = () =>
+    !letters || direction === "termToMeaning"
+      ? "Karteikarten"
+      : direction === "meaningToTerm"
+        ? "Buchstaben"
+        : "Karteikarten und Buchstaben";
+  const shareText = () => `${mcShare} % (Rest: ${restText()})`;
   const shareValue = h("span", { class: "share-value" }, shareText());
   const slider = h("input", {
     type: "range",
@@ -88,6 +101,36 @@ export function setupOptions(
     slider,
     shareValue,
   );
+
+  const lettersBox = h("input", {
+    type: "checkbox",
+    role: "switch",
+    checked: letters,
+    onchange: () => {
+      letters = lettersBox.checked;
+      shareValue.textContent = shareText();
+    },
+  });
+  const lettersChoice = h(
+    "label",
+    { class: "switch-row" },
+    h(
+      "span",
+      null,
+      h("span", { class: "label" }, "Schreiben mit Buchstaben"),
+      h(
+        "span",
+        { class: "muted" },
+        `In Richtung ${term} setzt du das Wort aus Buchstaben zusammen, statt die Karte aufzudecken.`,
+      ),
+    ),
+    lettersBox,
+  );
+  const showLetters = () => {
+    lettersChoice.hidden = direction === "termToMeaning";
+    shareValue.textContent = shareText();
+  };
+  showLetters();
 
   let shownTotal = -1;
   const renderCounts = (total: number) => {
@@ -117,7 +160,8 @@ export function setupOptions(
     direction: directionChoice,
     count: countChoice,
     share: shareChoice,
-    value: () => ({ direction, count: chosenCount, mcShare }),
+    letters: lettersChoice,
+    value: () => ({ direction, count: chosenCount, mcShare, letters }),
     setAvailable(total) {
       // Nur bei geänderter Auswahl neu aufbauen, sonst verlöre die gewählte Stufe den Fokus.
       if (total !== shownTotal) renderCounts(total);

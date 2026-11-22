@@ -245,6 +245,7 @@ describe("Mehrere Sets (TDD 12.10, AK-22, AK-33)", () => {
       direction: "termToMeaning",
       count: "all",
       mcShare,
+      letters: false,
     }) as const;
 
   beforeEach(async () => {
@@ -364,5 +365,31 @@ describe("Mehrere Sets (TDD 12.10, AK-22, AK-33)", () => {
     await knowAll();
     await setSetting(db, { key: TOGETHER_KEY, value: null });
     expect(await recommendedTogether(db, both)).toBe("setup");
+  });
+});
+
+describe("Buchstaben", () => {
+  it("stellt mit gemerktem Schalter in Richtung Lernsprache Buchstaben und speichert die Form", async () => {
+    await setSetting(db, {
+      key: settingKey(large.id),
+      value: { sections: "all", direction: "meaningToTerm", count: 10, mcShare: 0, letters: true },
+    });
+    expect(await quickStart(db, large)).toBe("started");
+    expect(new Set(queued().map((card) => card.mode))).toEqual(new Set(["letters"]));
+    const practice = currentPractice()!;
+    const question = practice.question();
+    if (question.mode !== "letters") throw new Error("Keine Buchstaben");
+    // „word 7“ bzw. „word 17“: Leerzeichen fest, dazu zwei zusätzliche Kacheln.
+    expect(question.pattern.slice(0, 5)).toEqual([null, null, null, null, " "]);
+    expect(question.tiles).toHaveLength(
+      question.pattern.filter((part) => part === null).length + 2,
+    );
+    // Dieselbe Karte mischt beim erneuten Zeichnen nicht neu.
+    expect(practice.question()).toBe(question);
+    await practice.answer("correct", 1500);
+    expect(await events()).toMatchObject([{ mode: "letters", direction: "meaningToTerm" }]);
+    const [session] = await sessions();
+    // Die Sitzung hält den Schalter nicht fest, nur die Antworten (D-70).
+    expect(session!.config).toEqual({ direction: "meaningToTerm", count: 10, mcShare: 0 });
   });
 });

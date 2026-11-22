@@ -856,6 +856,100 @@ button.textbtn {
   color: var(--wrong);
 }
 
+/* Buchstaben (TDD 12.3, 13.7): oben das Wort mit Stellen und festen Zeichen, unten die Kacheln in der
+   Daumenzone. Stellen und Kacheln sind mindestens 44 × 44 groß und brechen um. */
+.practice .word {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  min-width: 0;
+  padding: 0.25rem;
+  border: 2px solid transparent;
+  border-radius: var(--radius-m);
+}
+
+/* Ein Wort der Antwort; Leerzeichen trennen die Gruppen. */
+.practice .word .part {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: end;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.practice .word .slot {
+  display: grid;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  border-bottom: 2px solid var(--muted);
+}
+
+.practice .word .slot > button,
+.letter-tiles .tile {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0 0.5rem;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-s);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--text-l);
+  font-weight: 600;
+}
+
+.practice .word .fixed {
+  font-size: var(--text-l);
+  font-weight: 600;
+}
+
+.practice .word.right {
+  border-color: var(--right);
+  background: var(--right-soft);
+}
+
+.practice .word.wrong {
+  border-style: dashed;
+  border-color: var(--wrong);
+  background: var(--wrong-soft);
+}
+
+.practice .word .mark {
+  font-size: var(--text-l);
+  font-weight: 650;
+}
+
+.practice .word.right .mark {
+  color: var(--right);
+}
+
+.practice .word.wrong .mark {
+  color: var(--wrong);
+}
+
+.practice .word button:disabled {
+  opacity: 1;
+}
+
+.letter-tiles:not([hidden]) {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: auto;
+}
+
+/* Benutzte Kacheln behalten ihren Platz, damit die übrigen nicht springen. */
+.letter-tiles .tile.used {
+  visibility: hidden;
+}
+
+.letter-tiles .tile:disabled:not(.used) {
+  opacity: 0.6;
+}
+
 .practice .feedback {
   font-weight: 650;
   text-align: center;
@@ -2190,8 +2284,9 @@ button.textbtn.add svg.icon {
   margin: 0;
 }
 
-/* Schalter „Automatisch vorlesen“ (TDD 13.6): Text links, Kästchen rechts, ganze Zeile tippbar. */
-.switch-row {
+/* Schalter „Automatisch vorlesen“ (TDD 13.6) und „Schreiben mit Buchstaben“ (12.1): Text links,
+   Kästchen rechts, ganze Zeile tippbar. Ohne `:not([hidden])` höbe `display` das Verbergen auf. */
+.switch-row:not([hidden]) {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2207,6 +2302,16 @@ button.textbtn.add svg.icon {
 
 .switch-row .label {
   font-weight: 600;
+}
+
+/* In der Einrichtung mit Abstand zum Regler darüber. */
+.setup .switch-row {
+  margin-top: 1.5rem;
+}
+
+/* `label { display: block }` höbe das Verbergen in WebKit sonst auf (ohne Richtung in die Lernsprache). */
+.switch-row[hidden] {
+  display: none;
 }
 
 .switch-row .muted {

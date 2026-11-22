@@ -103,6 +103,7 @@ test("Sektion, Richtung, Anzahl und Anteil bestimmen die Sitzung und bleiben gem
         direction: "meaningToTerm",
         count: 10,
         mcShare: 40,
+        letters: false,
       },
     },
   ]);
