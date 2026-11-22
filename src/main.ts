@@ -47,7 +47,6 @@ import { editSetView } from "./app/views/editSet";
 import { entryEditorView } from "./app/views/entryEditor";
 import { exportView } from "./app/views/export";
 import { newSetView, setInfoView } from "./app/views/setInfo";
-import { helpView } from "./app/views/help";
 import { learningHelpView } from "./app/views/learningHelp";
 import { importView } from "./app/views/import";
 import { learnView } from "./app/views/learn";
@@ -259,6 +258,7 @@ async function start(): Promise<void> {
         saveKnownImport: (preview, mode, decisions) =>
           saveKnownImport(db, preview, mode, decisions),
         readClipboard: canReadClipboard() ? readClipboard : null,
+        copyText,
         // Ein neues Set öffnet sich mit der Meldung, ein bekanntes ebenso (TDD 9.1, 9.2).
         onSaved: (setId, saved) => {
           void askOnceAfterSave();
@@ -441,7 +441,11 @@ async function start(): Promise<void> {
       },
       signal,
     );
-  const helpPage = () => helpView({ copyText });
+  // Die Hilfe ist in „Vokabelset hinzufügen“ aufgegangen (D-71); alte Lesezeichen führen dorthin.
+  const helpPage = () => {
+    replaceRoute("#/import");
+    return document.createElement("main");
+  };
   router = startRouter(
     root!,
     {

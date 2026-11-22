@@ -93,8 +93,7 @@ export function libraryView(context: LibraryContext, signal: AbortSignal): Node 
     h(
       "ul",
       { class: "rows" },
-      // „Leeres Set anlegen“ steht in „Vokabelset hinzufügen“ (D-50, D-53).
-      row("#/help", "help", "Wie bekomme ich ein Vokabelset?"),
+      // „Leeres Set anlegen“ und die Anleitung stehen in „Vokabelset hinzufügen“ (D-50, D-53, D-71).
       row("#/backup", "shield", "Backup und Wiederherstellung"),
     ),
   );

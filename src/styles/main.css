@@ -2566,7 +2566,54 @@ button.textbtn.add svg.icon {
   text-transform: uppercase;
 }
 
-/* Hauptkarte: Antwort einfügen als großer Knopf, Datei als zweiter Weg. */
+/* Die drei Schritte (13.1, D-71): Was ein Schritt zum Bedienen mitbringt, steht in voller Breite unter
+   seinem Text. */
+.import .steps li > * + * {
+  grid-column: 1 / -1;
+}
+
+/* Schritt 2: die Vorlage als Karte, der angezeigte Text zugeklappt darunter. */
+.prompt-box {
+  display: grid;
+  gap: 0.625rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  background: var(--surface);
+}
+
+.prompt-box > * {
+  min-width: 0;
+  margin: 0;
+}
+
+/* Platz für die Vorlage im Feld, wenn das Kopieren scheitert; leer ohne Abstand im Raster. */
+.prompt-box > div:empty {
+  display: none;
+}
+
+.prompt-box button {
+  justify-self: start;
+}
+
+/* Die leere Statuszeile bleibt als Live-Bereich im Baum, aber ohne Abstand im Raster. */
+.prompt-box > p:empty {
+  margin-top: -0.625rem;
+}
+
+/* Abstand oben und unten statt Mindesthöhe: Der Text steht mittig, das Ziel bleibt 44 px hoch. */
+details.shown summary {
+  min-height: 0;
+  padding-block: 0.625rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+details.shown pre.prompt {
+  margin: 0.25rem 0 0;
+}
+
+/* Schritt 3: Antwort einfügen als großer Knopf, Datei als zweiter Weg. */
 .paste {
   display: grid;
   gap: 0.75rem;
@@ -3023,9 +3070,7 @@ a.textbtn {
   font-weight: 700;
 }
 
-/* Hilfe (TDD 13.1, D-53): drei nummerierte Schritte, die Vorlage als Karte, der Rest zugeklappt. Vorlage
-   und Beispiel brechen um statt die Seite seitlich scrollen zu lassen. Die Korrekturvorlage steht auch
-   in „Exportieren“. */
+/* Hilfe zum Lernplan (TDD 12.6, D-64): Abschnitte als Karten. */
 .help {
   display: grid;
   gap: 1.25rem;
@@ -3115,7 +3160,8 @@ a.textbtn {
   padding-top: 0.25rem;
 }
 
-/* Die Vorlage als Karte wie im Entwurf; die Überschrift klein in Versalien. */
+/* Abschnitte der Hilfe und die Korrekturvorlage als Karte wie im Entwurf; die Überschrift klein in
+   Versalien. */
 .help > section,
 .export > .correction {
   display: grid;
@@ -3147,13 +3193,12 @@ a.textbtn {
   text-transform: uppercase;
 }
 
-.help section button,
-.help .inside button,
 .export .correction button {
   justify-self: start;
 }
 
-.help pre,
+/* Vorlage und Beispiel brechen um, statt die Seite seitlich scrollen zu lassen. */
+.import .inside pre,
 pre.prompt {
   margin: 0.5rem 0 0.75rem;
   padding: 0.75rem;
@@ -3173,8 +3218,7 @@ pre.prompt {
   font-size: 1rem;
 }
 
-.help .inside pre,
-.help section pre.prompt {
+.import .inside pre {
   margin: 0;
 }
 

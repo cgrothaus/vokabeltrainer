@@ -1,6 +1,6 @@
 // Empty State der Bibliothek (TDD 13.1, FR-28, AK-14): Kartenstapel, ein Satz zur App und zur lokalen
-// Datenhaltung, der nächste Schritt und das Beispielset; darunter Hilfe, „Leeres Set anlegen“ (FR-02)
-// und der Weg, ein Backup von einem anderen Gerät zu laden.
+// Datenhaltung, der nächste Schritt (mit der Anleitung und der Vorlage, D-71) und das Beispielset;
+// darunter „Leeres Set anlegen“ (FR-02) und der Weg, ein Backup von einem anderen Gerät zu laden.
 import { sampleSetButton } from "../components/sampleSetButton";
 import { h } from "../dom";
 import { icon, type IconName } from "../icons";
@@ -49,7 +49,6 @@ export function emptyLibrary(loadSampleSet: () => Promise<SampleOutcome>): Node 
     h(
       "ul",
       { class: "rows" },
-      row("#/help", "help", "Wie bekomme ich ein Vokabelset?"),
       row("#/new-set", "edit", "Leeres Set anlegen und selbst tippen"),
       row("#/backup", "restore", "Backup von einem anderen Gerät laden"),
     ),

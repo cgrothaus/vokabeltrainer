@@ -1,8 +1,11 @@
-// „Vokabelset hinzufügen“ (TDD 8.1, 13.1, FR-13): Antwort aus der Zwischenablage, Datei oder selbst
-// eingefügter Text. Danach zeigt eine Vorschau das neue Set mit Warnungen und möglichen Duplikaten
+// „Vokabelset hinzufügen“ (TDD 8.1, 13.1, FR-13, FR-20, D-71): der Weg über einen KI-Chat in drei
+// Schritten, mit der Vorlage zum Kopieren (D-65) und der Antwort aus der Zwischenablage, einer Datei
+// oder selbst eingefügtem Text; zugeklappt ein Beispiel des Formats und der Weg zum Korrigieren über
+// „Exportieren“ (D-44). Danach zeigt eine Vorschau das neue Set mit Warnungen und möglichen Duplikaten
 // (TDD 9.2, FR-16, FR-30) bzw. bei einem vorhandenen Set, was sich ändert (TDD 9.7, `importChanges`);
 // gespeichert wird erst nach Bestätigung. Die Vorschau liegt auf einem zusätzlichen Verlaufseintrag
 // mit derselben Adresse wie die Lernsitzung (D-29, D-53): Zurück führt zur Eingabe, der Text bleibt.
+import { FORMAT_EXAMPLE, NEW_SET_SHOWN, newSetPrompt } from "../../content/help";
 import type { ImportMode } from "../../domain/diff";
 import { MAX_IMPORT_SIZE } from "../../domain/importSet";
 import type { ImportDecisions } from "../../domain/merge";
@@ -10,6 +13,7 @@ import type { StoredSet } from "../../domain/model";
 import type { ClipboardResult } from "../../platform/clipboard";
 import { frame } from "../components/frame";
 import { importChanges, type ShownChanges } from "../components/importChanges";
+import { promptBox } from "../components/promptBox";
 import { type Child, focusSoon, h } from "../dom";
 import { icon, type IconName } from "../icons";
 import type {
@@ -32,6 +36,8 @@ export interface ImportContext {
   ) => Promise<KnownSaveOutcome>;
   /** `null`: Der Browser kann die Zwischenablage nicht lesen; die Schaltfläche entfällt. */
   readClipboard: (() => Promise<ClipboardResult>) | null;
+  /** Für „Vorlage kopieren“; muss direkt im Klick aufgerufen werden (Nutzergeste). */
+  copyText: (text: string) => Promise<boolean>;
   /** Nach dem Speichern eines neuen Sets, mit der Meldung für seine Set-Ansicht (TDD 9.2). */
   onSaved: (setId: string, message: string) => void;
   /** Nach der Übernahme in ein vorhandenes Set, mit der Meldung für die Set-Ansicht. */
@@ -340,43 +346,81 @@ export function importView(context: ImportContext, signal: AbortSignal): Node {
   const row = (href: string, symbol: IconName, label: string): Child =>
     h("li", null, h("a", { href }, icon(symbol), h("span", null, label), icon("chevron")));
 
+  const step = (title: string, rest: string, ...below: Child[]): Child =>
+    h("li", null, h("span", null, h("b", null, title), rest), below);
+
+  // Die Schritte in der Reihenfolge, in der man sie geht: Die Vorlage braucht man immer zuerst, die
+  // Antwort erst nach dem Chat (D-71).
   const input = h(
     "div",
     { class: "add" },
     h(
-      "section",
-      { class: "paste", "aria-label": "Antwort oder Datei" },
-      h(
-        "p",
-        null,
-        "Kopiere die Antwort deines KI-Chats und füge sie hier ein. Du siehst vor dem Speichern, was übernommen wird.",
+      "ol",
+      { class: "steps" },
+      step("Fotografiere", " deine Vokabelliste."),
+      step(
+        "Kopiere die Vorlage",
+        ", füge sie in einen KI-Chat wie ChatGPT, Claude oder Gemini ein und hänge die Fotos an.",
+        promptBox({
+          id: "import",
+          shown: NEW_SET_SHOWN,
+          collapsed: "Was wird kopiert?",
+          text: newSetPrompt,
+          label: "Vorlage kopieren",
+          copyText: context.copyText,
+        }).element,
       ),
-      paste,
-      paste && h("p", { class: "or" }, "oder"),
-      // Die Beschriftung sieht aus wie eine Schaltfläche, das Feld liegt unsichtbar darüber (TDD 13.4).
-      h(
-        "div",
-        { class: "file-pick" },
-        file,
+      step(
+        "Kopiere die Antwort",
+        " und füge sie hier ein. Du siehst vor dem Speichern, was übernommen wird.",
         h(
-          "label",
-          { for: "import-file", class: "file-button" },
-          icon("file"),
-          h("span", null, "Datei auswählen"),
+          "section",
+          { class: "paste", "aria-label": "Antwort oder Datei" },
+          paste,
+          paste && h("p", { class: "or" }, "oder"),
+          // Die Beschriftung sieht aus wie eine Schaltfläche, das Feld liegt unsichtbar darüber (TDD 13.4).
+          h(
+            "div",
+            { class: "file-pick" },
+            file,
+            h(
+              "label",
+              { for: "import-file", class: "file-button" },
+              icon("file"),
+              h("span", null, "Datei auswählen"),
+            ),
+          ),
         ),
+        own,
       ),
     ),
-    own,
     h(
-      "section",
-      { class: "panel", "aria-labelledby": "import-none" },
-      h("h2", { class: "label", id: "import-none" }, "Noch kein Vokabelset?"),
-      h("p", null, "So machst du eins aus einem Foto deiner Vokabelliste."),
+      "details",
+      { class: "about", id: "import-example" },
+      h("summary", null, "So sieht ein Vokabelset aus"),
       h(
-        "a",
-        { href: "#/help", class: "action secondary" },
-        icon("help"),
-        h("span", null, "Anleitung ansehen"),
+        "div",
+        { class: "inside" },
+        h(
+          "p",
+          null,
+          "Der Chat schreibt die Vokabeln in diesem Format. Du musst es nicht verstehen – die App prüft es beim Import.",
+        ),
+        h("pre", null, FORMAT_EXAMPLE),
+      ),
+    ),
+    h(
+      "details",
+      { class: "about", id: "import-correction" },
+      h("summary", null, "Ein Set korrigieren"),
+      h(
+        "div",
+        { class: "inside" },
+        h(
+          "p",
+          null,
+          "Ein KI-Chat kann ein Set auch prüfen und korrigieren. Öffne dazu das Set und wähle im Menü „Exportieren“: Dort kopiert „Korrekturvorlage kopieren“ die Vorlage zusammen mit deinem Set. Füge sie in den Chat ein. Die Antwort fügst du hier ein – die App erkennt das Set und zeigt, was sich ändert.",
+        ),
       ),
     ),
     h("ul", { class: "rows" }, row("#/new-set", "edit", "Leeres Set anlegen und selbst tippen")),

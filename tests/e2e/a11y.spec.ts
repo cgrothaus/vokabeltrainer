@@ -107,16 +107,15 @@ test("Ohne Sets: Bibliothek, Hilfe, Import, Backup, Einstellungen, unbekannte Ad
   ).toBeVisible();
   findings.push(...(await audit(page, "Bibliothek leer")));
 
-  await page.goto("./#/help");
-  findings.push(...(await audit(page, "Hilfe")));
-  for (const summary of await page.locator("summary").all()) await summary.click();
-  findings.push(...(await audit(page, "Hilfe aufgeklappt")));
-
   await page.goto("./#/help/learning");
   findings.push(...(await audit(page, "Hilfe Lernplan")));
 
   await page.goto("./#/import");
   findings.push(...(await audit(page, "Import")));
+  await page
+    .locator("main details")
+    .evaluateAll((all) => all.forEach((details) => ((details as HTMLDetailsElement).open = true)));
+  findings.push(...(await audit(page, "Import aufgeklappt")));
   await checkText(page, "Das ist keine Vokabelliste.");
   await expect(page.getByRole("alert")).toBeVisible();
   findings.push(...(await audit(page, "Import mit Fehler")));
@@ -587,9 +586,9 @@ test("Nach einem Seitenwechsel: Fokus auf der Überschrift, Seitentitel nennt di
   await expect(heading("Vokabeltrainer")).toBeFocused();
   await expect(page).toHaveTitle("Vokabeltrainer");
 
-  await page.getByRole("link", { name: "Wie bekomme ich ein Vokabelset?" }).click();
-  await expect(heading("Wie bekomme ich ein Vokabelset?")).toBeFocused();
-  await expect(page).toHaveTitle("Wie bekomme ich ein Vokabelset? – Vokabeltrainer");
+  await page.getByRole("link", { name: "Erstes Vokabelset hinzufügen" }).click();
+  await expect(heading("Vokabelset hinzufügen")).toBeFocused();
+  await expect(page).toHaveTitle("Vokabelset hinzufügen – Vokabeltrainer");
   // Die Tab-Taste geht von der Überschrift aus weiter, nicht vom Seitenanfang.
   await page.keyboard.press("Tab");
   await expect(page.locator("main :focus")).toBeVisible();

@@ -159,13 +159,10 @@ test("Ohne lesbare Zwischenablage ist das Textfeld gleich offen", async ({ page 
   await expect(page.getByRole("button", { name: "Antwort einfügen" })).toHaveCount(0);
 });
 
-test("Wege ohne Antwort: Anleitung und leeres Set", async ({ page }) => {
+test("Weg ohne Antwort: leeres Set", async ({ page }) => {
   await page.goto("./#/import");
   await page.getByRole("link", { name: "Leeres Set anlegen und selbst tippen" }).click();
   await expect(heading(page)).toHaveText("Leeres Set anlegen");
-  await page.goBack();
-  await page.getByRole("link", { name: "Anleitung ansehen" }).click();
-  await expect(heading(page)).toHaveText("Wie bekomme ich ein Vokabelset?");
 });
 
 test("E2E-06 Import (Datei) mit Begleittext und Zusatzfeld zeigt die Warnung", async ({ page }) => {
