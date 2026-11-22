@@ -4,6 +4,7 @@
 // und genau eine `h1`; dazu Fokus und Seitentitel nach einem Seitenwechsel.
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page, test } from "@playwright/test";
+import type { StoredSet } from "../../src/domain/model";
 import {
   checkText,
   backButton,
@@ -16,6 +17,7 @@ import {
   fakeSpeech,
   importSet,
   libraryMessage,
+  readStore,
   setAction,
   setFile,
   setupLink,
@@ -338,13 +340,21 @@ test("Beispielset: Set-Ansicht mit Lernstand, Multiple Choice mit Rückmeldung",
   await expect(page.getByRole("button", { name: /vorlesen$/ })).toBeVisible();
   findings.push(...(await audit(page, "Multiple Choice vor den Antworten, mit Lautsprecher")));
   // Die Uhr läuft (mit angehaltener hinge axe): Unter Last erscheinen die Antworten nach 3 s schon während
-  // der Prüfung von selbst (TDD 12.3). Enter zeigt sie nach der kurzen Sperre, falls nicht, sonst nichts.
+  // der Prüfung von selbst (TDD 12.3). Enter zeigt sie nach der Sperre, falls nicht, sonst nichts.
   await cardReady(page);
   await page.keyboard.press("Enter");
   await expect(options).toHaveCount(4);
   await expect(options.first()).toBeVisible();
   findings.push(...(await audit(page, "Multiple Choice")));
-  await options.first().click();
+  // Eine falsche Antwort: Nach einer richtigen ginge es während der Prüfung von selbst weiter (D-67).
+  const term = await page.locator(".question .prompt").textContent();
+  const entries = (await readStore<StoredSet>(page, "sets")).flatMap((set) =>
+    set.sections.flatMap((section) => section.entries),
+  );
+  const entry = entries.find((candidate) => candidate.term.text === term)!;
+  const right = entry.meanings.map((meaning) => meaning.text).join("; ");
+  await options.filter({ hasNotText: right }).first().click();
+  await expect(page.getByText(/^Leider falsch/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Weiter" })).toBeVisible();
   findings.push(...(await audit(page, "Multiple Choice mit Rückmeldung")));
 

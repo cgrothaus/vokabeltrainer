@@ -331,7 +331,7 @@ test("Bewerten schiebt die Karte zur Seite: „Gewusst“ nach rechts, „Nochma
     ["Gewusst", "translateX(110%) rotate(10deg)"],
     ["Nochmal", "translateX(-110%) rotate(-10deg)"],
   ] as const) {
-    await page.clock.runFor(500);
+    await page.clock.runFor(1220);
     await card(page).click();
     await page.getByRole("button", { name: button, exact: true }).click();
     await expect.poll(targets).toContain(transform);
@@ -341,7 +341,7 @@ test("Bewerten schiebt die Karte zur Seite: „Gewusst“ nach rechts, „Nochma
 
   // Bei reduzierter Bewegung geht es ohne Animation sofort weiter.
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.clock.runFor(500);
+  await page.clock.runFor(1220);
   await card(page).click();
   await page.getByRole("button", { name: "Gewusst", exact: true }).click();
   await expect(card(page)).toBeVisible();

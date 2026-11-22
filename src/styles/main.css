@@ -597,7 +597,8 @@ button.textbtn {
   position: relative;
 }
 
-/* Die nächste Karte kommt sanft herein, nachdem die vorige zur Seite geschoben ist. */
+/* Die nächste Karte kommt sanft herein, nachdem die vorige zur Seite geschoben ist. Die Dauer steht
+   auch als `CARD_IN` in `views/practice.ts`: Die Sperre vor dem Aufdecken zählt ab ihrem Ende. */
 .card-wrap,
 .practice .question {
   animation: card-in 0.22s ease-out;

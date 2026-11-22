@@ -95,7 +95,7 @@ test("E2E-30 Multiple Choice: Antworten nach einer Pause oder auf Tippen, falsch
   for (let question = 0; question < 8; question++) {
     if (question > 0) {
       await expect(options.first()).toBeHidden();
-      // Die Eingabetaste zeigt sie wie „Antworten zeigen“ sofort, nach der kurzen Sperre.
+      // Die Eingabetaste zeigt sie wie „Antworten zeigen“ sofort, nach der Sperre.
       if (question % 2) {
         await cardReady(page);
         await page.keyboard.press("Enter");
@@ -106,14 +106,61 @@ test("E2E-30 Multiple Choice: Antworten nach einer Pause oder auf Tippen, falsch
     const texts = await options.allTextContents();
     const sameKind = Object.values(term in VERBS ? VERBS : NOUNS);
     expect(texts.toSorted()).toEqual(sameKind.toSorted());
+    // Richtig: Es geht von selbst weiter (D-67).
     await options.nth(texts.indexOf(MEANING[term]!)).click();
-    await page.getByRole("button", { name: "Weiter" }).click();
   }
   await expect(page.getByRole("heading", { name: "Geschafft" })).toBeVisible();
   expect(errors, "Fehler in der Konsole").toEqual([]);
 });
 
-test("E2E-30 Kurze Sperre: Die Karteikarte lässt sich erst nach einer halben Sekunde aufdecken", async ({
+test("E2E-30 Multiple Choice: Nach einer richtigen Antwort geht es nach 1 s von selbst weiter, nach einer falschen nicht", async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  await importWords(page);
+  await goToSetup(page, TITLE);
+  await page.getByRole("slider", { name: "Multiple Choice" }).fill("100");
+  await page.getByRole("radio", { name: /^alle/ }).check();
+  await stopClock(page);
+  await page.getByRole("button", { name: "8 Vokabeln lernen" }).click();
+
+  const show = page.getByRole("button", { name: "Antworten zeigen" });
+  const options = page.locator(".options button");
+  const next = page.getByRole("button", { name: "Weiter" });
+  const answer = async (right: boolean) => {
+    // Erst wenn die Karte steht, läuft ihre Sperre.
+    await expect(show).toHaveAttribute("aria-disabled", "true");
+    await page.clock.runFor(1220);
+    await show.click();
+    const term = (await prompt(page).textContent())!;
+    const texts = await options.allTextContents();
+    const correct = texts.indexOf(MEANING[term]!);
+    await options.nth(right ? correct : (correct + 1) % texts.length).click();
+    // „Weiter“ erscheint erst nach dem Speichern; ab dann läuft die Zeit.
+    await expect(next).toBeFocused();
+    return term;
+  };
+
+  const first = await answer(true);
+  await expect(page.getByText("Richtig.", { exact: true })).toBeVisible();
+  await page.clock.runFor(900);
+  await expect(prompt(page)).toHaveText(first);
+  await expect(next).toBeVisible();
+  await page.clock.runFor(100);
+  await expect(next).toHaveCount(0);
+  await expect(options.first()).toBeHidden();
+  await expect(prompt(page)).not.toHaveText(first);
+
+  const second = await answer(false);
+  await expect(page.getByText(/^Leider falsch/)).toBeVisible();
+  await page.clock.runFor(3000);
+  await expect(prompt(page)).toHaveText(second);
+  await next.click();
+  await expect(prompt(page)).not.toHaveText(second);
+  expect(errors, "Fehler in der Konsole").toEqual([]);
+});
+
+test("E2E-30 Sperre: Die Karteikarte lässt sich erst 1 s nach dem Einblenden aufdecken", async ({
   page,
 }) => {
   const errors = collectErrors(page);
@@ -135,14 +182,17 @@ test("E2E-30 Kurze Sperre: Die Karteikarte lässt sich erst nach einer halben Se
   await page.keyboard.press("Enter");
   await uncover.click({ force: true });
   await expect(flipped).toHaveCount(0);
-  await page.clock.runFor(500);
+  // 1 s ab dem Ende des Einblendens (0,22 s).
+  await page.clock.runFor(1219);
+  await expect(uncover).toHaveAttribute("aria-disabled", "true");
+  await page.clock.runFor(1);
   await expect(uncover).not.toHaveAttribute("aria-disabled");
   await page.keyboard.press("Enter");
   await expect(flipped).toHaveCount(1);
   expect(errors, "Fehler in der Konsole").toEqual([]);
 });
 
-test("E2E-30 Kurze Sperre vor „Antworten zeigen“", async ({ page }) => {
+test("E2E-30 Sperre vor „Antworten zeigen“", async ({ page }) => {
   const errors = collectErrors(page);
   await importWords(page);
   await goToSetup(page, TITLE);
@@ -158,7 +208,9 @@ test("E2E-30 Kurze Sperre vor „Antworten zeigen“", async ({ page }) => {
   await show.click({ force: true });
   await page.keyboard.press("Enter");
   await expect(options.first()).toBeHidden();
-  await page.clock.runFor(500);
+  await page.clock.runFor(1219);
+  await expect(show).toHaveAttribute("aria-disabled", "true");
+  await page.clock.runFor(1);
   await show.click();
   await expect(options.first()).toBeVisible();
   expect(errors, "Fehler in der Konsole").toEqual([]);

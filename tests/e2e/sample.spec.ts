@@ -83,6 +83,8 @@ const accepted = (answers: Answer[]) =>
 const shown = (entry: StoredEntry) => entry.meanings.map((meaning) => meaning.text).join("; ");
 
 test("E2E-05 Empty State → Beispielset → Sitzung mit Multiple Choice", async ({ page }) => {
+  // Dreizehn Fragen mit Sperre und Weitergehen nach je etwa 1 s (TDD 12.3).
+  test.slow();
   const errors = collectErrors(page);
   await page.goto("./");
   await page.getByRole("button", { name: "Beispielset ausprobieren" }).click();
@@ -131,13 +133,14 @@ test("E2E-05 Empty State → Beispielset → Sitzung mit Multiple Choice", async
       await expect(page.getByText(`Leider falsch. Richtig ist: ${shown(entry)}`)).toBeVisible();
       await expect(options.nth(choice)).toHaveText(`✗ ${texts[choice]}`);
       await expect(options.filter({ hasText: `✓ ${shown(entry)}` })).toHaveCount(1);
+      await expect(options.first()).toBeDisabled();
+      if (entry.notes) await expect(page.getByText(`Notiz: ${entry.notes}`)).toBeVisible();
+      await expect(page.getByRole("button", { name: "Weiter" })).toBeFocused();
+      await page.getByRole("button", { name: "Weiter" }).click();
     } else {
+      // Richtig: Nach kurzer Zeit geht es von selbst weiter (D-67).
       await expect(page.getByText("Richtig.", { exact: true })).toBeVisible();
     }
-    await expect(options.first()).toBeDisabled();
-    if (entry.notes) await expect(page.getByText(`Notiz: ${entry.notes}`)).toBeVisible();
-    await expect(page.getByRole("button", { name: "Weiter" })).toBeFocused();
-    await page.getByRole("button", { name: "Weiter" }).click();
   }
   await expect(page.getByRole("heading", { name: "Geschafft" })).toBeVisible();
   await expect(page.getByText("9 von 10 beim ersten Mal gewusst.")).toBeVisible();
@@ -164,7 +167,6 @@ test("E2E-05 Empty State → Beispielset → Sitzung mit Multiple Choice", async
   await expect(page.getByRole("button", { name: "Antworten zeigen" })).toHaveCount(0);
   await expect(options).toHaveCount(4);
   await options.nth((await options.allTextContents()).indexOf(shown(wrongEntry))).click();
-  await page.getByRole("button", { name: "Weiter" }).click();
   await expect(page.getByRole("heading", { name: "Geschafft" })).toBeVisible();
   await expect(page.getByText("1 von 1 beim ersten Mal gewusst.")).toBeVisible();
   await expect(page.locator(".mistakes")).toHaveCount(0);

@@ -148,7 +148,11 @@ test("E2E-33 Fälliges in Bibliothek und Set-Ansicht, „Jetzt wiederholen“ fr
       modes[text] = "multipleChoice";
       await page.getByRole("button", { name: "Antworten zeigen" }).click();
       await page.locator(".options button", { hasText: answers.get(text)! }).click();
-      await page.getByRole("button", { name: "Weiter" }).click();
+      // Richtig: Es geht von selbst weiter (D-67); der Zähler steht schon vorher. Danach kommt eine
+      // Frage in beliebiger Form oder das Ergebnis.
+      await expect
+        .poll(async () => ((await prompt.count()) > 0 ? prompt.first().textContent() : ""))
+        .not.toBe(text);
     } else {
       modes[text] = "flashcard";
       await page.locator(".flash:not(.flipped) .front").click();

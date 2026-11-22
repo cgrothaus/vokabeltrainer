@@ -9,7 +9,7 @@ import { entryDetails, hasDetails } from "../components/entryDetails";
 import { frame } from "../components/frame";
 import { openSheet, type Sheet } from "../components/sheet";
 import { speakButton } from "../components/speakButton";
-import { flyOut, onSwipe, type SwipeDirection } from "../components/swipe";
+import { flyOut, onSwipe, reducedMotion, type SwipeDirection } from "../components/swipe";
 import { setUpdateBlocked } from "../components/updateNotice";
 import { focusSoon, h } from "../dom";
 import { icon } from "../icons";
@@ -27,8 +27,20 @@ const SVG = "http://www.w3.org/2000/svg";
 /** Pause vor den Antworten bei Multiple Choice in Millisekunden (TDD 12.3, D-60). */
 const CHOICE_DELAY = 3000;
 
-/** Sperre, bevor eine Karte aufgedeckt werden kann, in Millisekunden: gegen Durchrasen (TDD 12.3). */
-const REVEAL_LOCK = 500;
+/**
+ * Sperre, bevor eine Karte aufgedeckt werden kann, in Millisekunden: gegen Doppeltippen und
+ * gedankenloses Aufdecken (TDD 12.3, D-60).
+ */
+const REVEAL_LOCK = 1000;
+
+/** Nach einer richtigen Antwort bei Multiple Choice geht es nach dieser Zeit von selbst weiter (D-67). */
+const CORRECT_ADVANCE = 1000;
+
+/** Dauer des Einblendens einer Karte (`card-in` in `main.css`), in Millisekunden. */
+const CARD_IN = 220;
+
+/** Zeit ab dem Aufbau einer Karte: Sperre und Pause zählen erst ab dem Ende des Einblendens. */
+const afterEntrance = (ms: number) => ms + (reducedMotion() ? 0 : CARD_IN);
 
 /** Tasten, die ein Eingabefeld oder eine fokussierte Schaltfläche selbst behandelt. */
 const handledByTarget = (event: KeyboardEvent) =>
@@ -259,14 +271,14 @@ export function practiceView(
       // Neben der Karte, nicht darin: Die Karte fängt den Zeiger fürs Wischen ein.
       const cardWithSpeaker = h("div", { class: "card-wrap" }, flash, speakSlot);
 
-      // Erst nach einer kurzen Sperre lässt sich die Karte wenden (TDD 12.3); `aria-disabled` statt
+      // Erst nach einer Sperre lässt sich die Karte wenden (TDD 12.3); `aria-disabled` statt
       // `disabled`, damit die Vorderseite den Fokus behält.
       let ready = false;
       const lock = setTimeout(() => {
         ready = true;
         front.removeAttribute("aria-disabled");
         uncover.removeAttribute("aria-disabled");
-      }, REVEAL_LOCK);
+      }, afterEntrance(REVEAL_LOCK));
       signal.addEventListener("abort", () => clearTimeout(lock));
 
       const reveal = () => {
@@ -325,6 +337,7 @@ export function practiceView(
       );
       const feedback = h("p", { class: "feedback", "aria-live": "polite" });
       const after = h("div", null);
+      let advance: ReturnType<typeof setTimeout> | undefined;
       const pick = async (index: number) => {
         for (const option of options) option.disabled = true;
         const right = index === question.correct;
@@ -345,6 +358,14 @@ export function practiceView(
         after.replaceChildren(...details(entry));
         page.setDock(next);
         focusSoon(next);
+        // Richtig: nach kurzer Zeit von selbst weiter, „Weiter“ geht sofort (D-67). Ein Fehler wartet,
+        // damit die richtige Antwort und die Details gelesen werden können.
+        if (right) {
+          const at = shown;
+          advance = setTimeout(() => {
+            if (screen === "cards" && shown === at) proceed();
+          }, CORRECT_ADVANCE);
+        }
       };
       const options = question.options.map((option, index) =>
         h(
@@ -369,7 +390,7 @@ export function practiceView(
         onKey = null;
         page.setDock();
       };
-      // Vorzeitig erst nach einer kurzen Sperre (TDD 12.3).
+      // Vorzeitig erst nach einer Sperre (TDD 12.3).
       const showNow = h(
         "button",
         {
@@ -384,16 +405,17 @@ export function practiceView(
       const lock = setTimeout(() => {
         ready = true;
         showNow.removeAttribute("aria-disabled");
-      }, REVEAL_LOCK);
+      }, afterEntrance(REVEAL_LOCK));
       // „Weiterlernen“ zeichnet die Karte neu und beginnt damit eine neue Pause.
       const wait = () => {
         timer = setTimeout(() => {
           if (screen === "cards" && current === shown) reveal();
-        }, CHOICE_DELAY);
+        }, afterEntrance(CHOICE_DELAY));
       };
       signal.addEventListener("abort", () => {
         clearTimeout(timer);
         clearTimeout(lock);
+        clearTimeout(advance);
       });
       page.setDock(showNow);
       show(
