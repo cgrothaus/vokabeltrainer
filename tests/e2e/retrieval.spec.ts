@@ -160,6 +160,58 @@ test("E2E-30 Multiple Choice: Nach einer richtigen Antwort geht es nach 1 s von 
   expect(errors, "Fehler in der Konsole").toEqual([]);
 });
 
+test("E2E-30 Halten auf dem Inhalt pausiert das Weitergehen nach einer richtigen Antwort", async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  await importWords(page);
+  await goToSetup(page, TITLE);
+  await page.getByRole("slider", { name: "Multiple Choice" }).fill("100");
+  await page.getByRole("radio", { name: /^alle/ }).check();
+  await stopClock(page);
+  await page.getByRole("button", { name: "8 Vokabeln lernen" }).click();
+
+  const show = page.getByRole("button", { name: "Antworten zeigen" });
+  const options = page.locator(".options button");
+  const next = page.getByRole("button", { name: "Weiter" });
+  const answerRight = async () => {
+    await expect(show).toHaveAttribute("aria-disabled", "true");
+    await page.clock.runFor(1220);
+    await show.click();
+    const term = (await prompt(page).textContent())!;
+    const texts = await options.allTextContents();
+    await options.nth(texts.indexOf(MEANING[term]!)).click();
+    await expect(next).toBeFocused();
+    return term;
+  };
+  const press = async () => {
+    const box = (await page.locator(".feedback").boundingBox())!;
+    await page.mouse.move(box.x + 5, box.y + 5);
+    await page.mouse.down();
+  };
+
+  // Gehalten: Auch nach Ablauf der Zeit bleibt die Karte stehen, beim Loslassen geht es sofort weiter.
+  const first = await answerRight();
+  await press();
+  await page.clock.runFor(3000);
+  await expect(prompt(page)).toHaveText(first);
+  await expect(next).toBeVisible();
+  await page.mouse.up();
+  await expect(next).toHaveCount(0);
+  await expect(prompt(page)).not.toHaveText(first);
+
+  // Vor Ablauf der Zeit gehoben: Der Rest der Zeit läuft normal ab.
+  const second = await answerRight();
+  await press();
+  await page.clock.runFor(300);
+  await page.mouse.up();
+  await page.clock.runFor(600);
+  await expect(prompt(page)).toHaveText(second);
+  await page.clock.runFor(100);
+  await expect(prompt(page)).not.toHaveText(second);
+  expect(errors, "Fehler in der Konsole").toEqual([]);
+});
+
 test("E2E-30 Sperre: Die Karteikarte lässt sich erst 1 s nach dem Einblenden aufdecken", async ({
   page,
 }) => {

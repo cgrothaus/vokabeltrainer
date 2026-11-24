@@ -2149,6 +2149,13 @@ button.grip {
   -webkit-touch-callout: none;
 }
 
+/* Solange es von selbst weitergeht, darf ein langes Drücken halten, ohne zu markieren (D-73). */
+.practice.auto-advance {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
 button.grip:hover {
   background: var(--accent-soft);
   color: var(--accent);

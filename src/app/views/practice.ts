@@ -43,7 +43,10 @@ const CHOICE_DELAY = 2000;
  */
 const REVEAL_LOCK = 1000;
 
-/** Nach einer richtigen Antwort bei Multiple Choice geht es nach dieser Zeit von selbst weiter (D-67). */
+/**
+ * Nach einer richtigen Antwort bei Multiple Choice geht es nach dieser Zeit von selbst weiter (D-67);
+ * ein Finger auf dem Inhalt hält es an, bis er gehoben wird (D-73).
+ */
 const CORRECT_ADVANCE = 1000;
 
 /** Dauer des Einblendens einer Karte (`card-in` in `main.css`), in Millisekunden. */
@@ -153,8 +156,27 @@ export function practiceView(
     screen = next;
     shown = {};
     offered = null;
+    waiting = null;
+    main.classList.remove("auto-advance");
     main.replaceChildren(...children);
   };
+
+  // Halten auf dem Inhalt pausiert das Weitergehen nach einer richtigen Antwort (D-73): Ist die Zeit beim
+  // Loslassen schon um, geht es sofort weiter. `pointercancel` (Scrollen) zählt nicht, `touchend` schon.
+  let held = false;
+  let waiting: object | null = null;
+  main.addEventListener("pointerdown", () => {
+    held = true;
+  });
+  main.addEventListener("contextmenu", (event) => {
+    if (main.classList.contains("auto-advance")) event.preventDefault();
+  });
+  const release = () => {
+    held = false;
+    if (waiting && screen === "cards" && shown === waiting) proceed();
+  };
+  for (const type of ["pointerup", "touchend", "touchcancel"])
+    window.addEventListener(type, release, { signal });
 
   // Die Karten liegen auf einem zusätzlichen Verlaufseintrag mit derselben Adresse: Zurück löst so
   // kein `hashchange` aus und öffnet den Zwischenstand, statt die Sitzung zu verlassen (D-29).
@@ -375,8 +397,11 @@ export function practiceView(
       focusSoon(next);
       if (right) {
         const at = shown;
+        main.classList.add("auto-advance");
         const advance = setTimeout(() => {
-          if (screen === "cards" && shown === at) proceed();
+          if (screen !== "cards" || shown !== at) return;
+          if (held) waiting = at;
+          else proceed();
         }, CORRECT_ADVANCE);
         signal.addEventListener("abort", () => clearTimeout(advance));
       }
