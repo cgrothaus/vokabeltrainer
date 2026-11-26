@@ -53,6 +53,24 @@ async function openSorting(page: Page): Promise<void> {
   await expect(heading(page)).toHaveText("Reihenfolge ändern");
 }
 
+/**
+ * Zieht den Griff von `term` in Schritten zum Ziel und lässt sofort los, ohne auf ein Bild zu warten:
+ * Die Lücke muss dann an der Stelle des letzten Zeigers stehen.
+ */
+async function drag(page: Page, term: string, target: { x: number; y: number }): Promise<void> {
+  const box = (await grip(page, term).boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  const steps = 12;
+  for (let step = 1; step <= steps; step++) {
+    await page.mouse.move(
+      box.x + box.width / 2 + ((target.x - box.x - box.width / 2) * step) / steps,
+      box.y + box.height / 2 + ((target.y - box.y - box.height / 2) * step) / steps,
+    );
+  }
+  await page.mouse.up();
+}
+
 test("E2E-29 Pfeiltasten und Menü: über Sektionsgrenzen, Fokus bleibt, Zurück beendet den Modus", async ({
   page,
 }) => {
@@ -99,37 +117,38 @@ test("E2E-29 Ziehen am Griff: innerhalb der Sektion und in eine andere", async (
   const errors = collectErrors(page);
   await openSorting(page);
 
-  const drag = async (term: string, target: { x: number; y: number }) => {
-    const box = (await grip(page, term).boundingBox())!;
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-    await page.mouse.down();
-    const steps = 12;
-    for (let step = 1; step <= steps; step++) {
-      await page.mouse.move(
-        box.x + box.width / 2 + ((target.x - box.x - box.width / 2) * step) / steps,
-        box.y + box.height / 2 + ((target.y - box.y - box.height / 2) * step) / steps,
-      );
-    }
-    // Die Lücke folgt mit dem nächsten Bild.
-    await expect(page.locator("li.placeholder")).toHaveCount(1);
-    await page.waitForTimeout(100);
-    await page.mouse.up();
-  };
-
   // „rain“ unter „sun“.
   const sun = (await page.locator("li[data-entry-id]").filter({ hasText: "sun" }).boundingBox())!;
-  await drag("rain", { x: sun.x + 60, y: sun.y + sun.height - 2 });
+  await drag(page, "rain", { x: sun.x + 60, y: sun.y + sun.height - 2 });
   await expect(status(page)).toHaveText("„rain“ verschoben.");
   expect(await order(page)).toEqual([["sun", "rain"], ["coat"]]);
 
   // „sun“ über „coat“ in die zweite Sektion.
   const coat = (await page.locator("li[data-entry-id]").filter({ hasText: "coat" }).boundingBox())!;
-  await drag("sun", { x: coat.x + 60, y: coat.y + 2 });
+  await drag(page, "sun", { x: coat.x + 60, y: coat.y + 2 });
   await expect(status(page)).toHaveText("„sun“ steht jetzt in „Kleidung“.");
   expect(await order(page)).toEqual([["rain"], ["sun", "coat"]]);
   await expect(page.locator(".ghost")).toHaveCount(0);
 
   expect(await stored(page)).toEqual([["rain"], ["sun", "coat"]]);
+  expect(errors).toEqual([]);
+});
+
+test("E2E-29 Loslassen zählt die Stelle des letzten Zeigers, auch wenn kein Bild dazwischen kam", async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  await openSorting(page);
+  // Ohne Bilder folgt die Lücke dem Zeiger nicht von selbst (so langsam kann ein Gerät sein);
+  // beim Loslassen muss die App sie trotzdem an die Stelle des Zeigers setzen.
+  await page.evaluate(() => {
+    window.requestAnimationFrame = () => 0;
+  });
+  const sun = (await page.locator("li[data-entry-id]").filter({ hasText: "sun" }).boundingBox())!;
+  await drag(page, "rain", { x: sun.x + 60, y: sun.y + sun.height - 2 });
+  await expect(status(page)).toHaveText("„rain“ verschoben.");
+  expect(await order(page)).toEqual([["sun", "rain"], ["coat"]]);
+  expect(await stored(page)).toEqual([["sun", "rain"], ["coat"]]);
   expect(errors).toEqual([]);
 });
 

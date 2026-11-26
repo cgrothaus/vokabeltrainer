@@ -106,6 +106,13 @@ function start(event: PointerEvent, board: HTMLElement, options: SortableOptions
   const finish = (ended: PointerEvent) => {
     if (ended.pointerId !== pointer) return;
     cancelAnimationFrame(frame);
+    // Die Lücke folgt dem Zeiger nur mit jedem Bild: Kam seit dem letzten keins (langsames Gerät,
+    // schnelles Loslassen), stünde sie noch an der alten Stelle. Deshalb dort, wo der Zeiger endet.
+    if (ended.type === "pointerup") {
+      x = ended.clientX;
+      y = ended.clientY;
+      place();
+    }
     // Am Dokument statt am Griff: Das Verschieben der Zeile im DOM hebt die Zeigererfassung auf.
     document.removeEventListener("pointermove", move);
     document.removeEventListener("pointerup", finish);
