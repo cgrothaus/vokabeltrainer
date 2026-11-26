@@ -110,6 +110,9 @@ test("Ohne Sets: Bibliothek, Hilfe, Import, Backup, Einstellungen, unbekannte Ad
   await page.goto("./#/help/learning");
   findings.push(...(await audit(page, "Hilfe Lernplan")));
 
+  await page.goto("./#/help/about");
+  findings.push(...(await audit(page, "Über den Vokabeltrainer")));
+
   await page.goto("./#/import");
   findings.push(...(await audit(page, "Import")));
   await page

@@ -209,6 +209,7 @@ export function entryEditorView(
           role: "group",
           class: id === "term" ? "form-group front" : "form-group",
           "aria-labelledby": `${id}-legend`,
+          "aria-describedby": id === "term" ? "term-variant-hint" : null,
         },
         h(
           "div",
@@ -230,6 +231,12 @@ export function entryEditorView(
           { one: (n) => `Variante ${n} von „${legend}“`, add: "Variante hinzufügen" },
           lang,
         ),
+        id === "term" &&
+          h(
+            "p",
+            { class: "hint-text", id: "term-variant-hint" },
+            "Eine Variante ist eine andere Schreibweise, die beim Schreiben mit Buchstaben auch zählt, zum Beispiel „grey“ neben „gray“.",
+          ),
       );
 
     /** Auswahl mit bekannten Werten auf Deutsch; ein anderer Wert aus dem Set bleibt wählbar. */
@@ -319,8 +326,18 @@ export function entryEditorView(
           ),
           h(
             "div",
-            { role: "group", class: "field", "aria-labelledby": "word-forms" },
+            {
+              role: "group",
+              class: "field",
+              "aria-labelledby": "word-forms",
+              "aria-describedby": "word-forms-hint",
+            },
             h("p", { class: "field-title", id: "word-forms" }, "Wortformen"),
+            h(
+              "p",
+              { class: "hint-text", id: "word-forms-hint" },
+              "Zum Beispiel „go, went, gone“ bei unregelmäßigen Verben.",
+            ),
             fieldErrors("forms").length > 0 &&
               h("p", { class: "field-error" }, fieldErrors("forms").join(" ")),
             textList(

@@ -2,8 +2,8 @@
 
 ## Allgemeiner, mobiler Vokabeltrainer
 
-**Version:** 2.12 – Volle Bibliothek ordnen: Filter, Archiv, Lernstufe für mehrere Sets  
-**Stand:** 22. November 2026  
+**Version:** 2.13 – Hilfe und Erklärungen für Kinder und Eltern  
+**Stand:** 26. November 2026  
 **Status:** Entwurf für die nächste Entwicklungsiteration  
 **Ausgangspunkt:** Bestehender HTML-Prototyp „Vokabeltrainer Englisch“  
 **Entstehung und Autorenschaft:** siehe Kapitel 13 (Änderungshistorie)
@@ -224,6 +224,9 @@ Nutzende können mehrere Vokabelsets importieren, als leeres Set anlegen und wie
 
 **FR-43 – Volle Bibliothek ordnen (SHOULD)**  
 Auch mit mehreren Lernsprachen und vielen Sets in Lektionsgröße finden Lernende ihre aktuellen Sets schnell. Ab zwei Lernsprachen lässt sich die Bibliothek nach Sprache filtern; die Wahl bleibt gemerkt. Bei vielen Sets einer Sprache stehen die zuletzt gelernten oben, die übrigen in der gewohnten Reihenfolge. Sets, die gerade nicht gelernt werden, lassen sich archivieren und wieder zurückholen; das Archiv blendet sie nur aus der Bibliothek aus, Vokabeln und Lernstand bleiben, und es ist nach Lernstufe geordnet. Mehrere Sets lassen sich auf einmal auswählen, um sie zu archivieren oder ihnen dieselbe Lernstufe zu geben. Nennt eine neue Datei keine Lernstufe, schlägt die Vorschau eine vorhandene vor.
+
+**FR-44 – Hilfe für Kinder und Eltern (SHOULD)**  
+Die App erklärt in kurzen Sätzen am Ort, was Felder und Regler bedeuten, wenn der Name allein nicht reicht (Lernstufe, Varianten, Wortformen, Anteil an Multiple Choice, „Zusammen lernen“). Wer mehr wissen will, findet in den Einstellungen unter „Über die App“ zwei Seiten: „Wie lerne ich mit dem Plan?“ erklärt das Lernprinzip (Karteikasten mit wachsenden Pausen, erst Multiple Choice, dann Karteikarte, dann Buchstaben, beide Richtungen) in Kindersprache und in einem eigenen Abschnitt für Eltern; „Über den Vokabeltrainer“ sagt, wo die Daten liegen, was beim KI-Chat mit dem Foto geschieht und dass die App kostenlos und offen ist. Die Texte bleiben kurz, die Tiefe liegt hinter einem Klick.
 
 **FR-03 – Sektionen und Reihenfolge (MUST)**  
 Sektionen können angezeigt, ausgewählt, erstellt, umbenannt, umsortiert und – unter Beachtung der enthaltenen Einträge – gelöscht werden. Die Reihenfolge bleibt erhalten.
@@ -502,6 +505,7 @@ Die nächste Version gilt als fachlich erfolgreich, wenn mindestens die folgende
 - **AK-35 – Schreiben ohne Tastatur** (FR-41): In der Richtung in die Lernsprache lässt sich ein Wort aus angebotenen Buchstaben zusammensetzen, ohne dass die Bildschirmtastatur erscheint; richtige Schreibweisen und akzeptierte Varianten zählen als richtig, die Antwort steht im Protokoll mit dieser Abfrageform.
 - **AK-36 – Lernplan erklären** (FR-42): Die Set-Ansicht eines gelernten Sets nennt unter dem Lernstand die Regel hinter „sicher“ und verweist auf die Hilfeseite „Wie lerne ich mit dem Plan?“; sie erklärt Karteikasten, Abstände, „neu“, „im Aufbau“ und „sicher“ sowie „Wiederholen“, „Neue Vokabeln lernen“ und „Selbst auswählen“, ist ohne Verstöße gegen die Barrierefreiheitsprüfung (NFR-09 bis NFR-13) lesbar und braucht kein Netz. Die Einrichtung und das Ergebnis einer Sitzung nennen, dass für den Lernstand jede Vokabel einmal am Tag zählt.
 - **AK-37 – Volle Bibliothek ordnen** (FR-43): Mit Sets in zwei Lernsprachen zeigt die Bibliothek einen Filter nach Sprache, der nach dem Neuladen gemerkt ist; bei fünf und mehr Sets einer Sprache stehen die drei zuletzt gelernten oben. Ein archiviertes Set erscheint nur im Archiv, nicht in „Zusammen lernen“ und „Weiterlernen“, und lässt sich mit unverändertem Lernstand zurückholen; das Archiv übersteht ein Backup. Zwei ausgewählte Sets bekommen in einem Schritt dieselbe neue Lernstufe.
+- **AK-38 – Hilfe für Kinder und Eltern** (FR-44): „Weitere Angaben“ nennt unter der Lernstufe ein Beispiel und wofür sie dient. Im Eintragsformular erklären kurze Sätze „Variante“ und „Wortformen“, die Einrichtung sagt, was der Regler „Multiple Choice“ bewirkt, und „Zusammen lernen“ sagt in einem Satz, was in der Runde passiert. In den Einstellungen führen unter „Über die App“ zwei Zeilen zu „Wie lerne ich mit dem Plan?“ (mit Abschnitt „Für Eltern“) und zu „Über den Vokabeltrainer“; die Einrichtung verlinkt den Lernplan.
 
 ### 9.1 Produktindikatoren für spätere Evaluation
 
@@ -602,3 +606,4 @@ Das TDD muss insbesondere sicherstellen, dass die zentrale Produktanforderung er
 | 2.10 | 20. November 2026 | Lernplan erklären: FR-42 und AK-36 (Sätze am Ort und eine kurze Hilfeseite zu Karteikasten, Stufen und „Selbst auswählen“), ausgelöst durch die Beobachtung, dass „fällig“, „im Aufbau“ und „Frei lernen“ unerklärt dastanden | Claude (Anthropic), Modell Claude Sonnet 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.11 | 22. November 2026 | Vorbereitung auf einen Test (FR-38, AK-32) zurückgestellt und in den Ausblick übernommen (5.1, 5.3, 11); FR-39 nennt sie nur noch als spätere Ergänzung. Entscheidung des Nutzers: weniger wichtig als die übrigen Teile von M6 | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
 | 2.12 | 22. November 2026 | Volle Bibliothek ordnen: FR-43 und AK-37 (Filter nach Sprache, zuletzt gelernte Sets oben, Archiv nach Lernstufe, Auswahl mehrerer Sets für Lernstufe und Archiv, Vorschlag der Lernstufe beim Hinzufügen); Ausblick angepasst (11). Ausgelöst durch die Frage des Nutzers, wie eine Bibliothek mit drei Fremdsprachen in der Oberstufe handhabbar bleibt; Brainstorming und klickbarer Entwurf | Claude (Anthropic), Modell Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer |
+| 2.13 | 26. November 2026 | Hilfe für Kinder und Eltern: FR-44 und AK-38 (Hinweise am Ort, Lernplan mit Elternabschnitt, „Über den Vokabeltrainer“ aus den Einstellungen). Ausgelöst durch die Beobachtung des Nutzers, dass die Lernstufe beim ersten Set und das Lernprinzip für ältere Kinder und Eltern mehr Erklärung brauchen; Brainstorming und klickbarer Entwurf (Version 14) | Claude (Anthropic), Modelle Claude Opus 5.5 und Claude Sonnet 5.5, in Zusammenarbeit mit dem Nutzer |

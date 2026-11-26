@@ -26,14 +26,22 @@ export function setInfoFields(
   extra: Node[] = [],
 ): SetInfoFields {
   // Je Feld das Eingabeelement und der Platz für seine Meldung.
-  const fields = new Map<string, { input: HTMLElement; message: HTMLElement }>();
+  const fields = new Map<string, { input: HTMLElement; message: HTMLElement; hintId?: string }>();
   const message = (id: string) => h("p", { id: `${id}-error`, class: "field-error", hidden: true });
 
-  const text = (field: TextField, label: string, multiline = false, big = false): Node => {
+  const text = (
+    field: TextField,
+    label: string,
+    multiline = false,
+    big = false,
+    hint?: string,
+  ): Node => {
     const id = `set-${field}`;
+    const hintId = hint ? `${id}-hint` : undefined;
     const props = {
       id,
       class: big ? "big" : null,
+      "aria-describedby": hintId,
       oninput: (event: Event) => {
         form[field] = (event.target as HTMLInputElement).value;
         refreshSummary();
@@ -43,8 +51,15 @@ export function setInfoFields(
       ? h("textarea", { ...props, rows: 3, class: "plain" }, form[field])
       : h("input", { ...props, type: "text", value: form[field], autocomplete: "off" });
     const note = message(id);
-    fields.set(field, { input, message: note });
-    return h("div", { class: "field" }, h("label", { for: id }, label), input, note);
+    fields.set(field, { input, message: note, hintId });
+    return h(
+      "div",
+      { class: "field" },
+      h("label", { for: id }, label),
+      input,
+      hint && h("p", { class: "hint-text", id: hintId }, hint),
+      note,
+    );
   };
 
   const language = (field: "termLanguage" | "meaningLanguage", label: string): Node => {
@@ -112,7 +127,13 @@ export function setInfoFields(
     h(
       "div",
       { class: "more-body" },
-      text("level", "Lernstufe"),
+      text(
+        "level",
+        "Lernstufe",
+        false,
+        false,
+        "Zum Beispiel „Klasse 6“ oder „B1“. Danach ordnet die Bibliothek deine Sets.",
+      ),
       h("div", { class: "pair-fields" }, text("textbook", "Lehrwerk"), text("edition", "Ausgabe")),
       h("div", { class: "pair-fields" }, text("source", "Herkunft"), text("license", "Lizenz")),
       text("notes", "Notiz", true),
@@ -168,9 +189,10 @@ export function setInfoFields(
   );
 
   const showErrors = (errors: FormError[]) => {
-    for (const [, { input, message: note }] of fields) {
+    for (const [, { input, message: note, hintId }] of fields) {
       input.removeAttribute("aria-invalid");
-      input.removeAttribute("aria-describedby");
+      if (hintId) input.setAttribute("aria-describedby", hintId);
+      else input.removeAttribute("aria-describedby");
       note.hidden = true;
       note.textContent = "";
     }
@@ -178,7 +200,10 @@ export function setInfoFields(
       const field = fields.get(error.field);
       if (!field) continue;
       field.input.setAttribute("aria-invalid", "true");
-      field.input.setAttribute("aria-describedby", field.message.id);
+      field.input.setAttribute(
+        "aria-describedby",
+        [field.hintId, field.message.id].filter(Boolean).join(" "),
+      );
       field.message.hidden = false;
       field.message.textContent = error.message;
       if (more.contains(field.input)) more.open = true;

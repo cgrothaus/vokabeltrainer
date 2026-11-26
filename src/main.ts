@@ -56,6 +56,7 @@ import { editSetView } from "./app/views/editSet";
 import { entryEditorView } from "./app/views/entryEditor";
 import { exportView } from "./app/views/export";
 import { newSetView, setInfoView } from "./app/views/setInfo";
+import { aboutHelpView } from "./app/views/aboutHelp";
 import { learningHelpView } from "./app/views/learningHelp";
 import { importView } from "./app/views/import";
 import { learnView } from "./app/views/learn";
@@ -508,6 +509,7 @@ async function start(): Promise<void> {
       "/import": importPage,
       "/help": helpPage,
       "/help/learning": learningHelpView,
+      "/help/about": aboutHelpView,
       "/learn/*": learnPage,
       "/together/*/*": togetherPage,
       "/archive": archivePage,

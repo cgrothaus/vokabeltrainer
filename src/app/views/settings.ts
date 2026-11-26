@@ -88,6 +88,32 @@ export function settingsView(context: SettingsContext, signal: AbortSignal): Nod
       "section",
       { "aria-labelledby": "settings-about" },
       h("h2", { id: "settings-about" }, "Über die App"),
+      h(
+        "ul",
+        { class: "rows" },
+        h(
+          "li",
+          null,
+          h(
+            "a",
+            { href: "#/help/learning" },
+            icon("help"),
+            h("span", null, "Wie lerne ich mit dem Plan?"),
+            icon("chevron"),
+          ),
+        ),
+        h(
+          "li",
+          null,
+          h(
+            "a",
+            { href: "#/help/about" },
+            icon("info"),
+            h("span", null, "Über den Vokabeltrainer"),
+            icon("chevron"),
+          ),
+        ),
+      ),
       h("p", null, `Version ${context.appVersion}`),
     ),
   );

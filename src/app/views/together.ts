@@ -231,6 +231,11 @@ function form(
   return [
     h("p", { class: "lead" }, `${languageName(term)} → ${languageName(meaning)}`),
     h(
+      "p",
+      { class: "note" },
+      "Vokabeln aus mehreren Sets in einer Runde. Die App mischt sie und plant jede Vokabel wie sonst auch.",
+    ),
+    h(
       "form",
       {
         id: "together-form",
@@ -245,7 +250,8 @@ function form(
       h(
         "p",
         { class: "note" },
-        "Alle Sektionen der gewählten Sets. Für den Lernstand zählt jede Vokabel einmal am Tag; was noch nicht fällig ist, rückt dadurch nicht weiter.",
+        "Alle Sektionen der gewählten Sets. Für den Lernstand zählt jede Vokabel einmal am Tag; was noch nicht fällig ist, rückt dadurch nicht weiter. ",
+        h("a", { href: "#/help/learning" }, "Wie funktioniert das?"),
       ),
       options.direction,
       options.count,

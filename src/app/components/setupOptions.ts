@@ -88,6 +88,7 @@ export function setupOptions(
     step: MC_SHARE_STEP,
     value: mcShare,
     "aria-valuetext": `${mcShare} Prozent`,
+    "aria-describedby": "mc-share-hint",
     oninput: () => {
       mcShare = slider.valueAsNumber;
       shareValue.textContent = shareText();
@@ -100,6 +101,11 @@ export function setupOptions(
     h("label", { for: "mc-share" }, "Multiple Choice"),
     slider,
     shareValue,
+    h(
+      "p",
+      { class: "hint-text", id: "mc-share-hint" },
+      "So viele Fragen bekommst du mit Antworten zur Auswahl.",
+    ),
   );
 
   const lettersBox = h("input", {

@@ -210,7 +210,8 @@ function form(
     h(
       "p",
       { class: "note" },
-      "Hier wählst du selbst aus. Für den Lernstand zählt jede Vokabel einmal am Tag; was noch nicht fällig ist, rückt dadurch nicht weiter.",
+      "Hier wählst du selbst aus. Für den Lernstand zählt jede Vokabel einmal am Tag; was noch nicht fällig ist, rückt dadurch nicht weiter. ",
+      h("a", { href: "#/help/learning" }, "Wie funktioniert das?"),
     ),
     ...(quick || []),
     h(

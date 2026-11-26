@@ -1,8 +1,12 @@
-// Hilfe „Wie lerne ich mit dem Plan?“ (TDD 13.1, FR-42, D-64): Karteikasten, Abstände, die drei Stufen
-// des Lernstands und der Unterschied zwischen dem Plan und „Selbst auswählen“. Der Text beschreibt
-// 12.7 und 12.8 in Alltagssprache; wer dort Zahlen oder Regeln ändert, passt ihn an.
+// Hilfe „Wie lerne ich mit dem Plan?“ (TDD 13.1, FR-42, FR-44, D-64, D-74): Karteikasten mit Pausen,
+// die drei Stufen des Lernstands, die Übungsformen, Hinweise zum ehrlichen Bewerten und ein Abschnitt für
+// Eltern. Der Text beschreibt 12.7 und 12.8 in Alltagssprache; wer dort Zahlen oder Regeln ändert,
+// passt ihn und die Fächer-Liste an.
 import { frame } from "../components/frame";
 import { h } from "../dom";
+
+/** Pause je Fach (TDD 12.7). */
+const BOXES = ["1 Tag", "3 Tage", "7 Tage", "14 Tage", "30 Tage"];
 
 export function learningHelpView(): Node {
   const main = h(
@@ -25,7 +29,19 @@ export function learningHelpView(): Node {
       h(
         "p",
         null,
-        "Je weiter hinten eine Vokabel steht, desto länger hat sie Pause: Aus dem ersten Fach ist sie nach einem Tag wieder dran, aus den nächsten nach 3, 7, 14 und 30 Tagen. Dann ist sie „fällig“.",
+        "Je weiter hinten eine Vokabel steht, desto länger hat sie Pause. Ist die Pause vorbei, ist sie „fällig“.",
+      ),
+      h(
+        "ol",
+        { class: "boxes", "aria-label": "Pause je Fach" },
+        BOXES.map((days, index) =>
+          h(
+            "li",
+            { class: index >= 3 ? "safe" : null },
+            h("b", null, String(index + 1)),
+            h("span", null, `Pause ${days}`),
+          ),
+        ),
       ),
       h(
         "p",
@@ -54,6 +70,41 @@ export function learningHelpView(): Node {
         null,
         "Deshalb wird eine Vokabel nicht an einem Tag „sicher“, auch wenn du sie zehnmal richtig beantwortest: Pro Tag zählt nur die erste Antwort, und ins nächste Fach rückt sie erst, wenn ihre Pause vorbei ist. Das ist kein Fehler der App, sondern der Weg, auf dem man sich Vokabeln dauerhaft merkt.",
       ),
+    ),
+    h(
+      "section",
+      { "aria-labelledby": "plan-ladder" },
+      h("h2", { id: "plan-ladder" }, "Erst erkennen, dann sagen, dann schreiben"),
+      h(
+        "ol",
+        { class: "ladder" },
+        h(
+          "li",
+          null,
+          h("small", null, "Neu und erstes Fach"),
+          h("b", null, "Multiple Choice"),
+          "Du erkennst die richtige Antwort unter mehreren.",
+        ),
+        h(
+          "li",
+          null,
+          h("small", null, "Ab dem zweiten Fach"),
+          h("b", null, "Karteikarte"),
+          "Du sagst die Antwort, bevor du aufdeckst.",
+        ),
+        h(
+          "li",
+          null,
+          h("small", null, "Ab dem vierten Fach, in die Fremdsprache"),
+          h("b", null, "Buchstaben"),
+          "Du setzt das Wort zusammen und übst die Schreibweise, wie im Vokabeltest.",
+        ),
+      ),
+      h(
+        "p",
+        null,
+        "Jede Stufe ist etwas schwerer als die vorige: Wiedererkennen ist leichter, als selbst draufzukommen, und selbst draufkommen ist leichter, als das Wort richtig zu schreiben. So wächst die Aufgabe mit dem, was du schon kannst.",
+      ),
       h(
         "p",
         null,
@@ -62,12 +113,35 @@ export function learningHelpView(): Node {
       h(
         "p",
         null,
-        "Deshalb fragt dich der Plan neue Vokabeln und solche im ersten Fach als Multiple Choice ab. Ab dem zweiten Fach kommen sie als Karteikarte: Dann sagst du die Antwort selbst, bevor du aufdeckst. Ab dem vierten Fach setzt du sie in Richtung Fremdsprache aus Buchstaben zusammen und übst so die Schreibweise, wie sie im Vokabeltest verlangt wird.",
+        h("b", null, "Sag es laut."),
+        " Denkst du die Antwort nur, merkst du oft nicht, dass sie noch wackelt. Sagst du sie laut, bevor du aufdeckst, weißt du genau, ob du sie wirklich wusstest.",
       ),
       h(
         "p",
         null,
+        h("b", null, "Tipp ehrlich."),
+        " Bei der Karteikarte entscheidest du selbst, ob du die Vokabel gewusst hast. Tipp nur auf „Gewusst“, wenn sie ganz richtig war. Sonst schiebt die App sie zu weit nach hinten, und du vergisst sie, bevor sie wieder drankommt.",
+      ),
+      h(
+        "p",
+        null,
+        h("b", null, "Nochmal heißt zweimal."),
+        " Tippst du auf „Nochmal“, kommt die Karte in dieser Runde wieder. Geschafft ist sie erst, wenn du sie danach zweimal gewusst hast.",
+      ),
+    ),
+    h(
+      "section",
+      { "aria-labelledby": "plan-directions" },
+      h("h2", { id: "plan-directions" }, "Beide Richtungen"),
+      h(
+        "p",
+        null,
         "Beide Richtungen zählen getrennt, zum Beispiel Englisch → Deutsch und Deutsch → Englisch. Im Plan lernst du neue Vokabeln zuerst von der Fremdsprache in deine Sprache. Die Gegenrichtung kommt dazu, sobald die Vokabel im zweiten Fach liegt, du sie also nach einem Tag Pause noch wusstest.",
+      ),
+      h(
+        "p",
+        null,
+        "Die Gegenrichtung ist schwerer: Ein Wort zu verstehen ist leichter, als selbst darauf zu kommen. Im Vokabeltest brauchst du meist beides.",
       ),
     ),
     h(
@@ -100,6 +174,53 @@ export function learningHelpView(): Node {
         "p",
         null,
         "Änderst du eine Vokabel, zum Beispiel weil sie falsch eingetragen war, ist sie sofort wieder fällig. Ihr Fach behält sie.",
+      ),
+    ),
+    h(
+      "section",
+      { class: "parents", "aria-labelledby": "plan-parents" },
+      h("h2", { id: "plan-parents" }, "Für Eltern"),
+      h(
+        "ul",
+        null,
+        h(
+          "li",
+          null,
+          "Die App arbeitet mit der ",
+          h("b", null, "Lernkartei nach Leitner"),
+          ": Vokabeln wandern durch Fächer, und die Pausen dazwischen werden länger. Dahinter stehen zwei gut untersuchte Effekte: verteiltes Wiederholen und das aktive Abrufen aus dem Gedächtnis.",
+        ),
+        h(
+          "li",
+          null,
+          "Bei der Karteikarte ",
+          h("b", null, "bewertet sich das Kind selbst"),
+          ". Ehrliches Bewerten ist wichtiger als eine hohe Quote; gemeinsam abfragen und laut antworten lassen hilft dabei.",
+        ),
+        h(
+          "li",
+          null,
+          h("b", null, "Kurz und regelmäßig"),
+          " wirkt besser als lang und selten: lieber jeden Tag zehn Minuten als einmal in der Woche eine Stunde. Die Zahl auf dem runden Knopf zeigt, was heute fällig ist.",
+        ),
+        h(
+          "li",
+          null,
+          h("b", null, "Vor einer Klassenarbeit"),
+          " hilft „Selbst auswählen“: nur die Sektionen der Arbeit, beide Richtungen, mit „Schreiben mit Buchstaben“.",
+        ),
+        h(
+          "li",
+          null,
+          h("b", null, "„Sicher“ braucht Tage."),
+          " Ist eine Vokabel nach einer Woche noch „im Aufbau“, ist das normal und kein Zeichen von schlechtem Lernen.",
+        ),
+      ),
+      h(
+        "p",
+        { class: "muted" },
+        "Wo die Daten liegen und was beim KI-Chat passiert: ",
+        h("a", { href: "#/help/about" }, "Über den Vokabeltrainer"),
       ),
     ),
   );
