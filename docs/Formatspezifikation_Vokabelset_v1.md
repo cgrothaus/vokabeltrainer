@@ -2,7 +2,7 @@
 
 **Formatkennung:** `vokabeltrainer-set`  
 **Formatversion:** 1  
-**Dokumentstand:** 22. November 2026
+**Dokumentstand:** 27. November 2026
 
 ## Wozu diese Beschreibung dient
 
@@ -24,6 +24,8 @@ Dieses Dokument richtet sich an
 - **Programme**, die solche Dateien erzeugen oder prüfen.
 
 Ein maschinenlesbares JSON Schema (Draft 2020-12) liegt als `vokabeltrainer-set.schema.json` neben diesem Dokument (Kapitel 11). Es prüft Aufbau, Typen und Längen; einige Regeln lassen sich darin nicht ausdrücken, etwa doppelte IDs oder das Entfernen von Leerzeichen am Rand. Bei Widersprüchen gilt dieses Dokument.
+
+Diese Beschreibung und das JSON Schema stehen unter der Lizenz Creative Commons Namensnennung 4.0 International (CC BY 4.0; Christoph Grothaus, Vokabeltrainer): Sie dürfen frei genutzt, weitergegeben und verändert werden, auch in eigenen Programmen, solange die Herkunft genannt wird.
 
 ---
 
@@ -425,3 +427,4 @@ Die App veröffentlicht dieses Dokument als `formatspezifikation.md` neben sich 
 | 18. November 2026 | Name der Ansicht in der App: „Vokabelset hinzufügen“ statt „Vokabelset importieren“ (Einleitung). Formatversion bleibt 1. Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer. |
 | 20. November 2026 | Die App kopiert dieses Dokument vollständig mit einem Begleittext in den KI-Chat, beim Korrigieren zusammen mit dem exportierten Set, statt auf seine Adresse zu verweisen; der Weg über das Teilen als Datei entfällt (11). Formatversion bleibt 1. Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer. |
 | 22. November 2026 | Die App führt in der Ansicht „Vokabelset hinzufügen“ durch die Wege, eine eigene Hilfe dafür entfällt (11). Formatversion bleibt 1. Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer. |
+| 27. November 2026 | Lizenz für diese Beschreibung und das JSON Schema: CC BY 4.0 (Einleitung). Formatversion bleibt 1. Claude Opus 5.5, in Zusammenarbeit mit dem Nutzer. |

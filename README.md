@@ -46,6 +46,8 @@ Hinweise für Coding-Agents stehen in [CLAUDE.md](CLAUDE.md).
 
 ## Lizenz
 
-Vorerst keine Lizenz: Alle Rechte vorbehalten. Eine Lizenz folgt vor der ersten Auslieferung.
+Der Quellcode steht unter der [MIT-Lizenz](LICENSE).
 
-Ausgenommen ist der Skill unter `.claude/skills/playwright-cli/` aus [microsoft/playwright-cli](https://github.com/microsoft/playwright-cli); er steht unter der Apache-2.0-Lizenz (siehe `LICENSE` dort).
+Die Formatspezifikation (`docs/Formatspezifikation_Vokabelset_v1.md`) und das JSON Schema (`docs/vokabeltrainer-set.schema.json`) stehen unter [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/deed.de): Sie dürfen mit Namensnennung frei genutzt, weitergegeben und verändert werden, auch in eigenen Programmen. Das Beispielset (`src/content/beispielset.json`) ist unter [CC0](https://creativecommons.org/publicdomain/zero/1.0/deed.de) ohne Bedingungen frei verwendbar.
+
+Ausgenommen ist außerdem der Skill unter `.claude/skills/playwright-cli/` aus [microsoft/playwright-cli](https://github.com/microsoft/playwright-cli); er steht unter der Apache-2.0-Lizenz (siehe `LICENSE` dort).

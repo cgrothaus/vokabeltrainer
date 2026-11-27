@@ -61,7 +61,7 @@ export function aboutHelpView(): Node {
       h(
         "p",
         null,
-        "Der Vokabeltrainer ist kostenlos und ohne Werbung. Sein Quelltext ist öffentlich.",
+        "Der Vokabeltrainer ist kostenlos und ohne Werbung. Sein Quelltext ist öffentlich und darf von allen frei genutzt werden.",
       ),
     ),
   );
